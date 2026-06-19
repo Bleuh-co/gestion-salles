@@ -1,257 +1,352 @@
 // ============================================================
-// Données mock — Gestion Salles
-// Pas de Firestore. Données en mémoire pour le dev/démo.
+// Données réelles — Gestion Salles v2
+// Source : Google Sheet ChanvHQ (1059QWs8VKKyF4jW0ThebEnM-qn2hMB-gpbq5gTB0Elk)
+// Importé le 2026-06-19
 // ============================================================
 
-import type {
-  Usine,
-  Salle,
-  RoomStatus,
-  RoomSummary,
-  SensorReading,
-  Employee,
-  Device,
-  Equipment,
-  HistoryEvent,
-  RoomStats,
-} from "./types";
+import type { Local, Actif, AuditLogEntry } from "./types";
 
-function iso(daysAgo: number, hours = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  d.setHours(d.getHours() - hours);
-  return d.toISOString();
-}
+// ============================================================
+// Locaux (119)
+// ============================================================
 
-function makeSensors(seed: number): SensorReading[] {
-  const t = 20 + ((seed * 3) % 8);
-  const h = 45 + ((seed * 5) % 25);
-  const c = 400 + ((seed * 47) % 600);
-  const p = 1010 + ((seed * 2) % 12);
-  return [
-    {
-      id: `s${seed}-temp`,
-      type: "temperature",
-      label: "Température",
-      value: t,
-      unit: "°C",
-      status: t > 26 ? "warning" : "ok",
-      min: 18,
-      max: 28,
-      updatedAt: iso(0, 1),
-    },
-    {
-      id: `s${seed}-hum`,
-      type: "humidite",
-      label: "Humidité",
-      value: h,
-      unit: "%",
-      status: h > 65 ? "critical" : "ok",
-      min: 40,
-      max: 70,
-      updatedAt: iso(0, 1),
-    },
-    {
-      id: `s${seed}-co2`,
-      type: "co2",
-      label: "CO₂",
-      value: c,
-      unit: "ppm",
-      status: c > 900 ? "warning" : "ok",
-      min: 350,
-      max: 1000,
-      updatedAt: iso(0, 1),
-    },
-    {
-      id: `s${seed}-press`,
-      type: "pression",
-      label: "Pression",
-      value: p,
-      unit: "hPa",
-      status: "ok",
-      min: 1000,
-      max: 1025,
-      updatedAt: iso(0, 1),
-    },
-  ];
-}
-
-function makeEmployees(seed: number): Employee[] {
-  const noms = [
-    ["Tremblay", "Marie", "Technicienne", "jour"],
-    ["Gagnon", "Luc", "Opérateur", "soir"],
-    ["Roy", "Sophie", "Superviseure", "jour"],
-    ["Côté", "Marc", "Technicien", "nuit"],
-    ["Bouchard", "Julie", "Agronome", "jour"],
-  ];
-  const n = 2 + (seed % 4);
-  return noms.slice(0, n).map((e, i) => ({
-    id: `emp-${seed}-${i}`,
-    nom: e[0],
-    prenom: e[1],
-    poste: e[2],
-    shift: e[3] as Employee["shift"],
-    statut: (i % 3 === 0 ? "present" : i % 3 === 1 ? "pause" : "absent") as Employee["statut"],
-  }));
-}
-
-function makeDevices(seed: number): Device[] {
-  const types = ["Capteur IoT", "Contrôleur", "Caméra", "Passerelle"];
-  const n = 2 + (seed % 3);
-  return Array.from({ length: n }, (_, i) => ({
-    id: `dev-${seed}-${i}`,
-    nom: `${types[i % types.length]} #${seed}${i}`,
-    type: types[i % types.length],
-    status: (i % 4 === 3 ? "erreur" : i % 3 === 2 ? "offline" : "online") as Device["status"],
-    ipAddress: `10.0.${seed}.${10 + i}`,
-    firmware: `v${1 + (i % 3)}.${seed % 10}.0`,
-    lastSeen: iso(0, i),
-  }));
-}
-
-function makeEquipment(seed: number): Equipment[] {
-  const cats = [
-    ["HVAC", "Carrier 48TC"],
-    ["Éclairage", "LED Fluence SPYDR"],
-    ["Irrigation", "Netafim Pro"],
-    ["Filtration", "AirClean X200"],
-  ];
-  const n = 2 + (seed % 3);
-  return cats.slice(0, n).map((c, i) => ({
-    id: `eq-${seed}-${i}`,
-    nom: `${c[0]} - Unité ${i + 1}`,
-    categorie: c[0],
-    modele: c[1],
-    status: (i % 3 === 1 ? "maintenance" : i % 5 === 4 ? "hors_service" : "operationnel") as Equipment["status"],
-    dernierEntretien: iso(20 + i * 5),
-    prochainEntretien: iso(-(30 - i * 3)),
-  }));
-}
-
-function makeHistory(seed: number): HistoryEvent[] {
-  const events: Array<[HistoryEvent["type"], string, string]> = [
-    ["info", "Cycle démarré", "Nouveau cycle de production lancé."],
-    ["alerte", "Humidité élevée", "Seuil d'humidité dépassé pendant 15 min."],
-    ["maintenance", "Entretien HVAC", "Maintenance préventive du système HVAC."],
-    ["intervention", "Remplacement capteur", "Capteur CO₂ remplacé suite à dérive."],
-    ["info", "Inspection qualité", "Inspection de routine effectuée."],
-    ["alerte", "Device hors ligne", "Une passerelle IoT a perdu la connexion."],
-  ];
-  const n = 4 + (seed % 4);
-  return events.slice(0, Math.min(n, events.length)).map((e, i) => ({
-    id: `hist-${seed}-${i}`,
-    type: e[0],
-    titre: e[1],
-    description: e[2],
-    auteur: i % 2 === 0 ? "Marie Tremblay" : "Système",
-    timestamp: iso(i, i * 2),
-  }));
-}
-
-function makeStats(seed: number): RoomStats {
-  const labels = ["L", "M", "M", "J", "V", "S", "D"];
-  return {
-    uptimePct: 95 + (seed % 5),
-    alertes30j: seed % 7,
-    interventions30j: seed % 4,
-    occupationMoyenne: 50 + ((seed * 7) % 40),
-    tempMoyenne: 21 + (seed % 4),
-    humiditeMoyenne: 50 + (seed % 15),
-    trendTemp: labels.map((l, i) => ({ label: l, value: 20 + ((seed + i) % 6) })),
-    trendHumidite: labels.map((l, i) => ({ label: l, value: 48 + ((seed + i * 2) % 18) })),
-  };
-}
-
-// Plan d'étage : grille 800×500, salles non chevauchantes
-const FLOOR_LAYOUTS = [
-  { x: 40, y: 40, width: 220, height: 180 },
-  { x: 290, y: 40, width: 220, height: 180 },
-  { x: 540, y: 40, width: 220, height: 180 },
-  { x: 40, y: 250, width: 170, height: 210 },
-  { x: 240, y: 250, width: 170, height: 210 },
-  { x: 440, y: 250, width: 150, height: 210 },
-  { x: 620, y: 250, width: 140, height: 100 },
-  { x: 620, y: 380, width: 140, height: 80 },
+export const locaux: Local[] = [
+  { id: "RÉCEPTION 1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Expédition / Réception", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Produit Fini", conditions: "Tempéré", statut: "en_service", niveauAcces: "Très restreint" },
+  { id: "ENTREPÔT 2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Matière 1ère", conditions: "Congelé (-20°C)", statut: "en_service", niveauAcces: "Restreint" },
+  { id: "ENTREPÔT 3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Équipement_Autres", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 4", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Fourniture de prod.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 11", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Matière 1ère", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "en_construction", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Matière 1ère, Entrepôt - Produit Fini", conditions: "Tempéré", statut: "en_service", niveauAcces: "Restreint" },
+  { id: "ZONE MULTI 3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Entrepôt - Équipement_Autres", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 4", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Culture", conditions: "Température contrôlé, Humidité contrôlé", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 5", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Entrepôt - Matière 1ère, Production - Transfo.", conditions: "Réfrigéré (4°C)", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 6", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Culture", conditions: "Humidité contrôlé, Température contrôlé", statut: "en_construction", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 7", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "hors_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 8", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "hors_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 9", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "hors_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 10", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Laboratoire / R&D", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 11", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SAS1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Sas", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SAS2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Sas", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SÉCHOIR 1 - ZONE MULTI", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SÉCHOIR 2 - ZONE MULTI", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SÉCHOIR 3 - ZONE MULTI", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO12", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO13", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO14", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO15", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 13", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "PSN", idLicence: "PSN", prod: true, vocation: "Production - Transfo., Production - Emballage", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 14", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "PSN", idLicence: "PSN", prod: true, vocation: "Production - Transfo.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 15", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "PSN", idLicence: "PSN", prod: true, vocation: "Production - Transfo., Production - Emballage", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SAS3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "PSN", idLicence: "PSN", prod: false, vocation: "Sas", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 6", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "PSN", idLicence: "PSN", prod: false, vocation: "Entrepôt - Matière 1ère", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 7", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "PSN", idLicence: "PSN", prod: false, vocation: "Entrepôt - Matière 1ère, Entrepôt - Quarantaine, Entrepôt - Produit Fini", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 16", nomSalle: "KOMBUCHANV", batiment: "BAT1", etage: "RDC", famille: "ALI", idLicence: "ALI", prod: false, vocation: "Production - Transfo., Production - Emballage", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZONE MULTI 17", nomSalle: "", batiment: "BAT1", etage: "1", famille: "CANNABIS_R&D", idLicence: "R&D", prod: false, vocation: "Laboratoire / R&D", conditions: "Tempéré", statut: "hors_service", niveauAcces: "Restreint" },
+  { id: "RÉCEPTION 2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES PRODUCTION", idLicence: "SEP", prod: true, vocation: "Expédition / Réception", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 5", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES PRODUCTION", idLicence: "SEP", prod: false, vocation: "Entrepôt - Matière 1ère", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 8", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES PRODUCTION", idLicence: "SEP", prod: false, vocation: "Entrepôt - Produit Fini, Entrepôt - Quarantaine, Entrepôt - Fourniture de prod.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTREPÔT 9", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES PRODUCTION", idLicence: "SEP", prod: false, vocation: "Entrepôt - Divers", conditions: "Tempéré", statut: "en_construction", niveauAcces: "Restreint" },
+  { id: "ENTREPÔT 10", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES PRODUCTION", idLicence: "SEP", prod: false, vocation: "Entrepôt - Divers", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "GARAGE 1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "LAVAGE 1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES PRODUCTION", idLicence: "SEP", prod: false, vocation: "Technique / Prod.", conditions: "Tempéré", statut: "en_service", niveauAcces: "Restreint" },
+  { id: "ZONE MULTI 12", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "MAISON D'HERBES", idLicence: "MDH", prod: false, vocation: "Production - Transfo., Production - Emballage", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "CUI1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Cafétéria", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO4", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO5", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO6", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO7", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO8", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO9", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO10", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ZCO11", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SDB1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SDB2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SDB3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SDB4", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "SIT1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES TECHNIQUES", idLicence: "SEP", prod: false, vocation: "Technique / TI", conditions: "Tempéré", statut: "en_service", niveauAcces: "Très restreint" },
+  { id: "SIT2", nomSalle: "", batiment: "BAT1", etage: "1", famille: "SERVICES TECHNIQUES", idLicence: "SEP", prod: false, vocation: "Technique / Sécurité", conditions: "Température contrôlé", statut: "en_service", niveauAcces: "Très restreint" },
+  { id: "SELEC 1", nomSalle: "", batiment: "BAT1", etage: "1", famille: "SERVICES TECHNIQUES", idLicence: "SEP", prod: false, vocation: "Technique / Élec.", conditions: "Température contrôlé", statut: "en_service", niveauAcces: "Restreint" },
+  { id: "ENTRÉE 1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Entrée / Vestibule", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTRÉE 2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Entrée / Vestibule", conditions: "Tempéré", statut: "en_construction", niveauAcces: "Employés" },
+  { id: "ENTRÉE 3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Entrée / Vestibule", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "ENTRÉE 4", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Entrée / Vestibule", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "VES1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Vestiaire", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "VES2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Vestiaire", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "GYM1", nomSalle: "", batiment: "BAT1", etage: "Sous-sol", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR3", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR4", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR5", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR6", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR7", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR8", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR9", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "BUR10", nomSalle: "", batiment: "BAT1", etage: "SOUS-SOL", famille: "BUREAUX", idLicence: "BUR", prod: false, vocation: "Administratif / Bureau", conditions: "Tempéré", statut: "en_service", niveauAcces: "Employés" },
+  { id: "APT9", nomSalle: "", batiment: "BAT1", etage: "TOIT", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint., Technique / Élec.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "APT10", nomSalle: "", batiment: "BAT1", etage: "TOIT", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint., Technique / Élec.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "APT11", nomSalle: "", batiment: "BAT1", etage: "TOIT", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint., Technique / Élec.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "PUIT1", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT2", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT3", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT4", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT5", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT6", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT7", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT8", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT9", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT10", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT11", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT12", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "PUIT13", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Eau", conditions: "", statut: "en_qualification", niveauAcces: "" },
+  { id: "TOIT", nomSalle: "", batiment: "BAT1", etage: "TOIT", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "TERRAIN_HQ", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO16", nomSalle: "", batiment: "BAT1", etage: "SOUS-SOL", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Zones Communes", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO17", nomSalle: "", batiment: "BAT1", etage: "SOUS-SOL", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Entrepôt - Divers", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO18", nomSalle: "", batiment: "BAT1", etage: "SOUS-SOL", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Entrepôt - Divers", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO19", nomSalle: "", batiment: "BAT1", etage: "SOUS-SOL", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Entrepôt - Divers", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO20", nomSalle: "", batiment: "BAT1", etage: "SOUS-SOL", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "CUI2", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Cafétéria", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "CUI3", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Cafétéria", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "SDB5", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "SDB6", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "SDB7", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Sanitaire", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "VES3", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Vestiaire", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "VES4", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Vestiaire", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "BUR11", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Administratif / Bureau", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "SDC1", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Administratif / Bureau", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "SDC2", nomSalle: "", batiment: "BAT1", etage: "1", famille: "ZONES COMMUNES", idLicence: "ZCO", prod: false, vocation: "Administratif / Bureau", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO21", nomSalle: "", batiment: "BAT1", etage: "1", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "ZCO22", nomSalle: "", batiment: "BAT1", etage: "MEZZANINE", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "CHAMPS EXTÉRIEUR", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Culture", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "CHAMPS EXTÉRIEUR 2", nomSalle: "", batiment: "TERRAIN_HQ", etage: "TERRAIN_HQ", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Production - Culture", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "AUTRES", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "SERVICES TECHNIQUES", idLicence: "SET", prod: false, vocation: "Technique / Maint.", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "BLEUH", nomSalle: "", batiment: "ST-LUCIEN", etage: "ST-LUCIEN", famille: "BLEUH", idLicence: "CAN", prod: true, vocation: "Production - Transfo., Production - Emballage", conditions: "", statut: "en_service", niveauAcces: "" },
+  { id: "SÉCHOIR 1 - ZONE MULTI CONTENEUR #1", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Entrepôt - Produit Fini", conditions: "Tempéré, Congelé (-20°C)", statut: "en_service", niveauAcces: "" },
+  { id: "SÉCHOIR 1 - ZONE MULTI CONTENEUR #2", nomSalle: "", batiment: "BAT1", etage: "RDC", famille: "CANNABIS", idLicence: "CAN", prod: true, vocation: "Entrepôt - Produit Fini", conditions: "Tempéré, Congelé (-20°C)", statut: "en_service", niveauAcces: "" },
 ];
 
-const SALLE_TYPES = ["Culture", "Séchage", "Conditionnement", "Extraction", "Stockage", "Laboratoire"];
-const STATUTS: RoomStatus[] = ["normal", "normal", "alerte", "maintenance", "normal", "hors_service"];
+// ============================================================
+// Actifs (140)
+// ============================================================
 
-function makeSalle(usineId: string, idx: number, globalSeed: number): Salle {
-  const seed = globalSeed * 10 + idx;
-  const statut = STATUTS[idx % STATUTS.length];
-  const type = SALLE_TYPES[idx % SALLE_TYPES.length];
-  return {
-    id: `salle-${idx + 1}`,
-    usineId,
-    nom: `Salle ${type} ${idx + 1}`,
-    statut,
-    type,
-    superficie: 40 + (seed % 60),
-    capacite: 4 + (seed % 8),
-    floorPlan: FLOOR_LAYOUTS[idx % FLOOR_LAYOUTS.length],
-    capteurs: makeSensors(seed),
-    employees: makeEmployees(seed),
-    devices: makeDevices(seed),
-    equipment: makeEquipment(seed),
-    history: makeHistory(seed),
-    stats: makeStats(seed),
-  };
-}
-
-function deriveGlobalStatus(salles: Salle[]): RoomStatus {
-  if (salles.some((s) => s.statut === "hors_service")) return "hors_service";
-  if (salles.some((s) => s.statut === "alerte")) return "alerte";
-  if (salles.some((s) => s.statut === "maintenance")) return "maintenance";
-  return "normal";
-}
-
-function makeUsine(id: string, nom: string, localisation: string, nbSalles: number, seed: number): Usine {
-  const salles = Array.from({ length: nbSalles }, (_, i) => makeSalle(id, i, seed));
-  return {
-    id,
-    nom,
-    localisation,
-    nbSalles: salles.length,
-    salles,
-    statutGlobal: deriveGlobalStatus(salles),
-  };
-}
-
-export const usines: Usine[] = [
-  makeUsine("usine-mtl", "Usine Montréal", "1200 rue Notre-Dame, Montréal, QC", 8, 1),
-  makeUsine("usine-laval", "Usine Laval", "450 boul. Industriel, Laval, QC", 6, 2),
-  makeUsine("usine-tr", "Usine Trois-Rivières", "78 rue des Forges, Trois-Rivières, QC", 4, 3),
+export const actifs: Actif[] = [
+  { id: "1", matricule: "-PROD-001", idMasterlist: "AGR-BAL001", nom: "BALANCE OHAUS VALOR 1000 6000g", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "001", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "2", matricule: "-PROD-002", idMasterlist: "AGR-BAL003", nom: "BALANCE OHAUS DEFENDER 3000 75kg", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "002", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "3", matricule: "-PROD-003", idMasterlist: "AGR-BAL004", nom: "BALANCE OHAUS DEFENDER 3000 75kg", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "003", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "4", matricule: "-PROD-004", idMasterlist: "AGR-CHA001", nom: "CHARIOT ROULANT EN ACIER INOXIDABLE", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "004", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "5", matricule: "-PROD-005", idMasterlist: "AGR-BAC001", nom: "BAC DE COLLECTE EN PLASTIQUE ALIMENTAIRE", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "005", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "6", matricule: "-PROD-006", idMasterlist: "AGR-PLA001", nom: "PLATEAU PERFORMÉS EN ACIER INOXIDABLE", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "006", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "7", matricule: "CAN-PROD-007", idMasterlist: "AGR-CON001", nom: "CONGÉLATEUR- BARON DU FROID", idSalle: "SÉCHOIR 1 - ZONE MULTI", locauxDesservis: "", categorie: "Production", numeroSequence: "007", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "8", matricule: "CAN-PROD-008", idMasterlist: "AGR-CON002", nom: "CONGÉLATEUR HAMBURG SUD", idSalle: "SÉCHOIR 1 - ZONE MULTI", locauxDesservis: "", categorie: "Production", numeroSequence: "008", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "9", matricule: "CAN-PROD-009", idMasterlist: "AGR-DES001", nom: "DÉSHUMIDIFICATEUR DRI-EAZ-DRIZAIR 1200", idSalle: "SÉCHOIR 1 - ZONE MULTI", locauxDesservis: "", categorie: "Production", numeroSequence: "009", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "10", matricule: "CAN-PROD-010", idMasterlist: "AGR-DES002", nom: "DÉSHUMIDIFICATEUR DRI-EAZ-LGR 3500I", idSalle: "SÉCHOIR 1 - ZONE MULTI", locauxDesservis: "", categorie: "Production", numeroSequence: "010", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "11", matricule: "CAN-PROD-011", idMasterlist: "AGR-VEN001", nom: "VENTILATEUR SUR ROUE 36 POUCES", idSalle: "SÉCHOIR 1 - ZONE MULTI", locauxDesservis: "", categorie: "Production", numeroSequence: "011", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "12", matricule: "CAN-PROD-012", idMasterlist: "AGR-VEN002", nom: "VENTILATEUR PORTATIF EMPILABLE", idSalle: "SÉCHOIR 1 - ZONE MULTI", locauxDesservis: "", categorie: "Production", numeroSequence: "012", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "13", matricule: "-PROD-013", idMasterlist: "AGR-SAB001", nom: "SABOTEN CISEAU ORANGE RÉCOLTE", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "013", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "14", matricule: "-PROD-014", idMasterlist: "AGR-SEC001", nom: "GIRO SÉCATEUR BY PASS", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "014", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "15", matricule: "-PROD-015", idMasterlist: "AGR-SEC002", nom: "GIRO SÉCATEUR LAME DROITE", idSalle: "", locauxDesservis: "", categorie: "Production", numeroSequence: "015", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "16", matricule: "-PROD-016", idMasterlist: "AGR-DEB001", nom: "DÉFLEURONNEUSE", idSalle: "ADS15", locauxDesservis: "", categorie: "Production", numeroSequence: "016", locauxActifsDesservis: "", marque: "Fabrication privée", modele: "Fabrication privée", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "17", matricule: "CAN-PROD-017", idMasterlist: "AGR-BRO001", nom: "BROYEUR À PRÉ-ROULÉ", idSalle: "ZONE MULTI 5", locauxDesservis: "", categorie: "Production", numeroSequence: "017", locauxActifsDesservis: "", marque: "Python Industries/Tom’s Tumbler", modele: "Pre-Roll Grinder 500", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "2025-11-20", statut: "En Construction" },
+  { id: "18", matricule: "CAN-PROD-018", idMasterlist: "AGR-TAM001", nom: "TAMISEUR CRYOGÉNIQUE À KIEF", idSalle: "ZONE MULTI 5", locauxDesservis: "", categorie: "Production", numeroSequence: "018", locauxActifsDesservis: "", marque: "Python Industries/Tom’s Tumbler", modele: "Grasshopper Cryogenic Kief Sifter - Giant", numSerie: "", photoPlaque: "", photoActif: "Photos_Actifs/CAN-PROD-018/CAN-PROD-018.Photo_Actif.113737.jpg", parentId: "", criticite: "", dateInstall: "2025-11-20", statut: "En Construction" },
+  { id: "19", matricule: "CAN-PROD-019", idMasterlist: "AGR-PHM001", nom: "PH-MÈTRE", idSalle: "ZONE MULTI 4", locauxDesservis: "", categorie: "Production", numeroSequence: "019", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "20", matricule: "CAN-PROD-020", idMasterlist: "AGR-CON002", nom: "CONDUCTIMÈTRE", idSalle: "ZONE MULTI 4", locauxDesservis: "", categorie: "Production", numeroSequence: "020", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "21", matricule: "BUR-PROD-021", idMasterlist: "AGR-PRO001", nom: "PROTIMÈTRE", idSalle: "BUR8", locauxDesservis: "", categorie: "Production", numeroSequence: "021", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "22", matricule: "-PROD-022", idMasterlist: "PSN-DEN-001", nom: "ELCOMETER DENSIMÈTRE", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "022", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "23", matricule: "-PROD-023", idMasterlist: "PSN-BAI-001", nom: "WATER BATH LAB FISH", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "023", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "24", matricule: "-PROD-024", idMasterlist: "PSN-BAL-001", nom: "BALANCE VALOR 3000 XTREME 2000g", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "024", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "25", matricule: "-PROD-025", idMasterlist: "PSN-BAL-003", nom: "BALANCE VALOR 1000 OHAUS 6000g", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "025", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "26", matricule: "-PROD-026", idMasterlist: "PSN-BAL-004", nom: "BALANCE OHAUS", idSalle: "BRISÉ NE PAS UTILISER", locauxDesservis: "", categorie: "Production", numeroSequence: "026", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "Hors Service" },
+  { id: "27", matricule: "-PROD-027", idMasterlist: "PSN-CHA-001", nom: "CHAUDRON 12 GALLONS", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "027", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "28", matricule: "CAN-EMOB-001", idMasterlist: "PSN-CHAR-001", nom: "CHARIOT ÉLÉVATEUR CROWN", idSalle: "ENTREPÔT 4", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "001", locauxActifsDesservis: "", marque: "Crown Equipment Corporation", modele: "2.OWTL-S", numSerie: "H-10962-10", photoPlaque: "Photos_Actifs/28/28.Photo_Plaque.205735.jpg", photoActif: "Photos_Actifs/28/28.Photo_Actif.205735.jpg", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "29", matricule: "-PROD-029", idMasterlist: "PSN-CHA-002", nom: "CHAUDRON 12 GALLONS", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "029", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "30", matricule: "-PROD-030", idMasterlist: "PSN-CHA-003", nom: "CHAUDRON 6 GALLONS", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "030", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "31", matricule: "-PROD-031", idMasterlist: "PSN-CHA-004", nom: "CHAUDRON 4 GALLONS", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "031", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "32", matricule: "-PROD-032", idMasterlist: "PSN-CHA-005", nom: "CHAUDRON 7 LITRES", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "032", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "33", matricule: "-PROD-033", idMasterlist: "PSN-CHA-006", nom: "CHAUDRON 2 LITRES", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "033", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "34", matricule: "-PROD-034", idMasterlist: "PSN-COD-001", nom: "CODEUR VIDEOJET 1580", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "034", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "35", matricule: "-PROD-035", idMasterlist: "PSN-COD-002", nom: "CODEUR S8 MASTER", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "035", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "36", matricule: "-PROD-036", idMasterlist: "PSN-COD-002-01", nom: "CODEUR S8 MASTER (PONT DE TRANSFERT)", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "036", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "37", matricule: "-PROD-037", idMasterlist: "PSN-CON-001", nom: "CONVOYEUR VEVOR", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "037", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "38", matricule: "-PROD-038", idMasterlist: "PSN-CUI-001", nom: "CUISINIÈRE ÉLECTRIQUE GARLAND", idSalle: "SALLE DES CHANDELLES", locauxDesservis: "", categorie: "Production", numeroSequence: "038", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "39", matricule: "-PROD-039", idMasterlist: "PSN-CUV-001", nom: "CUVE DOUBLE PAROIS ÉLECTRIQUE 100 LITRES BASCULANTE AVEC MÉLANGEUR", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "039", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "40", matricule: "-PROD-040", idMasterlist: "PSN-CUV-002", nom: "CUVE DOUBLE PAROIS ÉLECTRIQUE 300 LITRES BASCULANTE", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "040", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "41", matricule: "-PROD-041", idMasterlist: "PSN-CUV-003", nom: "CUVE 60 GALLONS SUR ROULETTES", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "041", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "42", matricule: "-PROD-042", idMasterlist: "PSN-CUV-004", nom: "CUVE 125 GALLOINS SUR ROULETTES", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "042", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "43", matricule: "-PROD-043", idMasterlist: "PSN-ETI-001", nom: "ÉTIQUETTEUSE AEVOS", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "043", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "44", matricule: "-PROD-044", idMasterlist: "PSN-ETI-002", nom: "ÉTIQUETTEUSE MODÈLE SL-130", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "044", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "45", matricule: "-PROD-045", idMasterlist: "PSN-ETI-003", nom: "ÉTIQUETTEUSE UNI-PHARMA CHANV", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "045", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "46", matricule: "-PROD-046", idMasterlist: "PSN-MEL-001", nom: "MÉLANGEUR DOMESTIQUE DE COMPTOIR KITCHENAID", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "046", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "47", matricule: "-PROD-047", idMasterlist: "PSN-MEL-002", nom: "PIED MÉLANGEUR DYNAMIC", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "047", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "48", matricule: "-PROD-048", idMasterlist: "PSN-MEL-003", nom: "PIED MÉLANGEUR LFV", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "048", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "49", matricule: "-PROD-049", idMasterlist: "PSN-PHM-001", nom: "PH-MÈTRE PORTATIF APERA INSTRUMENTS", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "049", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "50", matricule: "-PROD-050", idMasterlist: "PSN-PHM-002", nom: "PH-METRE HANNA (HI2002)", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "050", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "51", matricule: "-PROD-051", idMasterlist: "PSN-PLA-001", nom: "PLAQUES À INDUCTION - CHANV", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "051", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "52", matricule: "-PROD-052", idMasterlist: "PSN-POM-001", nom: "POMPE PÉRISTALTIQUE", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "052", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "53", matricule: "-PROD-053", idMasterlist: "PSN-REM-001", nom: "REMPLISSEUSE SEMI-AUTOMATIQUE TUBE 50 ML À 250 ML", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "053", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "54", matricule: "-PROD-054", idMasterlist: "PSN-REM-002", nom: "REMPLISSEUSE SEMI-AUTOMATIQUE TUBE  10 ML-100ML", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "054", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "55", matricule: "-PROD-055", idMasterlist: "PSN-REM-003", nom: "REMPLISSEUSE SEMI-AUTOMATIQUE TUBE  50ML-500 ML", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "055", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "56", matricule: "-PROD-056", idMasterlist: "PSN-REM-004", nom: "REMPLISSEUSE SEMI-AUTOMATIQUE 250 ML", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "056", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "57", matricule: "-PROD-057", idMasterlist: "PSN-REM-005", nom: "REMPLISSEUSE PONDÉRALE 2-300G", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "057", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "58", matricule: "-PROD-058", idMasterlist: "PSN-SCE-001", nom: "COUPEUSE ET SCELLEUSE À TUBE AVEC CODEUSE", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "058", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "59", matricule: "-PROD-059", idMasterlist: "PSN-SCE-002", nom: "COUPEUSE ET SCELLEUSE À TUBE AVEC CODEUSE", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "059", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "60", matricule: "-PROD-060", idMasterlist: "PSN-TAB-001", nom: "TABLE D'ACCUMULATION PETITE", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "060", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "61", matricule: "-PROD-061", idMasterlist: "PSN-TAB-002", nom: "TABLE D'ACCUMULATION GRANDE", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "061", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "62", matricule: "-PROD-062", idMasterlist: "PSN-THE-001", nom: "THERMOMÈTRE DE TABLE", idSalle: "SALLE CHANV 2", locauxDesservis: "", categorie: "Production", numeroSequence: "062", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "63", matricule: "-PROD-063", idMasterlist: "PSN-THE-002", nom: "THERMOMÈTRE AIMANTÉ", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "063", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "64", matricule: "-PROD-064", idMasterlist: "PSN-THE-003", nom: "THERMOMÉTRE DE TABLE", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "064", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "65", matricule: "-PROD-065", idMasterlist: "PSN-THE-004", nom: "THERMOMÈTRE DE CUISINE ZULAY", idSalle: "SALLE CHANV FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "065", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "66", matricule: "SET-EMOB-002", idMasterlist: "PSN-TRA-001", nom: "TRANSPALETE AVEC BALANCE", idSalle: "ZONE MULTI 14", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "002", locauxActifsDesservis: "", marque: "Global Industriel", modele: "K7A", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "67", matricule: "-PROD-066", idMasterlist: "PSN-VIS-001", nom: "VISCOSIMÈTRE", idSalle: "SALLE CHANV 1", locauxDesservis: "", categorie: "Production", numeroSequence: "066", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "68", matricule: "-PROD-067", idMasterlist: "PSN-THE-005", nom: "THERMOMÉTRE ÉTALON", idSalle: "BUREAUX AQ", locauxDesservis: "", categorie: "Production", numeroSequence: "067", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "69", matricule: "-PROD-068", idMasterlist: "PSN-PHO-001", nom: "PHOTOMÈTRE", idSalle: "BUREAUX AQ", locauxDesservis: "", categorie: "Production", numeroSequence: "068", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "70", matricule: "-PROD-069", idMasterlist: "PSN-BAL-005", nom: "BALANCE DE PRÉCISION", idSalle: "SALLE DE FABRICATION", locauxDesservis: "", categorie: "Production", numeroSequence: "069", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "71", matricule: "ALI-PROD-070", idMasterlist: "ALI-BAL-001", nom: "BALANCE MEASURETEK 30kg", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "070", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "72", matricule: "-PROD-071", idMasterlist: "ALI-BAL-002", nom: "BALANCE OHAUS 1200g", idSalle: "EMBOUTEILLAGE", locauxDesservis: "", categorie: "Production", numeroSequence: "071", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "73", matricule: "-PROD-072", idMasterlist: "ALI-BAL-003", nom: "BALANCE  ESCALIE 5000g", idSalle: "EMBOUTEILLAGE", locauxDesservis: "", categorie: "Production", numeroSequence: "072", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "74", matricule: "-PROD-073", idMasterlist: "ALI-BAL-004", nom: "BALANCE OHAUS 1200g", idSalle: "EMBOUTEILLAGE", locauxDesservis: "", categorie: "Production", numeroSequence: "073", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "75", matricule: "ALI-PROD-074", idMasterlist: "ALI-FOR-001", nom: "MACHINE DE FORMAGE", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "074", locauxActifsDesservis: "", marque: "Deighton Manufacturing UK Ltd.", modele: "Formatic R1200 (Série R, Retail)", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "76", matricule: "ALI-PROD-075", idMasterlist: "ALI-FOU-001", nom: "FOUR INDUSTRIEL BLODGETT", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "075", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "77", matricule: "ALI-PROD-076", idMasterlist: "ALI-FOU-002", nom: "FOUR INDUSTRIEL BLODGETT", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "076", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "78", matricule: "ALI-PROD-077", idMasterlist: "ALI-FOU-003", nom: "FOUR INDUSTRIEL BLODGETT", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "077", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "79", matricule: "ALI-PROD-078", idMasterlist: "ALI-FOU-004", nom: "FOUR INDUSTRIEL GRIEVE À ÉTAGÈRE", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "078", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "80", matricule: "ALI-PROD-079", idMasterlist: "ALI-MEL-001", nom: "MÉLANGEUR HOBART 28,4 LITRES", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "079", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "81", matricule: "ALI-PROD-080", idMasterlist: "ALI-MEL-002", nom: "MÉLANGEUR À DOUBLE CÔNES", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "080", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "82", matricule: "ALI-PROD-081", idMasterlist: "ALI-REF-001", nom: "RÉFRIGÉRATEUR DOMESTIQUE", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "081", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "83", matricule: "ALI-PROD-082", idMasterlist: "ALI-SCE-001", nom: "SCELLEUSE POUR SACS", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "082", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "84", matricule: "ALI-PROD-083", idMasterlist: "ALI-SCE-002", nom: "SCELLEUSE POUR SACS", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "083", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "85", matricule: "ALI-PROD-084", idMasterlist: "ALI-MEL-003", nom: "MÉLANGEUR PLANÉTAIRE EURODIB", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "084", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "86", matricule: "CAN-PROD-085", idMasterlist: "ALI-POM-001", nom: "POMPE À HUILE DE CHANVRE", idSalle: "ZONE MULTI 5", locauxDesservis: "", categorie: "Production", numeroSequence: "085", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "87", matricule: "ALI-PROD-086", idMasterlist: "ALI-DES-001", nom: "DESSICATEUR", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "086", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Attente" },
+  { id: "88", matricule: "ALI-PROD-087", idMasterlist: "ALI-DET-001", nom: "DETECTEUR DE MÉTAL", idSalle: "ZONE MULTI 16", locauxDesservis: "", categorie: "Production", numeroSequence: "087", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "89", matricule: "SET-HVAC-001", idMasterlist: "HVAC-UC1", nom: "UC-1", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "001", locauxActifsDesservis: "ZONE MULTI 4, ADS8, ZONE MULTI 15, ZONE MULTI 14, ENTREPÔT 7", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "90", matricule: "SET-HVAC-002", idMasterlist: "HVAC-UC2", nom: "UC-2", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "002", locauxActifsDesservis: "ZONE MULTI 13, SAS3, ENTREPÔT 6", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "91", matricule: "SET-HVAC-003", idMasterlist: "HVAC-UC3", nom: "UC-3", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "003", locauxActifsDesservis: "ZONE MULTI 16, ENTREPÔT 8, ZONE MULTI 6", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "92", matricule: "SET-HVAC-004", idMasterlist: "HVAC-UC4", nom: "UC-4", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "004", locauxActifsDesservis: "ZONE MULTI 1", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "93", matricule: "SET-HVAC-005", idMasterlist: "HVAC-UC5", nom: "UC-5", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "005", locauxActifsDesservis: "SÉCHOIR 1 - ZONE MULTI", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "94", matricule: "SET-HVAC-006", idMasterlist: "HVAC-UC6", nom: "UC-6", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "006", locauxActifsDesservis: "SÉCHOIR 1 - ZONE MULTI", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "95", matricule: "SET-HVAC-007", idMasterlist: "HVAC-UC7", nom: "UC-7", idSalle: "TOIT", locauxDesservis: "", categorie: "HVAC", numeroSequence: "007", locauxActifsDesservis: "SÉCHOIR 1 - ZONE MULTI", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique (Impact Produit)", dateInstall: "", statut: "En Construction" },
+  { id: "96", matricule: "SET-HVAC-010", idMasterlist: "", nom: "Chauffage Garage", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "HVAC", numeroSequence: "010", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "97", matricule: "SEP-HVAC-011", idMasterlist: "", nom: "Chauffage Expédition", idSalle: "RÉCEPTION 2", locauxDesservis: "", categorie: "HVAC", numeroSequence: "011", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "98", matricule: "-HVAC-012", idMasterlist: "", nom: "Humidisk 65", idSalle: "ZONE MULTI 6, ZONE MULTI 4", locauxDesservis: "", categorie: "HVAC", numeroSequence: "012", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "Photos_Actifs/98/98.Photo_Actif.190809.jpg", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "99", matricule: "CAN-HVAC-013", idMasterlist: "", nom: "Humidisk 10", idSalle: "ZONE MULTI 7", locauxDesservis: "", categorie: "HVAC", numeroSequence: "013", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "100", matricule: "CAN-CULT-001", idMasterlist: "", nom: "Nouvelle Debuckeuse 2", idSalle: "ZCO15", locauxDesservis: "", categorie: "Culture", numeroSequence: "001", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "101", matricule: "SET-HVAC-015", idMasterlist: "", nom: "Chiller", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "HVAC", numeroSequence: "015", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "102", matricule: "SET-PROD-090", idMasterlist: "", nom: "Mélangeur terre", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Production", numeroSequence: "090", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "103", matricule: "SET-EMOB-003", idMasterlist: "", nom: "Remorque fermée", idSalle: "TERRAIN_HQ", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "003", locauxActifsDesservis: "", marque: "Cargo", modele: "Trail", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "01/01/2007", statut: "En Construction" },
+  { id: "104", matricule: "SET-EMOB-004", idMasterlist: "", nom: "Remorque Ouverte", idSalle: "TERRAIN_HQ", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "004", locauxActifsDesservis: "", marque: "Maxir", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "105", matricule: "SET-EMOB-005", idMasterlist: "", nom: "Coupe bordure 3", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "005", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "106", matricule: "SET-EMOB-006", idMasterlist: "", nom: "Coupe bordure 4", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "006", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "107", matricule: "SET-EMOB-007", idMasterlist: "", nom: "Coupe bordure 6", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "007", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "108", matricule: "SET-EMOB-008", idMasterlist: "", nom: "Coupe bordure 7", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "008", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "109", matricule: "SET-EMOB-009", idMasterlist: "", nom: "Quad 1", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "009", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "110", matricule: "SET-EMOB-010", idMasterlist: "", nom: "Quad 2", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "010", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "111", matricule: "SET-EMOB-011", idMasterlist: "", nom: "Chariot élévateur à batterie", idSalle: "ENTREPÔT 4", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "011", locauxActifsDesservis: "", marque: "Mitsubishi Carterpillar", modele: "EP20KT", numSerie: "ETB5A50487", photoPlaque: "Photos_Actifs/111/111.Photo_Plaque.210213.jpg", photoActif: "Photos_Actifs/111/111.Photo_Actif.210213.jpg", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "112", matricule: "SET-EMOB-012", idMasterlist: "", nom: "Lift Propane", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "012", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "113", matricule: "SET-EMOB-013", idMasterlist: "", nom: "Transpalette 1", idSalle: "RÉCEPTION 2", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "013", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "114", matricule: "SET-EMOB-014", idMasterlist: "", nom: "Transpalette 2", idSalle: "RÉCEPTION 2", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "014", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "115", matricule: "SET-EMOB-015", idMasterlist: "", nom: "Transpalette 3", idSalle: "RÉCEPTION 2", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "015", locauxActifsDesservis: "", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "116", matricule: "SET-EMOB-016", idMasterlist: "", nom: "Chariot de magasinier", idSalle: "ENTREPÔT 8", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "016", locauxActifsDesservis: "", marque: "Crown", modele: "Wave50-118", numSerie: "9A184391", photoPlaque: "Photos_Actifs/116/116.Photo_Plaque.205120.jpg", photoActif: "Photos_Actifs/116/116.Photo_Actif.205120.jpg", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "1665b478", matricule: "SEP-HVAC-016", idMasterlist: "", nom: "Unité de climatisation salle des serveurs", idSalle: "SIT2", locauxDesservis: "", categorie: "HVAC", numeroSequence: "016", locauxActifsDesservis: "SIT2", marque: "", modele: "", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "Critique", dateInstall: "02/02/2026", statut: "En Construction" },
+  { id: "dc8922a7", matricule: "SET-EMOB-017", idMasterlist: "", nom: "Chariot de magasinier", idSalle: "ENTREPÔT 8", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "017", locauxActifsDesservis: "", marque: "Crown", modele: "Wave50-84", numSerie: "9A126048", photoPlaque: "Photos_Actifs/dc8922a7/dc8922a7.Photo_Plaque.205338.jpg", photoActif: "Photos_Actifs/dc8922a7/dc8922a7.Photo_Actif.205338.jpg", parentId: "", criticite: "", dateInstall: "02/02/2026", statut: "En Construction" },
+  { id: "117", matricule: "SET-EMOB-018", idMasterlist: "", nom: "FORD TRANSIT CARGO 2011", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "018", locauxActifsDesservis: "", marque: "Ford", modele: "Transit", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "118", matricule: "SET-EMOB-019", idMasterlist: "", nom: "GMC SAVANA VAN 2500 2014", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "019", locauxActifsDesservis: "", marque: "GMC", modele: "Savana", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "119", matricule: "SET-EMOB-020", idMasterlist: "", nom: "FORD CAMION  F250 - 2000", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "020", locauxActifsDesservis: "", marque: "Ford", modele: "F250", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "120", matricule: "SET-EMOB-021", idMasterlist: "", nom: "NISSAN LEAF 2018", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "021", locauxActifsDesservis: "", marque: "Nissan", modele: "Leaf", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "121", matricule: "SET-EMOB-022", idMasterlist: "", nom: "MAZDA 2 GX VERT 2011", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "022", locauxActifsDesservis: "", marque: "Mazda", modele: "2 GX", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "122", matricule: "SET-EMOB-023", idMasterlist: "", nom: "HYUNDAI ELENTRA NOIR 2011", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "023", locauxActifsDesservis: "", marque: "Hyundai", modele: "Elentra", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "123", matricule: "SET-EMOB-024", idMasterlist: "", nom: "MAZDA 2 GS NOIR 2011", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "024", locauxActifsDesservis: "", marque: "Mazda", modele: "2 GS", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "124", matricule: "SET-EMOB-025", idMasterlist: "", nom: "HONDA CIVIC 2012", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "025", locauxActifsDesservis: "", marque: "Honda", modele: "Civic", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "125", matricule: "SET-EMOB-026", idMasterlist: "", nom: "DODGE GRAN CARAVAN 2011 ", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "026", locauxActifsDesservis: "", marque: "Dodge", modele: "Caravan", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "126", matricule: "SET-EMOB-027", idMasterlist: "", nom: "GMC SIERRA 2500 2012", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "027", locauxActifsDesservis: "", marque: "GMC", modele: "Sierra 2500", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "127", matricule: "SET-EMOB-028", idMasterlist: "", nom: "NISSAN NV 2500 CARGO 2014", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "028", locauxActifsDesservis: "", marque: "Nissan", modele: "NV 2500", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "128", matricule: "SET-EMOB-029", idMasterlist: "", nom: "HYUNDAI ELENTRA BRONZE 2012", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "029", locauxActifsDesservis: "", marque: "Hyundai", modele: "Elentra", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "129", matricule: "SET-EMOB-030", idMasterlist: "", nom: "HONDA CRV 2012 (ANDREW)", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "030", locauxActifsDesservis: "", marque: "Honda", modele: "CRV", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "130", matricule: "SET-EMOB-031", idMasterlist: "", nom: "ACURA RDX 2016 (math)", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "031", locauxActifsDesservis: "", marque: "Acura", modele: "RDX", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "131", matricule: "SET-EMOB-032", idMasterlist: "", nom: "DODGE GRAN CARAVAN 2011 noir", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "032", locauxActifsDesservis: "", marque: "Dodge", modele: "Caravan", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "132", matricule: "SET-EMOB-033", idMasterlist: "", nom: "Nissan Micra", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "033", locauxActifsDesservis: "", marque: "Nissan", modele: "Micra", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "133", matricule: "SET-EMOB-034", idMasterlist: "", nom: "Ford Explorer ", idSalle: "GARAGE 1", locauxDesservis: "", categorie: "Équipements mobiles", numeroSequence: "034", locauxActifsDesservis: "", marque: "Ford", modele: "Explorer", numSerie: "", photoPlaque: "", photoActif: "", parentId: "", criticite: "", dateInstall: "", statut: "En Construction" },
+  { id: "b2dd1f25", matricule: "CAN-HVAC-017", idMasterlist: "", nom: "Unité de traitement d'air (air handler)", idSalle: "ZONE MULTI 6", locauxDesservis: "", categorie: "HVAC", numeroSequence: "017", locauxActifsDesservis: "ZONE MULTI 6", marque: "Trane", modele: "A5AHV007A1D30A", numSerie: "25242PD93V", photoPlaque: "Photos_Actifs/b2dd1f25/b2dd1f25.Photo_Plaque.190915.jpg", photoActif: "Photos_Actifs/b2dd1f25/b2dd1f25.Photo_Actif.190025.jpg", parentId: "042c046c", criticite: "Critique", dateInstall: "23/01/2026", statut: "En Construction" },
+  { id: "042c046c", matricule: "SEP-HVAC-018", idMasterlist: "", nom: "Climatiseur 5 tons", idSalle: "RÉCEPTION 2", locauxDesservis: "", categorie: "HVAC", numeroSequence: "018", locauxActifsDesservis: "ZONE MULTI 6", marque: "Trane", modele: "A5AC3060A1000A", numSerie: "250354301F", photoPlaque: "Photos_Actifs/042c046c/042c046c.Photo_Plaque.191023.jpg", photoActif: "Photos_Actifs/042c046c/042c046c.Photo_Actif.191023.jpg", parentId: "", criticite: "Critique", dateInstall: "23/01/2026", statut: "En Construction" },
+  { id: "db93cade", matricule: "SET-HVAC-019", idMasterlist: "", nom: "Échangeur d'air", idSalle: "ZCO22", locauxDesservis: "", categorie: "HVAC", numeroSequence: "019", locauxActifsDesservis: "ZONE MULTI 6", marque: "Fantech", modele: "HERO 250H-EC HRV #463254", numSerie: "1009665612-20251-064", photoPlaque: "Photos_Actifs/db93cade/db93cade.Photo_Plaque.191450.jpg", photoActif: "Photos_Actifs/db93cade/db93cade.Photo_Actif.191450.jpg", parentId: "", criticite: "Mineur", dateInstall: "23/01/2026", statut: "En Construction" },
+  { id: "ef5919e2", matricule: "SET-AIRC-001", idMasterlist: "", nom: "Compresseur usine", idSalle: "ZCO21", locauxDesservis: "", categorie: "Air Comprimé", numeroSequence: "001", locauxActifsDesservis: "", marque: "Quincy", modele: "QGS 15 D (PN: 4152008423)", numSerie: "CAI462036", photoPlaque: "Photos_Actifs/ef5919e2/ef5919e2.Photo_Plaque.183029.jpg", photoActif: "Photos_Actifs/ef5919e2/ef5919e2.Photo_Actif.183029.jpg", parentId: "", criticite: "Critique", dateInstall: "11/02/2026", statut: "En Construction" },
+  { id: "f29e3a3d", matricule: "CAN-HVAC-020", idMasterlist: "", nom: "Évaporateur du réfrigérateur", idSalle: "ZONE MULTI 5", locauxDesservis: "", categorie: "HVAC", numeroSequence: "020", locauxActifsDesservis: "ZONE MULTI 5", marque: "Chandler", modele: "", numSerie: "", photoPlaque: "", photoActif: "Photos_Actifs/f29e3a3d/f29e3a3d.Photo_Actif.184550.jpg", parentId: "", criticite: "Majeur", dateInstall: "11/02/2026", statut: "En Construction" },
 ];
+
+// ============================================================
+// Audit Logs (in-memory, persisted via API to Firestore)
+// ============================================================
+
+export const auditLogs: AuditLogEntry[] = [];
 
 // ============================================================
 // Helpers
 // ============================================================
 
-export function getUsines(): Usine[] {
-  return usines;
+export function getLocaux(opts?: { famille?: string; etage?: string; statut?: string; q?: string; includeArchived?: boolean }): Local[] {
+  let result = locaux;
+  if (!opts?.includeArchived) {
+    result = result.filter(l => !l.archived);
+  }
+  if (opts?.famille) {
+    result = result.filter(l => l.famille === opts.famille);
+  }
+  if (opts?.etage) {
+    result = result.filter(l => l.etage.toUpperCase() === opts.etage!.toUpperCase());
+  }
+  if (opts?.statut) {
+    result = result.filter(l => l.statut === opts.statut);
+  }
+  if (opts?.q) {
+    const q = opts.q.toLowerCase();
+    result = result.filter(l =>
+      l.id.toLowerCase().includes(q) ||
+      l.nomSalle.toLowerCase().includes(q) ||
+      l.vocation.toLowerCase().includes(q) ||
+      l.famille.toLowerCase().includes(q)
+    );
+  }
+  return result;
 }
 
-export function getUsine(id: string): Usine | undefined {
-  return usines.find((u) => u.id === id);
+export function getLocal(id: string): Local | undefined {
+  return locaux.find(l => l.id === id);
 }
 
-export function getSalle(usineId: string, salleId: string): Salle | undefined {
-  return getUsine(usineId)?.salles.find((s) => s.id === salleId);
+export function getActifsBySalle(salleId: string): Actif[] {
+  return actifs.filter(a => a.idSalle === salleId || a.locauxDesservis.includes(salleId));
 }
 
-export function getRoomSummary(usineId: string, salleId: string): RoomSummary | undefined {
-  const salle = getSalle(usineId, salleId);
-  if (!salle) return undefined;
+export function getActif(id: string): Actif | undefined {
+  return actifs.find(a => a.id === id);
+}
+
+export function getAllActifs(): Actif[] {
+  return actifs;
+}
+
+export function getUniqueFamilles(): string[] {
+  return [...new Set(locaux.filter(l => !l.archived).map(l => l.famille))].sort();
+}
+
+export function getUniqueEtages(): string[] {
+  return [...new Set(locaux.filter(l => !l.archived).map(l => l.etage))].sort();
+}
+
+export function getStats() {
+  const active = locaux.filter(l => !l.archived);
   return {
-    id: salle.id,
-    nom: salle.nom,
-    statut: salle.statut,
-    type: salle.type,
-    nbEmployes: salle.employees.filter((e) => e.statut === "present").length,
-    nbDevicesOnline: salle.devices.filter((d) => d.status === "online").length,
-    nbDevicesTotal: salle.devices.length,
-    nbAlertes: salle.capteurs.filter((c) => c.status !== "ok").length,
-    capteursCles: salle.capteurs.slice(0, 2),
+    total: active.length,
+    enService: active.filter(l => l.statut === "en_service").length,
+    enConstruction: active.filter(l => l.statut === "en_construction").length,
+    horsService: active.filter(l => l.statut === "hors_service").length,
+    enQualification: active.filter(l => l.statut === "en_qualification").length,
+    totalActifs: actifs.length,
   };
 }

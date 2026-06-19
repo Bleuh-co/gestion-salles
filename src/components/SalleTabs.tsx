@@ -1,40 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { SensorReadingsPanel } from "./panels/SensorReadingsPanel";
-import { EmployeesPanel } from "./panels/EmployeesPanel";
-import { DevicesPanel } from "./panels/DevicesPanel";
-import { EquipmentPanel } from "./panels/EquipmentPanel";
-import { RoomHistoryTimeline } from "./panels/RoomHistoryTimeline";
-import { RoomStatsPanel } from "./panels/RoomStatsPanel";
-import { Thermometer, Users, Wifi, Wrench, Clock, BarChart3 } from "lucide-react";
+import { Wrench, Info } from "lucide-react";
+import type { Actif } from "@/lib/types";
+import { ActifsTable } from "./ActifsTable";
 
 const TABS = [
-  { key: "capteurs", label: "Capteurs", icon: Thermometer },
-  { key: "employes", label: "Employés", icon: Users },
-  { key: "appareils", label: "Appareils", icon: Wifi },
-  { key: "equipements", label: "Équipements", icon: Wrench },
-  { key: "historique", label: "Historique", icon: Clock },
-  { key: "stats", label: "Statistiques", icon: BarChart3 },
+  { key: "infos", label: "Informations", icon: Info },
+  { key: "actifs", label: "Actifs", icon: Wrench },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 interface SalleTabsProps {
-  usineId: string;
-  salleId: string;
+  children: React.ReactNode; // infos panel (server rendered)
+  actifs: Actif[];
 }
 
-export function SalleTabs({ usineId, salleId }: SalleTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>("capteurs");
+export function SalleTabs({ children, actifs }: SalleTabsProps) {
+  const [activeTab, setActiveTab] = useState<TabKey>("infos");
 
   return (
     <div className="space-y-6">
-      {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto pb-1 border-b border-chanv-fibre" role="tablist">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
+          const count = tab.key === "actifs" ? actifs.length : undefined;
           return (
             <button
               key={tab.key}
@@ -48,20 +40,20 @@ export function SalleTabs({ usineId, salleId }: SalleTabsProps) {
               }`}
             >
               <Icon className="w-4 h-4" />
-              <span className="hidden sm:inline">{tab.label}</span>
+              {tab.label}
+              {count !== undefined && (
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-chanv-terre/10 text-chanv-terre font-bold">
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Panel */}
       <div>
-        {activeTab === "capteurs" && <SensorReadingsPanel usineId={usineId} salleId={salleId} />}
-        {activeTab === "employes" && <EmployeesPanel usineId={usineId} salleId={salleId} />}
-        {activeTab === "appareils" && <DevicesPanel usineId={usineId} salleId={salleId} />}
-        {activeTab === "equipements" && <EquipmentPanel usineId={usineId} salleId={salleId} />}
-        {activeTab === "historique" && <RoomHistoryTimeline usineId={usineId} salleId={salleId} />}
-        {activeTab === "stats" && <RoomStatsPanel usineId={usineId} salleId={salleId} />}
+        {activeTab === "infos" && children}
+        {activeTab === "actifs" && <ActifsTable actifs={actifs} />}
       </div>
     </div>
   );

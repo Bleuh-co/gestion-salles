@@ -1,8 +1,8 @@
-// Rôle interne Gestion Salles (mappé depuis le rôle standardisé Chanv)
-// - superadmin : accès total
-// - admin      : gestion + voir toutes les tâches
-// - membre     : voir ses propres tâches (rôle Consulter)
-// - blocked    : pas d'accès
+// ============================================================
+// Types métier — Gestion Salles v2
+// Source de vérité : Google Sheet ChanvHQ
+// ============================================================
+
 export type Role = "superadmin" | "admin" | "membre" | "blocked";
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -13,129 +13,135 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 // ============================================================
-// Types métier — Gestion Salles
+// Locaux
 // ============================================================
 
-export type RoomStatus = "normal" | "alerte" | "maintenance" | "hors_service";
+export type LocalStatut = "en_service" | "en_construction" | "hors_service" | "en_qualification";
 
-export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
-  normal: "Normal",
-  alerte: "Alerte",
-  maintenance: "Maintenance",
-  hors_service: "Hors service",
+export const LOCAL_STATUT_LABELS: Record<LocalStatut, string> = {
+  en_service: "En Service",
+  en_construction: "En Construction",
+  hors_service: "Hors Service",
+  en_qualification: "En Qualification",
 };
 
-export interface Usine {
+export const LOCAL_STATUT_FROM_SHEET: Record<string, LocalStatut> = {
+  "Validé / En Service": "en_service",
+  "En Construction": "en_construction",
+  "Hors Service": "hors_service",
+  "En Qualification": "en_qualification",
+};
+
+export type FamilleSalle =
+  | "CANNABIS"
+  | "PSN"
+  | "ALI"
+  | "CANNABIS_R&D"
+  | "BUREAUX"
+  | "ZONES COMMUNES"
+  | "SERVICES TECHNIQUES"
+  | "SERVICES PRODUCTION"
+  | "MAISON D'HERBES"
+  | "BLEUH";
+
+export const FAMILLE_COLORS: Record<string, string> = {
+  CANNABIS: "#22c55e",
+  PSN: "#8b5cf6",
+  ALI: "#f59e0b",
+  "CANNABIS_R&D": "#06b6d4",
+  BUREAUX: "#6366f1",
+  "ZONES COMMUNES": "#94a3b8",
+  "SERVICES TECHNIQUES": "#ef4444",
+  "SERVICES PRODUCTION": "#f97316",
+  "MAISON D'HERBES": "#84cc16",
+  BLEUH: "#3b82f6",
+};
+
+export const FAMILLE_SHORT: Record<string, string> = {
+  CANNABIS: "CAN",
+  PSN: "PSN",
+  ALI: "ALI",
+  "CANNABIS_R&D": "R&D",
+  BUREAUX: "BUR",
+  "ZONES COMMUNES": "ZCO",
+  "SERVICES TECHNIQUES": "SET",
+  "SERVICES PRODUCTION": "SEP",
+  "MAISON D'HERBES": "MDH",
+  BLEUH: "BLH",
+};
+
+export interface Local {
   id: string;
+  nomSalle: string;
+  batiment: string;
+  etage: string;
+  famille: string;
+  idLicence: string;
+  prod: boolean;
+  vocation: string;
+  conditions: string;
+  statut: LocalStatut;
+  niveauAcces: string;
+  archived?: boolean;
+}
+
+// ============================================================
+// Actifs (équipements)
+// ============================================================
+
+export interface Actif {
+  id: string;
+  matricule: string;
+  idMasterlist: string;
   nom: string;
-  localisation: string;
-  statutGlobal: RoomStatus;
-  nbSalles: number;
-  salles: Salle[];
-}
-
-export interface FloorPlanRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface Salle {
-  id: string;
-  usineId: string;
-  nom: string;
-  statut: RoomStatus;
-  type: string; // ex: "Culture", "Séchage", "Conditionnement"
-  superficie: number; // m²
-  capacite: number; // nb employés max
-  floorPlan: FloorPlanRect;
-  capteurs: SensorReading[];
-  employees: Employee[];
-  devices: Device[];
-  equipment: Equipment[];
-  history: HistoryEvent[];
-  stats: RoomStats;
-}
-
-export type SensorType = "temperature" | "humidite" | "co2" | "pression";
-
-export interface SensorReading {
-  id: string;
-  type: SensorType;
-  label: string;
-  value: number;
-  unit: string; // °C, %, ppm, hPa
-  status: "ok" | "warning" | "critical";
-  min: number;
-  max: number;
-  updatedAt: string; // ISO
-}
-
-export interface Employee {
-  id: string;
-  nom: string;
-  prenom: string;
-  poste: string;
-  shift: "jour" | "soir" | "nuit";
-  statut: "present" | "absent" | "pause";
-  avatar?: string;
-}
-
-export type DeviceStatus = "online" | "offline" | "erreur";
-
-export interface Device {
-  id: string;
-  nom: string;
-  type: string; // ex: "Capteur IoT", "Contrôleur", "Caméra"
-  status: DeviceStatus;
-  ipAddress?: string;
-  firmware?: string;
-  lastSeen: string; // ISO
-}
-
-export type EquipmentStatus = "operationnel" | "maintenance" | "hors_service";
-
-export interface Equipment {
-  id: string;
-  nom: string;
-  categorie: string; // ex: "HVAC", "Éclairage", "Irrigation"
+  idSalle: string;
+  locauxDesservis: string;
+  categorie: string;
+  numeroSequence: string;
+  locauxActifsDesservis: string;
+  marque: string;
   modele: string;
-  status: EquipmentStatus;
-  dernierEntretien: string; // ISO
-  prochainEntretien: string; // ISO
+  numSerie: string;
+  photoPlaque: string;
+  photoActif: string;
+  parentId: string;
+  criticite: string;
+  dateInstall: string;
+  statut: string;
 }
 
-export type HistoryEventType = "info" | "alerte" | "maintenance" | "intervention";
+// ============================================================
+// Audit logs
+// ============================================================
 
-export interface HistoryEvent {
+export type AuditAction = "create" | "update" | "delete" | "restore";
+export type AuditTarget = "local" | "actif";
+
+export interface AuditLogEntry {
   id: string;
-  type: HistoryEventType;
-  titre: string;
-  description: string;
-  auteur: string;
-  timestamp: string; // ISO
+  action: AuditAction;
+  target: AuditTarget;
+  targetId: string;
+  targetName: string;
+  changes?: Record<string, { before: string; after: string }>;
+  user: string;
+  timestamp: string;
 }
 
-export interface RoomStats {
-  uptimePct: number;
-  alertes30j: number;
-  interventions30j: number;
-  occupationMoyenne: number; // %
-  tempMoyenne: number;
-  humiditeMoyenne: number;
-  trendTemp: { label: string; value: number }[];
-  trendHumidite: { label: string; value: number }[];
+// ============================================================
+// Production-planner bridge (lecture seule)
+// ============================================================
+
+export interface ProductionAssignment {
+  employeeId: number;
+  employeeName: string;
+  familyId: number;
+  familyName: string;
+  timeSlot: string;
 }
 
-export interface RoomSummary {
-  id: string;
-  nom: string;
-  statut: RoomStatus;
-  type: string;
-  nbEmployes: number;
-  nbDevicesOnline: number;
-  nbDevicesTotal: number;
-  nbAlertes: number;
-  capteursCles: SensorReading[];
+export interface LocalAssignationSummary {
+  localId: string;
+  assignments: ProductionAssignment[];
+  totalEmployees: number;
 }

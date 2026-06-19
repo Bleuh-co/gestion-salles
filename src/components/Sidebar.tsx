@@ -20,9 +20,11 @@ export function Sidebar() {
   // Build app-specific links for the widget
   const getLinks = useCallback(() => {
     const links: Array<{ label: string; icon: string; href: string; mobileOnly?: boolean }> = [
-      { label: "Usines", icon: "🏭", href: "/usines" },
-      { label: "Salles", icon: "🏠", href: "/salles" },
+      { label: "Locaux", icon: "🏢", href: "/salles" },
     ];
+    if (isAdmin) {
+      links.push({ label: "Administration", icon: "⚙️", href: "/admin" });
+    }
     return links;
   }, [isAdmin]);
 

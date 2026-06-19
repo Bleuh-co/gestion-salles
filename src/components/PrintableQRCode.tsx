@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Printer, Loader2 } from "lucide-react";
-import type { Salle } from "@/lib/types";
 
 interface PrintableQRCodeProps {
-  salle: Pick<Salle, "id" | "nom" | "usineId" | "type">;
+  localId: string;
+  localNom?: string;
   targetUrl: string;
 }
 
-export function PrintableQRCode({ salle, targetUrl }: PrintableQRCodeProps) {
+export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCodeProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,14 +40,14 @@ export function PrintableQRCode({ salle, targetUrl }: PrintableQRCodeProps) {
   return (
     <div className="flex flex-col items-center gap-6 py-8">
       <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold text-chanv-terre">{salle.nom}</h1>
-        <p className="text-sm text-slate-500">{salle.type}</p>
+        <h1 className="text-2xl font-bold text-chanv-terre">{localId}</h1>
+        {localNom && <p className="text-sm text-slate-500">{localNom}</p>}
       </div>
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={dataUrl}
-        alt={`QR code pour ${salle.nom}`}
+        alt={`QR code pour ${localId}`}
         className="w-64 h-64 border border-chanv-fibre rounded-2xl p-2"
       />
 
