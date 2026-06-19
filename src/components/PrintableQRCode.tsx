@@ -11,131 +11,156 @@ interface PrintableQRCodeProps {
 }
 
 /**
- * Draw a QR code with rounded "dot" modules and an oversized Chanv logo.
- * Uses qrcode lib to generate the matrix, then paints each module as a
- * rounded rect instead of a sharp square — gives a modern organic feel.
+ * QR code with organic wobbly modules and large Chanv logo.
+ * Uses toCanvas to generate the QR, reads pixel data to get the matrix,
+ * then redraws with custom organic shapes.
  */
 export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCodeProps) {
   const [finalDataUrl, setFinalDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sourceRef = useRef<HTMLCanvasElement>(null);
+  const drawRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     async function generate() {
       try {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+        const source = sourceRef.current;
+        const draw = drawRef.current;
+        if (!source || !draw) return;
 
-        // Generate QR matrix data
-        const qr = QRCode.create(targetUrl, { errorCorrectionLevel: "H" });
-        const modules = qr.modules;
-        const moduleCount = modules.size;
+        // Step 1: Generate standard QR onto hidden canvas
+        const tempSize = 400;
+        await QRCode.toCanvas(source, targetUrl, {
+          width: tempSize,
+          margin: 0,
+          color: { dark: "#000000", light: "#FFFFFF" },
+          errorCorrectionLevel: "H",
+        });
 
-        // Canvas sizing
-        const margin = 4; // modules of margin
-        const totalModules = moduleCount + margin * 2;
-        const moduleSize = 16; // px per module — high res
-        const canvasSize = totalModules * moduleSize;
+        // Step 2: Read the pixel data to extract module matrix
+        const srcCtx = source.getContext("2d");
+        if (!srcCtx) return;
+        const imgData = srcCtx.getImageData(0, 0, tempSize, tempSize);
 
-        canvas.width = canvasSize;
-        canvas.height = canvasSize;
-        const ctx = canvas.getContext("2d");
+        // Detect module size by scanning top row for first dark pixel
+        let moduleSize = 1;
+        const firstDarkX = findFirstDark(imgData, tempSize);
+        if (firstDarkX >= 0) {
+          // Count consecutive dark pixels to get module size
+          let count = 0;
+          for (let x = firstDarkX; x < tempSize; x++) {
+            const idx = x * 4;
+            if (imgData.data[idx] < 128) count++;
+            else break;
+          }
+          moduleSize = Math.max(1, count);
+        }
+
+        const moduleCount = Math.round(tempSize / moduleSize);
+
+        // Build boolean matrix
+        const matrix: boolean[][] = [];
+        for (let r = 0; r < moduleCount; r++) {
+          matrix[r] = [];
+          for (let c = 0; c < moduleCount; c++) {
+            // Sample center of module
+            const px = Math.floor(c * moduleSize + moduleSize / 2);
+            const py = Math.floor(r * moduleSize + moduleSize / 2);
+            const idx = (py * tempSize + px) * 4;
+            matrix[r][c] = idx < imgData.data.length && imgData.data[idx] < 128;
+          }
+        }
+
+        // Step 3: Redraw with organic style
+        const drawMargin = 4; // modules of whitespace
+        const drawModuleSize = 14; // px per module
+        const totalModules = moduleCount + drawMargin * 2;
+        const canvasSize = totalModules * drawModuleSize;
+
+        draw.width = canvasSize;
+        draw.height = canvasSize;
+        const ctx = draw.getContext("2d");
         if (!ctx) return;
 
         // White background
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-        // Draw each module as a slightly wobbly rounded square
-        const dotColor = "#282828";
-
-        // Seeded pseudo-random for consistent rendering
-        function seededRandom(seed: number): number {
-          const x = Math.sin(seed * 9301 + 49297) * 49271;
-          return x - Math.floor(x);
+        // Seeded pseudo-random
+        function sr(seed: number): number {
+          const v = Math.sin(seed * 9301 + 49297) * 49271;
+          return v - Math.floor(v);
         }
+
+        const dotColor = "#282828";
+        ctx.fillStyle = dotColor;
 
         for (let row = 0; row < moduleCount; row++) {
           for (let col = 0; col < moduleCount; col++) {
-            if (!modules.get(row, col)) continue;
+            if (!matrix[row]?.[col]) continue;
 
             const seed = row * moduleCount + col;
-            const px = (col + margin) * moduleSize;
-            const py = (row + margin) * moduleSize;
+            const px = (col + drawMargin) * drawModuleSize;
+            const py = (row + drawMargin) * drawModuleSize;
 
-            // Check if this is a finder pattern (top-left, top-right, bottom-left 7×7 blocks)
             const isFinder =
               (row < 7 && col < 7) ||
               (row < 7 && col >= moduleCount - 7) ||
               (row >= moduleCount - 7 && col < 7);
 
-            ctx.fillStyle = dotColor;
-
             if (isFinder) {
-              // Finder patterns: clean rounded squares (must stay recognizable)
-              const pad = moduleSize * 0.06;
-              const rr = moduleSize * 0.32;
-              wobblyRect(ctx, px + pad, py + pad, moduleSize - pad * 2, moduleSize - pad * 2, rr, 0); // no wobble
+              // Clean rounded squares for finder patterns
+              const pad = drawModuleSize * 0.06;
+              const rr = drawModuleSize * 0.32;
+              drawWobblyRect(ctx, px + pad, py + pad, drawModuleSize - pad * 2, drawModuleSize - pad * 2, rr, 0, 0);
             } else {
-              // Regular modules: wobbly organic squares
-              const pad = moduleSize * 0.08;
-              const baseRadius = moduleSize * 0.28;
-              const wobbleAmount = moduleSize * 0.12;
-              // Slight position jitter
-              const jx = (seededRandom(seed + 1) - 0.5) * moduleSize * 0.06;
-              const jy = (seededRandom(seed + 2) - 0.5) * moduleSize * 0.06;
-              wobblyRect(
+              // Organic wobbly modules
+              const pad = drawModuleSize * 0.08;
+              const baseRadius = drawModuleSize * 0.28;
+              const wobbleAmount = drawModuleSize * 0.12;
+              const jx = (sr(seed + 1) - 0.5) * drawModuleSize * 0.06;
+              const jy = (sr(seed + 2) - 0.5) * drawModuleSize * 0.06;
+              drawWobblyRect(
                 ctx,
-                px + pad + jx,
-                py + pad + jy,
-                moduleSize - pad * 2,
-                moduleSize - pad * 2,
-                baseRadius,
-                wobbleAmount,
-                seed
+                px + pad + jx, py + pad + jy,
+                drawModuleSize - pad * 2, drawModuleSize - pad * 2,
+                baseRadius, wobbleAmount, seed
               );
             }
           }
         }
 
-        // Logo overlay — large (32% of canvas)
+        // Step 4: Draw logo
         const logo = new Image();
         logo.crossOrigin = "anonymous";
         logo.src = "/favicon.svg";
 
         logo.onload = () => {
-          const logoSize = canvasSize * 0.32;
-          const logoPad = logoSize * 0.12;
-          const centerX = canvasSize / 2;
-          const centerY = canvasSize / 2;
+          const logoSize = canvasSize * 0.30;
+          const logoPad = logoSize * 0.14;
+          const cx = canvasSize / 2;
+          const cy = canvasSize / 2;
 
           // White circle background
           ctx.beginPath();
-          ctx.arc(centerX, centerY, (logoSize + logoPad) / 2, 0, Math.PI * 2);
+          ctx.arc(cx, cy, (logoSize + logoPad) / 2, 0, Math.PI * 2);
           ctx.fillStyle = "#FFFFFF";
           ctx.fill();
-
-          // Subtle border
           ctx.strokeStyle = "#E0D5C0";
           ctx.lineWidth = 2;
           ctx.stroke();
 
           // Draw logo
-          ctx.drawImage(
-            logo,
-            centerX - logoSize / 2,
-            centerY - logoSize / 2,
-            logoSize,
-            logoSize
-          );
+          ctx.drawImage(logo, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize);
 
-          setFinalDataUrl(canvas.toDataURL("image/png"));
+          setFinalDataUrl(draw.toDataURL("image/png"));
         };
 
         logo.onerror = () => {
-          setFinalDataUrl(canvas.toDataURL("image/png"));
+          setFinalDataUrl(draw.toDataURL("image/png"));
         };
-      } catch {
+      } catch (err) {
+        console.error("QR generation error:", err);
         setError("Erreur de génération du QR code");
       }
     }
@@ -150,7 +175,8 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   if (!finalDataUrl) {
     return (
       <>
-        <canvas ref={canvasRef} style={{ display: "none" }} />
+        <canvas ref={sourceRef} style={{ display: "none" }} />
+        <canvas ref={drawRef} style={{ display: "none" }} />
         <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span>Génération du QR…</span>
@@ -161,7 +187,8 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
 
   return (
     <div className="flex flex-col items-center gap-6 py-8">
-      <canvas ref={canvasRef} style={{ display: "none" }} />
+      <canvas ref={sourceRef} style={{ display: "none" }} />
+      <canvas ref={drawRef} style={{ display: "none" }} />
 
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold text-chanv-terre">{localId}</h1>
@@ -188,47 +215,44 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   );
 }
 
-/** Helper: draw a filled rounded rectangle with optional organic wobble */
-function wobblyRect(
+/** Find the X coordinate of the first dark pixel in the top row */
+function findFirstDark(imgData: ImageData, width: number): number {
+  for (let x = 0; x < width; x++) {
+    if (imgData.data[x * 4] < 128) return x;
+  }
+  return -1;
+}
+
+/** Draw a filled rounded rect with optional organic wobble */
+function drawWobblyRect(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
   baseR: number,
   wobble: number = 0,
   seed: number = 0
 ) {
-  // Seeded random for per-corner variation
   function sr(s: number): number {
     const v = Math.sin(s * 9301 + 49297) * 49271;
     return v - Math.floor(v);
   }
 
-  // Each corner gets a slightly different radius
   const r1 = Math.max(1, baseR + (sr(seed + 10) - 0.5) * wobble * 2);
   const r2 = Math.max(1, baseR + (sr(seed + 20) - 0.5) * wobble * 2);
   const r3 = Math.max(1, baseR + (sr(seed + 30) - 0.5) * wobble * 2);
   const r4 = Math.max(1, baseR + (sr(seed + 40) - 0.5) * wobble * 2);
 
-  // Slight edge bulge for organic feel
   const bx = wobble > 0 ? (sr(seed + 50) - 0.5) * wobble * 0.6 : 0;
   const by = wobble > 0 ? (sr(seed + 60) - 0.5) * wobble * 0.6 : 0;
 
   ctx.beginPath();
-  // Top edge
   ctx.moveTo(x + r1, y);
   ctx.lineTo(x + w - r2, y);
-  // Top-right corner
   ctx.quadraticCurveTo(x + w + bx * 0.3, y - by * 0.3, x + w, y + r2);
-  // Right edge
   ctx.lineTo(x + w, y + h - r3);
-  // Bottom-right corner
   ctx.quadraticCurveTo(x + w + bx * 0.3, y + h + by * 0.3, x + w - r3, y + h);
-  // Bottom edge
   ctx.lineTo(x + r4, y + h);
-  // Bottom-left corner
   ctx.quadraticCurveTo(x - bx * 0.3, y + h + by * 0.3, x, y + h - r4);
-  // Left edge
   ctx.lineTo(x, y + r1);
-  // Top-left corner
   ctx.quadraticCurveTo(x - bx * 0.3, y - by * 0.3, x + r1, y);
   ctx.closePath();
   ctx.fill();
