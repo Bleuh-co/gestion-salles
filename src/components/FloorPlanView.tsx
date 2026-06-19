@@ -278,7 +278,6 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
         const stage = stageRef.current;
         if (!stage) return;
 
-        // Get canvas element
         const canvas = stage.querySelector("[data-plan-canvas]") as HTMLElement;
         if (!canvas) return;
         const canvasRect = canvas.getBoundingClientRect();
@@ -288,9 +287,11 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
         const x = Math.max(0.02, Math.min(0.98, xRel));
         const y = Math.max(0.02, Math.min(0.98, yRel));
 
+        // Capture roomId NOW, before async setState callback
+        const roomId = markerDragRef.current.roomId;
         setRoomPositions((prev) => ({
           ...prev,
-          [markerDragRef.current!.roomId]: { x, y },
+          [roomId]: { x, y },
         }));
         setDirty(true);
         return;
