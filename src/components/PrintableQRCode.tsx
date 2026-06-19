@@ -45,97 +45,144 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           }
         }
 
-        // Step 2: Canvas = same size as the icon will be drawn
-        // The icon SVG is 91×91 viewBox. We scale it up.
-        const canvasSize = 700;
+        // Step 2: Sizing
+        const m = Math.max(8, Math.floor(550 / moduleCount)); // px per module
+        const qrSide = moduleCount * m;
+        // Circle inscribed in the QR square (touches middle of each edge)
+        const circleR = qrSide / 2;
+        const ringThick = m * 1.6;
+        // Canvas needs extra room for finder patterns that protrude beyond circle
+        const extraPad = m * 4;
+        const canvasSize = Math.ceil(circleR * 2 + ringThick * 2 + extraPad);
+        const center = canvasSize / 2;
+
         draw.width = canvasSize;
         draw.height = canvasSize;
         const ctx = draw.getContext("2d");
         if (!ctx) return;
 
-        // Transparent background
+        // QR grid origin (centered)
+        const qrOx = center - qrSide / 2;
+        const qrOy = center - qrSide / 2;
+
+        // Transparent canvas
         ctx.clearRect(0, 0, canvasSize, canvasSize);
 
-        // The icon circle has inner radius ~43.5 (out of 90.7 viewBox)
-        // The ring is ~1.8 units thick. Inner usable area ≈ radius 41.7
-        // Scale factor: canvasSize / 90.7
-        const svgScale = canvasSize / 90.7;
-        const center = canvasSize / 2;
-        const innerR = 41.7 * svgScale; // usable area inside the ring
+        // White circle background
+        ctx.beginPath();
+        ctx.arc(center, center, circleR, 0, Math.PI * 2);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fill();
 
-        // QR must fit inside the circle: the QR square inscribed in circle
-        // side = innerR * √2 (circle inscribes the square)
-        // But we want the QR to FILL the circle, so we use a slightly larger area
-        const qrSide = innerR * Math.SQRT2 * 0.95; // 95% to leave tiny breathing room
-        const m = qrSide / moduleCount; // px per module
-        const qrOriginX = center - qrSide / 2;
-        const qrOriginY = center - qrSide / 2;
-
-        // Seeded random for wobble
+        // Seeded random
         function sr(seed: number): number {
           const v = Math.sin(seed * 9301 + 49297) * 49271;
           return v - Math.floor(v);
         }
 
-        // Step 3: Draw QR modules (organic wobble)
+        // Step 3: Draw data modules ONLY inside the circle
         ctx.fillStyle = "#242424";
 
         for (let row = 0; row < moduleCount; row++) {
           for (let col = 0; col < moduleCount; col++) {
             if (!matrix[row][col]) continue;
 
-            const seed = row * moduleCount + col;
-            const px = qrOriginX + col * m;
-            const py = qrOriginY + row * m;
+            const px = qrOx + col * m;
+            const py = qrOy + row * m;
+            const mcx = px + m / 2;
+            const mcy = py + m / 2;
 
+            // Is finder pattern?
             const isFinder =
               (row < 7 && col < 7) ||
               (row < 7 && col >= moduleCount - 7) ||
               (row >= moduleCount - 7 && col < 7);
 
-            if (isFinder) {
-              const pad = m * 0.04;
-              const rr = m * 0.30;
-              drawRoundedRect(ctx, px + pad, py + pad, m - pad * 2, m - pad * 2, rr);
-            } else {
+            // Distance from center
+            const dist = Math.sqrt((mcx - center) ** 2 + (mcy - center) ** 2);
+
+            // Data modules: only draw if inside the circle (with small margin for the ring)
+            if (!isFinder) {
+              if (dist > circleR - ringThick / 2 - m * 0.5) continue;
+
+              const seed = row * moduleCount + col;
               const pad = m * 0.06;
               const mw = m - pad * 2;
-              const baseRadius = mw * 0.35;
-              const wobble = mw * 0.28;
-
-              const jx = (sr(seed + 1) - 0.5) * m * 0.08;
-              const jy = (sr(seed + 2) - 0.5) * m * 0.08;
+              const baseRadius = mw * 0.32;
+              const wobble = mw * 0.22;
+              const jx = (sr(seed + 1) - 0.5) * m * 0.06;
+              const jy = (sr(seed + 2) - 0.5) * m * 0.06;
 
               const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble);
               const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble);
               const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble);
               const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble);
 
-              const sizeVar = 1 + (sr(seed + 50) - 0.5) * 0.06;
-              const aw = mw * sizeVar;
-              const ah = mw * sizeVar;
-              const oxx = (mw - aw) / 2;
-              const oyy = (mw - ah) / 2;
-
-              drawVariableRect(ctx, px + pad + jx + oxx, py + pad + jy + oyy, aw, ah, r1, r2, r3, r4);
+              drawVariableRect(ctx, px + pad + jx, py + pad + jy, mw, mw, r1, r2, r3, r4);
             }
           }
         }
 
-        // Step 4: Draw the Chanv icon ON TOP — it provides the circle + N
-        // The SVG has transparent background, so QR modules show through
+        // Step 4: Thick black circle ring
+        ctx.beginPath();
+        ctx.arc(center, center, circleR, 0, Math.PI * 2);
+        ctx.strokeStyle = "#242424";
+        ctx.lineWidth = ringThick;
+        ctx.stroke();
+
+        // Step 5: Draw 3 finder patterns (OUTSIDE the circle, protruding)
+        // These are the standard 7×7 QR finder patterns at 3 corners
+        const finderPositions = [
+          { row: 0, col: 0 },                          // top-left
+          { row: 0, col: moduleCount - 7 },             // top-right
+          { row: moduleCount - 7, col: 0 },             // bottom-left
+        ];
+
+        for (const fp of finderPositions) {
+          const fx = qrOx + fp.col * m;
+          const fy = qrOy + fp.row * m;
+          const fSize = 7 * m;
+          const finderPad = m * 0.3;
+
+          // White background behind finder
+          ctx.fillStyle = "#FFFFFF";
+          drawRoundedRect(ctx, fx - finderPad, fy - finderPad, fSize + finderPad * 2, fSize + finderPad * 2, m * 0.5);
+
+          // Draw finder modules
+          ctx.fillStyle = "#242424";
+          for (let r = fp.row; r < fp.row + 7; r++) {
+            for (let c = fp.col; c < fp.col + 7; c++) {
+              if (!matrix[r]?.[c]) continue;
+              const mpx = qrOx + c * m;
+              const mpy = qrOy + r * m;
+              const pad = m * 0.04;
+              const rr = m * 0.25;
+              drawRoundedRect(ctx, mpx + pad, mpy + pad, m - pad * 2, m - pad * 2, rr);
+            }
+          }
+        }
+
+        // Step 6: White circle center + N from Chanv
+        const nRadius = canvasSize * 0.14;
+
+        // White circle
+        ctx.beginPath();
+        ctx.arc(center, center, nRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fill();
+
+        // Load and draw the N
         const icon = new Image();
         icon.crossOrigin = "anonymous";
         icon.src = "/favicon.svg";
 
         icon.onload = () => {
-          // Draw the icon at full canvas size
-          ctx.drawImage(icon, 0, 0, canvasSize, canvasSize);
+          const iconSize = nRadius * 1.7;
+          ctx.drawImage(icon, center - iconSize / 2, center - iconSize / 2, iconSize, iconSize);
           setFinalDataUrl(draw.toDataURL("image/png"));
         };
 
         icon.onerror = () => {
-          // If icon fails, just show QR without it
           setFinalDataUrl(draw.toDataURL("image/png"));
         };
       } catch (err) {
@@ -194,7 +241,6 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   );
 }
 
-/** Clean rounded rect */
 function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -210,7 +256,6 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.fill();
 }
 
-/** Rounded rect with 4 different corner radii */
 function drawVariableRect(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
