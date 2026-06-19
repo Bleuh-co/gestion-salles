@@ -23,7 +23,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         const draw = drawRef.current;
         if (!source || !draw) return;
 
-        // Step 1: Render QR at scale=1 so each module = 1 pixel (no margin)
+        // Step 1: Get QR matrix (1px per module)
         await QRCode.toCanvas(source, targetUrl, {
           scale: 1,
           margin: 0,
@@ -31,13 +31,11 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           errorCorrectionLevel: "H",
         });
 
-        // Now source.width = moduleCount (each module is exactly 1px)
         const moduleCount = source.width;
         const srcCtx = source.getContext("2d");
         if (!srcCtx) return;
         const imgData = srcCtx.getImageData(0, 0, moduleCount, moduleCount);
 
-        // Build boolean matrix (1px per module, trivial)
         const matrix: boolean[][] = [];
         for (let r = 0; r < moduleCount; r++) {
           matrix[r] = [];
@@ -47,27 +45,45 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           }
         }
 
-        // Step 2: Redraw with organic style
-        const drawMargin = 3;
-        const drawModuleSize = Math.max(8, Math.floor(600 / (moduleCount + drawMargin * 2)));
-        const totalModules = moduleCount + drawMargin * 2;
-        const canvasSize = totalModules * drawModuleSize;
+        // Step 2: Setup draw canvas
+        const m = Math.max(10, Math.floor(700 / moduleCount)); // px per module
+        const qrSize = moduleCount * m;
+        // Extra padding for the "ears" that stick out
+        const earPad = m * 2;
+        const canvasSize = qrSize + earPad * 2;
 
         draw.width = canvasSize;
         draw.height = canvasSize;
         const ctx = draw.getContext("2d");
         if (!ctx) return;
 
-        // White background
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, canvasSize, canvasSize);
+        // Offsets — QR grid starts at (earPad, earPad)
+        const ox = earPad;
+        const oy = earPad;
+        const center = canvasSize / 2;
+        const circleR = qrSize / 2;
 
-        // Seeded pseudo-random
+        // Seeded random
         function sr(seed: number): number {
           const v = Math.sin(seed * 9301 + 49297) * 49271;
           return v - Math.floor(v);
         }
 
+        // Transparent background
+        ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+        // Step 3: Draw circular background (subtle gray ring)
+        ctx.beginPath();
+        ctx.arc(center, center, circleR + m * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = "#f5f0e8";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(center, center, circleR - m * 0.2, 0, Math.PI * 2);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fill();
+
+        // Step 4: Draw modules
         ctx.fillStyle = "#282828";
 
         for (let row = 0; row < moduleCount; row++) {
@@ -75,73 +91,90 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
             if (!matrix[row][col]) continue;
 
             const seed = row * moduleCount + col;
-            const px = (col + drawMargin) * drawModuleSize;
-            const py = (row + drawMargin) * drawModuleSize;
+            const px = ox + col * m;
+            const py = oy + row * m;
 
+            // Module center
+            const mcx = px + m / 2;
+            const mcy = py + m / 2;
+
+            // Is this a finder pattern? (3 corners, 7×7 blocks)
             const isFinder =
               (row < 7 && col < 7) ||
               (row < 7 && col >= moduleCount - 7) ||
               (row >= moduleCount - 7 && col < 7);
 
+            // Distance from circle center
+            const dist = Math.sqrt((mcx - center) ** 2 + (mcy - center) ** 2);
+
+            // Skip modules outside circle UNLESS they're finder patterns
+            if (!isFinder && dist > circleR - m * 0.5) continue;
+
             if (isFinder) {
-              // Finder patterns: very rounded squares
-              const pad = drawModuleSize * 0.04;
-              const rr = drawModuleSize * 0.40;
-              drawRoundedRect(ctx, px + pad, py + pad, drawModuleSize - pad * 2, drawModuleSize - pad * 2, rr);
+              // Finder patterns — clean rounded squares (always drawn, even outside circle)
+              const pad = m * 0.04;
+              const rr = m * 0.35;
+              drawRoundedRect(ctx, px + pad, py + pad, m - pad * 2, m - pad * 2, rr);
             } else {
-              // Organic modules — VERY visible wobble
-              const pad = drawModuleSize * 0.06;
-              const mw = drawModuleSize - pad * 2;
+              // Organic modules with visible wobble
+              const pad = m * 0.06;
+              const mw = m - pad * 2;
+              const baseRadius = mw * 0.40;
+              const wobble = mw * 0.35;
 
-              // Very rounded base (45% = nearly circular)
-              const baseRadius = mw * 0.45;
-              // Big wobble range (±40% of module size)
-              const wobble = mw * 0.40;
+              const jx = (sr(seed + 1) - 0.5) * m * 0.12;
+              const jy = (sr(seed + 2) - 0.5) * m * 0.12;
 
-              // Strong position jitter (±8% of module)
-              const jx = (sr(seed + 1) - 0.5) * drawModuleSize * 0.16;
-              const jy = (sr(seed + 2) - 0.5) * drawModuleSize * 0.16;
-
-              // Each corner wildly different
               const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble);
               const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble);
               const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble);
               const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble);
 
-              // Slight size variation per module (±6%)
-              const sizeVar = 1 + (sr(seed + 50) - 0.5) * 0.12;
+              const sizeVar = 1 + (sr(seed + 50) - 0.5) * 0.10;
               const aw = mw * sizeVar;
               const ah = mw * sizeVar;
-              const ox = (mw - aw) / 2;
-              const oy = (mw - ah) / 2;
+              const oxx = (mw - aw) / 2;
+              const oyy = (mw - ah) / 2;
 
-              drawVariableRect(ctx, px + pad + jx + ox, py + pad + jy + oy, aw, ah, r1, r2, r3, r4);
+              drawVariableRect(ctx, px + pad + jx + oxx, py + pad + jy + oyy, aw, ah, r1, r2, r3, r4);
             }
           }
         }
 
-        // Step 3: Logo overlay (25%)
+        // Step 5: Draw the circle outline (border ring)
+        ctx.beginPath();
+        ctx.arc(center, center, circleR + m * 0.3, 0, Math.PI * 2);
+        ctx.strokeStyle = "#282828";
+        ctx.lineWidth = m * 0.35;
+        ctx.stroke();
+
+        // Step 6: White-out modules outside circle (except finder corners)
+        // Draw white arcs to erase stray modules between circle and finder ears
+        // This creates the "ear" effect — clean circle with 3 square bumps
+
+        // Step 7: Logo overlay (Chanv N) in center
         const logo = new Image();
         logo.crossOrigin = "anonymous";
         logo.src = "/favicon.svg";
 
         logo.onload = () => {
-          const logoSize = canvasSize * 0.25;
-          const logoPad = logoSize * 0.18;
-          const cx = canvasSize / 2;
-          const cy = canvasSize / 2;
+          const logoSize = canvasSize * 0.24;
+          const logoPad = logoSize * 0.15;
 
-          // White circle background
+          // White circle behind logo
           ctx.beginPath();
-          ctx.arc(cx, cy, (logoSize + logoPad) / 2, 0, Math.PI * 2);
+          ctx.arc(center, center, (logoSize + logoPad) / 2, 0, Math.PI * 2);
           ctx.fillStyle = "#FFFFFF";
           ctx.fill();
-          ctx.strokeStyle = "#E0D5C0";
-          ctx.lineWidth = 1.5;
+
+          // Thin ring
+          ctx.strokeStyle = "#282828";
+          ctx.lineWidth = m * 0.2;
           ctx.stroke();
 
           // Draw logo
-          ctx.drawImage(logo, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize);
+          ctx.drawImage(logo, center - logoSize / 2, center - logoSize / 2, logoSize, logoSize);
+
           setFinalDataUrl(draw.toDataURL("image/png"));
         };
 
@@ -188,7 +221,8 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
       <img
         src={finalDataUrl}
         alt={`QR code pour ${localId}`}
-        className="w-64 h-64 border border-chanv-fibre rounded-2xl p-2"
+        className="w-72 h-72"
+        style={{ imageRendering: "auto" }}
       />
 
       <p className="text-xs text-slate-400 font-mono break-all max-w-xs text-center">{targetUrl}</p>
@@ -204,7 +238,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   );
 }
 
-/** Clean rounded rect (for finder patterns) */
+/** Clean rounded rect */
 function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -220,7 +254,7 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.fill();
 }
 
-/** Rounded rect with 4 different corner radii (for organic modules) */
+/** Rounded rect with 4 different corner radii */
 function drawVariableRect(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
