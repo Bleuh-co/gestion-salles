@@ -1,0 +1,145 @@
+import type { Metadata } from "next";
+import { Inter, Outfit } from "next/font/google";
+import { Toaster } from "sonner";
+import Script from "next/script";
+import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+
+const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://chanv-apps-hub-271227085398.northamerica-northeast1.run.app";
+
+export const metadata: Metadata = {
+  title: "Gestion Salles — Chanv",
+  description: "Application de gestion des salles dans les usines du Groupe Chanv.
+
+## Concept
+L'app organise les données par Usine → Salle. Chaque usine contient plusieurs salles. Chaque salle contient des capteurs, des employés, des appareils (devices), des équipements, et un historique d'événements.
+
+## Pages
+
+### /usines — Liste des usines
+- Affiche des cards pour chaque usine (nom, localisation, nombre de salles, statut global)
+- Cliquer sur une usine mène à sa fiche détail
+
+### /usines/[usineId] — Fiche usine
+- Plan d'étage interactif (FactoryFloorPlan) en SVG montrant les salles comme des rectangles colorés selon leur statut
+- Légende des statuts (normal, alerte, maintenance, hors service)
+- Cliquer sur une salle ouvre un drawer latéral (RoomDrawer) avec un résumé rapide + lien vers la fiche complète
+
+### /usines/[usineId]/salles/[salleId] — Fiche salle détail
+- Header avec nom, statut (badge coloré), et infos clés
+- Navigation par onglets (tabs) :
+  - Capteurs : lectures temps réel (température, humidité, CO2, pression)
+  - Employés : liste des employés assignés à la salle
+  - Appareils : devices IoT connectés dans la salle
+  - Équipements : matériel fixe de la salle
+  - Historique : timeline chronologique des événements
+  - Statistiques : graphiques et métriques de la salle
+
+### /usines/[usineId]/salles/[salleId]/qr — Page QR imprimable
+- Génère un QR code pour la salle (lien direct vers la fiche)
+- Layout minimal sans navbar pour impression
+- Utilise la lib `qrcode` pour générer le QR
+
+## Routes API (mock data, pas de Firestore)
+- GET /api/usines — liste toutes les usines
+- GET /api/usines/[usineId] — détail d'une usine avec ses salles
+- GET /api/usines/[usineId]/salles/[salleId] — détail d'une salle
+- GET /api/usines/[usineId]/salles/[salleId]/summary — résumé salle
+- GET /api/usines/[usineId]/salles/[salleId]/readings — lectures capteurs
+- GET /api/usines/[usineId]/salles/[salleId]/employees — employés
+- GET /api/usines/[usineId]/salles/[salleId]/devices — appareils IoT
+- GET /api/usines/[usineId]/salles/[salleId]/equipment — équipements
+- GET /api/usines/[usineId]/salles/[salleId]/history — historique
+- GET /api/usines/[usineId]/salles/[salleId]/stats — statistiques
+
+## Données mock (src/lib/data.ts)
+Créer un fichier data.ts avec des données réalistes pour 2-3 usines, chacune avec 4-8 salles. Chaque salle a des capteurs, employés, devices, équipements et un historique. Les statuts possibles des salles : "normal", "alerte", "maintenance", "hors_service".
+
+## Composants
+- UsineCard : card d'usine dans la liste
+- FactoryFloorPlan : plan SVG interactif avec salles cliquables
+- FloorPlanLegend : légende des couleurs de statut
+- RoomDrawer : drawer latéral avec résumé de salle
+- RoomStatusBadge : badge coloré selon le statut
+- RoomSynthesisCard : card de synthèse dans le drawer
+- SalleTabs : onglets client de la fiche salle
+- EmptyState : composant état vide réutilisable
+- PrintableQRCode : QR code imprimable
+- UsinePlanClient : wrapper client interactif du plan
+
+## Panels (composants des onglets)
+- SensorReadingsPanel : affiche les lectures capteurs
+- EmployeesPanel : liste des employés
+- DevicesPanel : liste des appareils IoT
+- EquipmentPanel : liste des équipements
+- RoomHistoryTimeline : timeline des événements
+- RoomStatsPanel : statistiques et métriques
+
+Chaque panel se fetch lui-même via { usineId, salleId } props.
+
+## Dépendances additionnelles
+- qrcode + @types/qrcode (pour la génération QR)
+
+## Navigation Sidebar
+- Liens : 🏭 Usines (/usines), 🏠 Salles (/salles)
+- /salles redirige vers /usines (c'est le point d'entrée)
+- ROUTE_PRINCIPALE = /salles
+ — Groupe Chanv",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Gestion Salles",
+  },
+};
+
+export const viewport = {
+  themeColor: "#282828",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="fr" className={`${inter.variable} ${outfit.variable}`}>
+      <body className="min-h-screen antialiased font-sans">
+        <AuthProvider>
+          {children}
+          <Toaster richColors position="top-right" />
+        </AuthProvider>
+        {/* Hub Widgets */}
+        <Script id="chanv-auth-bridge" strategy="beforeInteractive">{`
+          window.getAuthToken = async function() {
+            try {
+              const { getAuth } = await import('firebase/auth');
+              const auth = getAuth();
+              if (auth.currentUser) return await auth.currentUser.getIdToken();
+            } catch(e) {}
+            return null;
+          };
+        `}</Script>
+        <Script src={`${HUB_URL}/widgets/chatbot.js`} data-hub={HUB_URL} strategy="lazyOnload" />
+        <Script src={`${HUB_URL}/widgets/feedback.js`} data-hub={HUB_URL} strategy="lazyOnload" />
+        <Script src={`${HUB_URL}/js/gandalf-widget.js`} data-hub={HUB_URL} strategy="lazyOnload" />
+        {/* Service worker — rend la PWA installable */}
+        <Script id="register-sw" strategy="afterInteractive">{`
+          if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.warn('SW registration failed:', err);
+              });
+            });
+          }
+        `}</Script>
+      </body>
+    </html>
+  );
+}
