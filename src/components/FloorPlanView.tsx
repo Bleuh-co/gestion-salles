@@ -7,7 +7,7 @@ import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
-  Thermometer, Droplets, Building, Layers, Shield, QrCode, GripVertical, Save
+  Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save
 } from "lucide-react";
 
 // ============================================================
@@ -22,23 +22,11 @@ interface PlanInfo {
   room_count: number;
 }
 
-interface SensorData {
-  sensor_id: string;
-  sensor_name: string | null;
-  last_temp_c: number | null;
-  last_humidity: number | null;
-  last_checkin_utc: string | null;
-  offline: boolean;
-}
-
 interface Snapshot {
   plan_id: string;
   plan_name: string;
   image_url: string | null;
-  sensor_positions: Record<string, { x: number; y: number; label?: string }>;
   room_positions: Record<string, { x: number; y: number }>;
-  sensors: SensorData[];
-  sensors_error: string | null;
 }
 
 interface FloorPlanViewProps {
@@ -93,23 +81,7 @@ function autoPositionRooms(
   return positions;
 }
 
-// ============================================================
-// Helpers
-// ============================================================
 
-function fmtCheckin(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso.endsWith("Z") ? iso : iso + "Z");
-    const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-    if (diffMin < 1) return "à l'instant";
-    if (diffMin < 60) return `il y a ${diffMin} min`;
-    if (diffMin < 1440) return `il y a ${Math.round(diffMin / 60)} h`;
-    return d.toLocaleDateString("fr-CA", { day: "2-digit", month: "short" });
-  } catch {
-    return iso || "—";
-  }
-}
 
 // ============================================================
 // Component
@@ -261,15 +233,22 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
     return () => stage.removeEventListener("wheel", handler);
   }, []);
 
-  // ---- Pan ----
+  // ---- Pan (left-click normal mode, right-click in edit mode) ----
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (editMode) return; // no pan in edit mode
-      if ((e.target as HTMLElement).closest(".plan-marker, .plan-room-card")) return;
+      // In edit mode, only right-click (button=2) pans
+      if (editMode && e.button !== 2) return;
+      // In normal mode, left-click pans (skip if clicking a marker/card)
+      if (!editMode && (e.target as HTMLElement).closest(".plan-marker, .plan-room-card")) return;
       dragRef.current = { sx: e.clientX, sy: e.clientY, stx: tx, sty: ty };
     },
     [tx, ty, editMode]
   );
+
+  // Prevent context menu on the stage (so right-click pan works)
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -438,6 +417,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
           backgroundPosition: "0 0, 0 10px, 10px -10px, 10px 0px",
         }}
         onMouseDown={onMouseDown}
+        onContextMenu={onContextMenu}
       >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-30">
@@ -484,74 +464,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
           {/* Markers container */}
           <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
 
-            {/* SENSOR markers (Temp Stick) */}
-            {snapshot &&
-              Object.entries(snapshot.sensor_positions).map(([sensorId, pos]) => {
-                const sensor = snapshot.sensors.find((s) => s.sensor_id === sensorId);
-                if (!sensor) return null;
-                const isOffline = sensor.offline;
-                const tempStr = sensor.last_temp_c != null ? `${sensor.last_temp_c.toFixed(1)}°` : "—";
-                const humStr = sensor.last_humidity != null ? `${sensor.last_humidity.toFixed(0)}%` : "—";
-
-                return (
-                  <div
-                    key={`sensor-${sensorId}`}
-                    className="plan-marker"
-                    style={{
-                      position: "absolute",
-                      left: `${(pos.x * 100).toFixed(2)}%`,
-                      top: `${(pos.y * 100).toFixed(2)}%`,
-                      transform: `translate(-50%, -50%) scale(${Math.max(0.6, Math.min(4, 1 / scale))})`,
-                      transformOrigin: "center center",
-                      pointerEvents: "auto",
-                      cursor: "pointer",
-                      zIndex: 2,
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%", left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: 16, height: 16,
-                        borderRadius: "50%",
-                        background: isOffline ? "#9CA3AF" : "#10B981",
-                        border: "2px solid white",
-                        boxShadow: "0 0 0 1px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.3)",
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: "calc(100% + 4px)",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: isOffline ? "rgba(120,120,120,0.9)" : "rgba(20,20,20,0.9)",
-                        color: "white",
-                        padding: "3px 8px",
-                        borderRadius: 10,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        whiteSpace: "nowrap",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 5,
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <span style={{ color: "#FCA5A5" }}>{tempStr}</span>
-                      <span style={{ color: "#93C5FD" }}>{humStr}</span>
-                    </div>
-                    <div className="plan-sensor-bubble">
-                      <div style={{ fontWeight: 700, color: "#555" }}>{sensor.sensor_name || sensorId}</div>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtCheckin(sensor.last_checkin_utc)}</div>
-                    </div>
-                  </div>
-                );
-              })}
-
-            {/* ROOM markers — THE MAIN FEATURE */}
+            {/* ROOM markers */}
             {Object.entries(roomPositions).map(([roomId, pos]) => {
               const local = locauxMap.get(roomId);
               if (!local) return null;
@@ -723,12 +636,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
             <span className="text-[10px] text-slate-500 font-medium">{fam}</span>
           </div>
         ))}
-        {snapshot && !snapshot.sensors_error && snapshot.sensors.length > 0 && (
-          <div className="flex items-center gap-1.5 shrink-0 ml-2 pl-2 border-l border-chanv-fibre">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
-            <span className="text-[10px] text-slate-500 font-medium">Capteur Temp Stick</span>
-          </div>
-        )}
+
       </div>
     </div>
   );
