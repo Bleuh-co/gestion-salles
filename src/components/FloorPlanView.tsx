@@ -149,12 +149,20 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
         setPlans(list);
         const saved = typeof window !== "undefined" ? localStorage.getItem("gs_plan_id") : null;
         const initial = list.find((p) => p.id === saved) || list[0];
-        if (initial) setCurrentPlanId(initial.id);
-        else setLoading(false);
+        if (initial) {
+          setCurrentPlanId(initial.id);
+        } else {
+          // No plans — show rooms with auto-layout
+          setRoomPositions(autoPositionRooms(locaux, {}));
+          setLoading(false);
+        }
       } catch {
+        // API failed — show rooms with auto-layout anyway
+        setRoomPositions(autoPositionRooms(locaux, {}));
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---- Load snapshot ----
@@ -184,11 +192,9 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
     if (currentPlanId) {
       if (typeof window !== "undefined") localStorage.setItem("gs_plan_id", currentPlanId);
       loadSnapshot(currentPlanId);
-    } else if (plans.length === 0 && !loading) {
-      // No plans at all — show rooms with auto-layout anyway
-      setRoomPositions(autoPositionRooms(locaux, {}));
     }
-  }, [currentPlanId, loadSnapshot, plans.length, loading, locaux]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPlanId]);
 
   // ---- Fit to stage ----
   const fitToStage = useCallback(() => {
