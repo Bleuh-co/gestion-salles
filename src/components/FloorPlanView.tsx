@@ -7,7 +7,8 @@ import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
-  Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save
+  Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save,
+  Plus, EyeOff, ChevronDown, ChevronRight, Search
 } from "lucide-react";
 
 // ============================================================
@@ -34,52 +35,8 @@ interface FloorPlanViewProps {
   isAdmin?: boolean;
 }
 
-// ============================================================
-// Auto-layout: position all rooms in a grid grouped by famille
-// ============================================================
-
-function autoPositionRooms(
-  locaux: Local[],
-  savedPositions: Record<string, { x: number; y: number }>
-): Record<string, { x: number; y: number }> {
-  const positions: Record<string, { x: number; y: number }> = { ...savedPositions };
-
-  // Only position rooms that don't already have saved positions
-  const unplaced = locaux.filter((l) => !positions[l.id]);
-  if (unplaced.length === 0) return positions;
-
-  // Group by famille
-  const grouped = new Map<string, Local[]>();
-  for (const l of unplaced) {
-    const fam = l.famille || "Autre";
-    if (!grouped.has(fam)) grouped.set(fam, []);
-    grouped.get(fam)!.push(l);
-  }
-
-  // Layout: each famille gets a horizontal band
-  const families = Array.from(grouped.keys()).sort();
-  const bandHeight = 1 / Math.max(families.length, 1);
-
-  families.forEach((fam, fi) => {
-    const rooms = grouped.get(fam)!;
-    const y0 = fi * bandHeight + bandHeight * 0.3;
-    const cols = Math.ceil(Math.sqrt(rooms.length * 2));
-
-    rooms.forEach((room, ri) => {
-      const col = ri % cols;
-      const row = Math.floor(ri / cols);
-      const totalRows = Math.ceil(rooms.length / cols);
-      const x = 0.05 + (col / Math.max(cols, 1)) * 0.9;
-      const y = y0 + (row / Math.max(totalRows, 1)) * (bandHeight * 0.6);
-      positions[room.id] = {
-        x: Math.max(0.02, Math.min(0.98, x)),
-        y: Math.max(0.02, Math.min(0.98, y)),
-      };
-    });
-  });
-
-  return positions;
-}
+// No auto-layout — only placed rooms appear on the plan.
+// Unplaced rooms are shown in the tray panel during edit mode.
 
 
 
@@ -124,13 +81,9 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
         if (initial) {
           setCurrentPlanId(initial.id);
         } else {
-          // No plans — show rooms with auto-layout
-          setRoomPositions(autoPositionRooms(locaux, {}));
           setLoading(false);
         }
       } catch {
-        // API failed — show rooms with auto-layout anyway
-        setRoomPositions(autoPositionRooms(locaux, {}));
         setLoading(false);
       }
     })();
@@ -150,18 +103,14 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
         if (!res.ok) throw new Error("Failed");
         const data: Snapshot = await res.json();
         setSnapshot(data);
-
-        // Auto-position rooms that aren't placed yet
-        const allPositions = autoPositionRooms(locauxRef.current, data.room_positions || {});
-        setRoomPositions(allPositions);
+        setRoomPositions(data.room_positions || {});
       } catch {
-        // If plan API fails, still show rooms with auto-layout
-        setRoomPositions(autoPositionRooms(locauxRef.current, {}));
+        setRoomPositions({});
       } finally {
         setLoading(false);
       }
     },
-    [] // stable — no deps, uses ref
+    []
   );
 
   useEffect(() => {
@@ -313,9 +262,46 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
     }
   }, [currentPlanId, roomPositions]);
 
-  // ---- Room lookup ----
+  // ---- Room helpers ----
   const locauxMap = new Map(locaux.map((l) => [l.id, l]));
   const selectedLocal = selectedRoom ? locauxMap.get(selectedRoom) : null;
+  const placedCount = Object.keys(roomPositions).length;
+  const unplacedRooms = locaux.filter((l) => !roomPositions[l.id]);
+
+  // ---- Add / remove room from plan ----
+  const addRoomToPlan = useCallback((roomId: string) => {
+    // Place at center of the current viewport
+    const stage = stageRef.current;
+    let x = 0.5, y = 0.5;
+    if (stage) {
+      const rect = stage.getBoundingClientRect();
+      // Convert viewport center to plan coordinates
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      // Get canvas element
+      const canvas = stage.querySelector("[data-plan-canvas]") as HTMLElement;
+      if (canvas) {
+        const canvasRect = canvas.getBoundingClientRect();
+        x = Math.max(0.02, Math.min(0.98, (centerX - canvasRect.left) / canvasRect.width));
+        y = Math.max(0.02, Math.min(0.98, (centerY - canvasRect.top) / canvasRect.height));
+      }
+    }
+    setRoomPositions((prev) => ({ ...prev, [roomId]: { x, y } }));
+    setDirty(true);
+  }, []);
+
+  const removeRoomFromPlan = useCallback((roomId: string) => {
+    setRoomPositions((prev) => {
+      const next = { ...prev };
+      delete next[roomId];
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  // ---- Tray state ----
+  const [traySearch, setTraySearch] = useState("");
+  const [trayCollapsed, setTrayCollapsed] = useState<Record<string, boolean>>({});
 
   // ---- Virtual canvas size (when no plan image) ----
   const canvasW = snapshot?.image_url ? undefined : 1200;
@@ -358,9 +344,9 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
 
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-slate-500">
-            {Object.keys(roomPositions).length} salle{Object.keys(roomPositions).length !== 1 ? "s" : ""}
-            {snapshot && !snapshot.sensors_error && snapshot.sensors.length > 0 && (
-              <> · {snapshot.sensors.length} capteur{snapshot.sensors.length !== 1 ? "s" : ""}</>
+            {placedCount} salle{placedCount !== 1 ? "s" : ""} placée{placedCount !== 1 ? "s" : ""}
+            {unplacedRooms.length > 0 && (
+              <> · {unplacedRooms.length} non placée{unplacedRooms.length !== 1 ? "s" : ""}</>
             )}
           </span>
 
@@ -399,26 +385,38 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
       {/* Edit mode banner */}
       {editMode && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 font-medium">
-          ✏️ Mode édition — Glisse les salles pour les repositionner sur le plan, puis sauvegarde.
+          ✏️ Mode édition — Glisse les salles · Clic droit pour naviguer · ✕ pour retirer · Panneau latéral pour ajouter
         </div>
       )}
 
-      {/* Stage */}
-      <div
-        ref={stageRef}
-        className="relative w-full overflow-hidden select-none"
-        style={{
-          height: "70vh",
-          minHeight: 500,
-          cursor: editMode ? "default" : dragRef.current ? "grabbing" : "grab",
-          background:
-            "linear-gradient(45deg, #f8f8f8 25%, transparent 25%), linear-gradient(-45deg, #f8f8f8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f8f8f8 75%), linear-gradient(-45deg, transparent 75%, #f8f8f8 75%)",
-          backgroundSize: "20px 20px",
-          backgroundPosition: "0 0, 0 10px, 10px -10px, 10px 0px",
-        }}
-        onMouseDown={onMouseDown}
-        onContextMenu={onContextMenu}
-      >
+      {/* Stage + Tray layout */}
+      <div className="flex" style={{ height: "70vh", minHeight: 500 }}>
+        {/* Tray panel — unplaced rooms (edit mode only) */}
+        {editMode && (
+          <RoomTray
+            unplacedRooms={unplacedRooms}
+            traySearch={traySearch}
+            setTraySearch={setTraySearch}
+            trayCollapsed={trayCollapsed}
+            setTrayCollapsed={setTrayCollapsed}
+            onAdd={addRoomToPlan}
+          />
+        )}
+
+        {/* Map stage */}
+        <div
+          ref={stageRef}
+          className="relative flex-1 overflow-hidden select-none"
+          style={{
+            cursor: editMode ? "default" : dragRef.current ? "grabbing" : "grab",
+            background:
+              "linear-gradient(45deg, #f8f8f8 25%, transparent 25%), linear-gradient(-45deg, #f8f8f8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f8f8f8 75%), linear-gradient(-45deg, transparent 75%, #f8f8f8 75%)",
+            backgroundSize: "20px 20px",
+            backgroundPosition: "0 0, 0 10px, 10px -10px, 10px 0px",
+          }}
+          onMouseDown={onMouseDown}
+          onContextMenu={onContextMenu}
+        >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-30">
             <Loader2 className="w-8 h-8 animate-spin text-chanv-terre" />
@@ -477,7 +475,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                   key={`room-${roomId}`}
                   className="plan-marker"
                   onMouseDown={(e) => {
-                    if (editMode) {
+                    if (editMode && e.button === 0) {
                       e.preventDefault();
                       e.stopPropagation();
                       markerDragRef.current = { roomId };
@@ -499,6 +497,35 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                     zIndex: isSelected ? 10 : 3,
                   }}
                 >
+                  {/* Remove button (edit mode) */}
+                  {editMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeRoomFromPlan(roomId);
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        width: 18,
+                        height: 18,
+                        borderRadius: "50%",
+                        background: "#EF4444",
+                        border: "2px solid white",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        zIndex: 20,
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                      title="Retirer du plan"
+                    >
+                      <X style={{ width: 10, height: 10, color: "white" }} />
+                    </button>
+                  )}
                   {/* Room square */}
                   <div
                     style={{
@@ -625,6 +652,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Legend */}
@@ -636,7 +664,146 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
             <span className="text-[10px] text-slate-500 font-medium">{fam}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
 
+// ============================================================
+// Room Tray — sidebar panel listing unplaced rooms
+// ============================================================
+
+function RoomTray({
+  unplacedRooms,
+  traySearch,
+  setTraySearch,
+  trayCollapsed,
+  setTrayCollapsed,
+  onAdd,
+}: {
+  unplacedRooms: Local[];
+  traySearch: string;
+  setTraySearch: (s: string) => void;
+  trayCollapsed: Record<string, boolean>;
+  setTrayCollapsed: (c: Record<string, boolean>) => void;
+  onAdd: (roomId: string) => void;
+}) {
+  // Filter by search
+  const search = traySearch.toLowerCase().trim();
+  const filtered = search
+    ? unplacedRooms.filter(
+        (l) =>
+          l.id.toLowerCase().includes(search) ||
+          (l.nomSalle || "").toLowerCase().includes(search) ||
+          (l.famille || "").toLowerCase().includes(search)
+      )
+    : unplacedRooms;
+
+  // Group by famille
+  const grouped = new Map<string, Local[]>();
+  for (const l of filtered) {
+    const fam = l.famille || "Autre";
+    if (!grouped.has(fam)) grouped.set(fam, []);
+    grouped.get(fam)!.push(l);
+  }
+  const families = Array.from(grouped.keys()).sort();
+
+  return (
+    <div
+      className="border-r border-chanv-fibre bg-white flex flex-col"
+      style={{ width: 260, minWidth: 260 }}
+    >
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-chanv-fibre bg-chanv-fibre/20">
+        <div className="flex items-center gap-2 mb-2">
+          <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs font-bold text-chanv-terre">Salles à placer</span>
+          <span className="ml-auto text-[10px] bg-chanv-fibre text-slate-600 px-1.5 py-0.5 rounded-full font-semibold">
+            {unplacedRooms.length}
+          </span>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+          <input
+            type="text"
+            value={traySearch}
+            onChange={(e) => setTraySearch(e.target.value)}
+            placeholder="Rechercher…"
+            className="w-full text-xs pl-7 pr-2 py-1.5 rounded-lg border border-chanv-fibre bg-white focus:outline-none focus:ring-1 focus:ring-chanv-terre/30"
+          />
+        </div>
+      </div>
+
+      {/* Room list */}
+      <div className="flex-1 overflow-y-auto">
+        {families.length === 0 && (
+          <div className="text-center py-8 text-xs text-slate-400">
+            {search ? "Aucun résultat" : "Toutes les salles sont placées ✓"}
+          </div>
+        )}
+        {families.map((fam) => {
+          const rooms = grouped.get(fam)!;
+          const isCollapsed = trayCollapsed[fam] ?? false;
+          const color = FAMILLE_COLORS[fam] || "#94a3b8";
+
+          return (
+            <div key={fam}>
+              <button
+                onClick={() =>
+                  setTrayCollapsed({ ...trayCollapsed, [fam]: !isCollapsed })
+                }
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-chanv-fibre/30 transition-colors border-b border-chanv-fibre/50"
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="w-3 h-3 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                )}
+                <div
+                  className="w-2.5 h-2.5 rounded"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="flex-1 text-left">{fam}</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  {rooms.length}
+                </span>
+              </button>
+              {!isCollapsed && (
+                <div>
+                  {rooms.map((room) => (
+                    <div
+                      key={room.id}
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-emerald-50 transition-colors group cursor-pointer border-b border-chanv-fibre/20"
+                      onClick={() => onAdd(room.id)}
+                    >
+                      <div
+                        className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0"
+                        style={{
+                          backgroundColor: color,
+                          fontSize: 7,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {FAMILLE_SHORT[room.famille] || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-semibold text-slate-700 truncate">
+                          {room.id}
+                        </div>
+                        {room.nomSalle && (
+                          <div className="text-[9px] text-slate-400 truncate">
+                            {room.nomSalle}
+                          </div>
+                        )}
+                      </div>
+                      <Plus className="w-3.5 h-3.5 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
