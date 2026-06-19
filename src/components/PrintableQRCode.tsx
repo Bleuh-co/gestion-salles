@@ -45,15 +45,9 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           }
         }
 
-        // Step 2: Canvas sizing
-        // Circle circumscribes the QR square: radius = diagonal/2 = side * √2 / 2
-        const m = Math.max(8, Math.floor(500 / moduleCount)); // px per module
-        const qrSide = moduleCount * m;
-        const circleR = (qrSide * Math.SQRT2) / 2;
-        const ringWidth = m * 1.2; // outer ring thickness
-        const canvasSize = Math.ceil((circleR + ringWidth) * 2 + m * 2);
-        const center = canvasSize / 2;
-
+        // Step 2: Canvas = same size as the icon will be drawn
+        // The icon SVG is 91×91 viewBox. We scale it up.
+        const canvasSize = 700;
         draw.width = canvasSize;
         draw.height = canvasSize;
         const ctx = draw.getContext("2d");
@@ -62,21 +56,18 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         // Transparent background
         ctx.clearRect(0, 0, canvasSize, canvasSize);
 
-        // Step 3: Draw the Chanv circle background
-        // Outer ring
-        ctx.beginPath();
-        ctx.arc(center, center, circleR + ringWidth, 0, Math.PI * 2);
-        ctx.fillStyle = "#282828";
-        ctx.fill();
+        // The icon circle has inner radius ~43.5 (out of 90.7 viewBox)
+        // The ring is ~1.8 units thick. Inner usable area ≈ radius 41.7
+        // Scale factor: canvasSize / 90.7
+        const svgScale = canvasSize / 90.7;
+        const center = canvasSize / 2;
+        const innerR = 41.7 * svgScale; // usable area inside the ring
 
-        // White fill inside ring
-        ctx.beginPath();
-        ctx.arc(center, center, circleR, 0, Math.PI * 2);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fill();
-
-        // Step 4: Draw ALL QR modules (nothing clipped — full scan guarantee)
-        // QR grid is centered in the circle
+        // QR must fit inside the circle: the QR square inscribed in circle
+        // side = innerR * √2 (circle inscribes the square)
+        // But we want the QR to FILL the circle, so we use a slightly larger area
+        const qrSide = innerR * Math.SQRT2 * 0.95; // 95% to leave tiny breathing room
+        const m = qrSide / moduleCount; // px per module
         const qrOriginX = center - qrSide / 2;
         const qrOriginY = center - qrSide / 2;
 
@@ -86,7 +77,8 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           return v - Math.floor(v);
         }
 
-        ctx.fillStyle = "#282828";
+        // Step 3: Draw QR modules (organic wobble)
+        ctx.fillStyle = "#242424";
 
         for (let row = 0; row < moduleCount; row++) {
           for (let col = 0; col < moduleCount; col++) {
@@ -102,26 +94,24 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
               (row >= moduleCount - 7 && col < 7);
 
             if (isFinder) {
-              // Finder patterns: clean rounded squares
               const pad = m * 0.04;
-              const rr = m * 0.35;
+              const rr = m * 0.30;
               drawRoundedRect(ctx, px + pad, py + pad, m - pad * 2, m - pad * 2, rr);
             } else {
-              // Data modules: organic wobble
               const pad = m * 0.06;
               const mw = m - pad * 2;
-              const baseRadius = mw * 0.38;
-              const wobble = mw * 0.30;
+              const baseRadius = mw * 0.35;
+              const wobble = mw * 0.28;
 
-              const jx = (sr(seed + 1) - 0.5) * m * 0.10;
-              const jy = (sr(seed + 2) - 0.5) * m * 0.10;
+              const jx = (sr(seed + 1) - 0.5) * m * 0.08;
+              const jy = (sr(seed + 2) - 0.5) * m * 0.08;
 
               const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble);
               const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble);
               const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble);
               const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble);
 
-              const sizeVar = 1 + (sr(seed + 50) - 0.5) * 0.08;
+              const sizeVar = 1 + (sr(seed + 50) - 0.5) * 0.06;
               const aw = mw * sizeVar;
               const ah = mw * sizeVar;
               const oxx = (mw - aw) / 2;
@@ -132,33 +122,20 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           }
         }
 
-        // Step 5: Chanv N logo in center
-        const logo = new Image();
-        logo.crossOrigin = "anonymous";
-        logo.src = "/favicon.svg";
+        // Step 4: Draw the Chanv icon ON TOP — it provides the circle + N
+        // The SVG has transparent background, so QR modules show through
+        const icon = new Image();
+        icon.crossOrigin = "anonymous";
+        icon.src = "/favicon.svg";
 
-        logo.onload = () => {
-          const logoSize = canvasSize * 0.22;
-          const logoPad = logoSize * 0.15;
-
-          // White circle behind logo
-          ctx.beginPath();
-          ctx.arc(center, center, (logoSize + logoPad) / 2, 0, Math.PI * 2);
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fill();
-
-          // Thin dark ring around logo
-          ctx.strokeStyle = "#282828";
-          ctx.lineWidth = m * 0.25;
-          ctx.stroke();
-
-          // Draw the N
-          ctx.drawImage(logo, center - logoSize / 2, center - logoSize / 2, logoSize, logoSize);
-
+        icon.onload = () => {
+          // Draw the icon at full canvas size
+          ctx.drawImage(icon, 0, 0, canvasSize, canvasSize);
           setFinalDataUrl(draw.toDataURL("image/png"));
         };
 
-        logo.onerror = () => {
+        icon.onerror = () => {
+          // If icon fails, just show QR without it
           setFinalDataUrl(draw.toDataURL("image/png"));
         };
       } catch (err) {
