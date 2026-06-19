@@ -13,6 +13,7 @@ interface Props {
   locaux: Local[];
   familles: string[];
   etages: string[];
+  isAdmin?: boolean;
   stats: {
     total: number;
     enService: number;
@@ -22,7 +23,7 @@ interface Props {
   };
 }
 
-export function SallesPageClient({ locaux, familles, etages, stats }: Props) {
+export function SallesPageClient({ locaux, familles, etages, stats, isAdmin }: Props) {
   const [view, setView] = useState<"plan" | "list">("plan");
 
   return (
@@ -74,7 +75,7 @@ export function SallesPageClient({ locaux, familles, etages, stats }: Props) {
 
       {/* Content */}
       {view === "plan" ? (
-        <FloorPlanView locaux={locaux} />
+        <FloorPlanView locaux={locaux} isAdmin={isAdmin} />
       ) : (
         <SallesListClient locaux={locaux} familles={familles} etages={etages} />
       )}

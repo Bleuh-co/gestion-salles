@@ -1,4 +1,5 @@
 import { getLocaux, getUniqueFamilles, getUniqueEtages, getStats } from "@/lib/data";
+import { getSession } from "@/lib/auth-server";
 import { SallesPageClient } from "@/components/SallesPageClient";
 
 export const metadata = {
@@ -6,11 +7,13 @@ export const metadata = {
   description: "Vue d'ensemble des locaux de l'usine ChanvHQ du Groupe Chanv.",
 };
 
-export default function SallesPage() {
+export default async function SallesPage() {
   const locaux = getLocaux();
   const familles = getUniqueFamilles();
   const etages = getUniqueEtages();
   const stats = getStats();
+  const session = await getSession();
+  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   return (
     <SallesPageClient
@@ -18,6 +21,8 @@ export default function SallesPage() {
       familles={familles}
       etages={etages}
       stats={stats}
+      isAdmin={isAdmin}
     />
   );
 }
+
