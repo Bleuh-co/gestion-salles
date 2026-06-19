@@ -84,36 +84,49 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
               (row >= moduleCount - 7 && col < 7);
 
             if (isFinder) {
-              // Clean rounded squares for finder patterns
-              const pad = drawModuleSize * 0.05;
-              const rr = drawModuleSize * 0.30;
+              // Finder patterns: very rounded squares
+              const pad = drawModuleSize * 0.04;
+              const rr = drawModuleSize * 0.40;
               drawRoundedRect(ctx, px + pad, py + pad, drawModuleSize - pad * 2, drawModuleSize - pad * 2, rr);
             } else {
-              // Organic wobbly modules
-              const pad = drawModuleSize * 0.07;
-              const baseRadius = drawModuleSize * 0.25;
-              const wobble = drawModuleSize * 0.10;
-              const jx = (sr(seed + 1) - 0.5) * drawModuleSize * 0.05;
-              const jy = (sr(seed + 2) - 0.5) * drawModuleSize * 0.05;
+              // Organic modules — VERY visible wobble
+              const pad = drawModuleSize * 0.06;
+              const mw = drawModuleSize - pad * 2;
 
-              // Variable corner radii
-              const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble * 2);
-              const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble * 2);
-              const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble * 2);
-              const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble * 2);
+              // Very rounded base (45% = nearly circular)
+              const baseRadius = mw * 0.45;
+              // Big wobble range (±40% of module size)
+              const wobble = mw * 0.40;
 
-              drawVariableRect(ctx, px + pad + jx, py + pad + jy, drawModuleSize - pad * 2, drawModuleSize - pad * 2, r1, r2, r3, r4);
+              // Strong position jitter (±8% of module)
+              const jx = (sr(seed + 1) - 0.5) * drawModuleSize * 0.16;
+              const jy = (sr(seed + 2) - 0.5) * drawModuleSize * 0.16;
+
+              // Each corner wildly different
+              const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble);
+              const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble);
+              const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble);
+              const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble);
+
+              // Slight size variation per module (±6%)
+              const sizeVar = 1 + (sr(seed + 50) - 0.5) * 0.12;
+              const aw = mw * sizeVar;
+              const ah = mw * sizeVar;
+              const ox = (mw - aw) / 2;
+              const oy = (mw - ah) / 2;
+
+              drawVariableRect(ctx, px + pad + jx + ox, py + pad + jy + oy, aw, ah, r1, r2, r3, r4);
             }
           }
         }
 
-        // Step 3: Logo overlay (20% — balanced visibility vs scannability)
+        // Step 3: Logo overlay (25%)
         const logo = new Image();
         logo.crossOrigin = "anonymous";
         logo.src = "/favicon.svg";
 
         logo.onload = () => {
-          const logoSize = canvasSize * 0.20;
+          const logoSize = canvasSize * 0.25;
           const logoPad = logoSize * 0.18;
           const cx = canvasSize / 2;
           const cy = canvasSize / 2;
