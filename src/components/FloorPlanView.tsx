@@ -165,6 +165,10 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Stable ref for locaux (avoids recreating loadSnapshot on every render)
+  const locauxRef = useRef(locaux);
+  locauxRef.current = locaux;
+
   // ---- Load snapshot ----
   const loadSnapshot = useCallback(
     async (planId: string) => {
@@ -176,16 +180,16 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
         setSnapshot(data);
 
         // Auto-position rooms that aren't placed yet
-        const allPositions = autoPositionRooms(locaux, data.room_positions || {});
+        const allPositions = autoPositionRooms(locauxRef.current, data.room_positions || {});
         setRoomPositions(allPositions);
       } catch {
         // If plan API fails, still show rooms with auto-layout
-        setRoomPositions(autoPositionRooms(locaux, {}));
+        setRoomPositions(autoPositionRooms(locauxRef.current, {}));
       } finally {
         setLoading(false);
       }
     },
-    [locaux]
+    [] // stable — no deps, uses ref
   );
 
   useEffect(() => {
@@ -193,8 +197,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
       if (typeof window !== "undefined") localStorage.setItem("gs_plan_id", currentPlanId);
       loadSnapshot(currentPlanId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPlanId]);
+  }, [currentPlanId, loadSnapshot]);
 
   // ---- Fit to stage ----
   const fitToStage = useCallback(() => {
