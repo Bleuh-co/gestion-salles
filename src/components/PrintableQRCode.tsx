@@ -46,16 +46,22 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-        // Draw each module as a rounded dot
+        // Draw each module as a slightly wobbly rounded square
         const dotColor = "#282828";
-        const dotRadius = moduleSize * 0.38; // slightly smaller than cell → gaps between dots
+
+        // Seeded pseudo-random for consistent rendering
+        function seededRandom(seed: number): number {
+          const x = Math.sin(seed * 9301 + 49297) * 49271;
+          return x - Math.floor(x);
+        }
 
         for (let row = 0; row < moduleCount; row++) {
           for (let col = 0; col < moduleCount; col++) {
             if (!modules.get(row, col)) continue;
 
-            const cx = (col + margin) * moduleSize + moduleSize / 2;
-            const cy = (row + margin) * moduleSize + moduleSize / 2;
+            const seed = row * moduleCount + col;
+            const px = (col + margin) * moduleSize;
+            const py = (row + margin) * moduleSize;
 
             // Check if this is a finder pattern (top-left, top-right, bottom-left 7×7 blocks)
             const isFinder =
@@ -63,29 +69,42 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
               (row < 7 && col >= moduleCount - 7) ||
               (row >= moduleCount - 7 && col < 7);
 
+            ctx.fillStyle = dotColor;
+
             if (isFinder) {
-              // Finder patterns: draw as rounded squares for recognizability
-              const pad = moduleSize * 0.08;
-              const rr = moduleSize * 0.3;
-              ctx.fillStyle = dotColor;
-              roundRect(ctx, (col + margin) * moduleSize + pad, (row + margin) * moduleSize + pad, moduleSize - pad * 2, moduleSize - pad * 2, rr);
+              // Finder patterns: clean rounded squares (must stay recognizable)
+              const pad = moduleSize * 0.06;
+              const rr = moduleSize * 0.32;
+              wobblyRect(ctx, px + pad, py + pad, moduleSize - pad * 2, moduleSize - pad * 2, rr, 0); // no wobble
             } else {
-              // Regular modules: circles
-              ctx.beginPath();
-              ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
-              ctx.fillStyle = dotColor;
-              ctx.fill();
+              // Regular modules: wobbly organic squares
+              const pad = moduleSize * 0.08;
+              const baseRadius = moduleSize * 0.28;
+              const wobbleAmount = moduleSize * 0.12;
+              // Slight position jitter
+              const jx = (seededRandom(seed + 1) - 0.5) * moduleSize * 0.06;
+              const jy = (seededRandom(seed + 2) - 0.5) * moduleSize * 0.06;
+              wobblyRect(
+                ctx,
+                px + pad + jx,
+                py + pad + jy,
+                moduleSize - pad * 2,
+                moduleSize - pad * 2,
+                baseRadius,
+                wobbleAmount,
+                seed
+              );
             }
           }
         }
 
-        // Logo overlay — bigger (28% of canvas)
+        // Logo overlay — large (32% of canvas)
         const logo = new Image();
         logo.crossOrigin = "anonymous";
         logo.src = "/favicon.svg";
 
         logo.onload = () => {
-          const logoSize = canvasSize * 0.28;
+          const logoSize = canvasSize * 0.32;
           const logoPad = logoSize * 0.12;
           const centerX = canvasSize / 2;
           const centerY = canvasSize / 2;
@@ -169,18 +188,48 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   );
 }
 
-/** Helper: draw a filled rounded rectangle */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+/** Helper: draw a filled rounded rectangle with optional organic wobble */
+function wobblyRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  baseR: number,
+  wobble: number = 0,
+  seed: number = 0
+) {
+  // Seeded random for per-corner variation
+  function sr(s: number): number {
+    const v = Math.sin(s * 9301 + 49297) * 49271;
+    return v - Math.floor(v);
+  }
+
+  // Each corner gets a slightly different radius
+  const r1 = Math.max(1, baseR + (sr(seed + 10) - 0.5) * wobble * 2);
+  const r2 = Math.max(1, baseR + (sr(seed + 20) - 0.5) * wobble * 2);
+  const r3 = Math.max(1, baseR + (sr(seed + 30) - 0.5) * wobble * 2);
+  const r4 = Math.max(1, baseR + (sr(seed + 40) - 0.5) * wobble * 2);
+
+  // Slight edge bulge for organic feel
+  const bx = wobble > 0 ? (sr(seed + 50) - 0.5) * wobble * 0.6 : 0;
+  const by = wobble > 0 ? (sr(seed + 60) - 0.5) * wobble * 0.6 : 0;
+
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
+  // Top edge
+  ctx.moveTo(x + r1, y);
+  ctx.lineTo(x + w - r2, y);
+  // Top-right corner
+  ctx.quadraticCurveTo(x + w + bx * 0.3, y - by * 0.3, x + w, y + r2);
+  // Right edge
+  ctx.lineTo(x + w, y + h - r3);
+  // Bottom-right corner
+  ctx.quadraticCurveTo(x + w + bx * 0.3, y + h + by * 0.3, x + w - r3, y + h);
+  // Bottom edge
+  ctx.lineTo(x + r4, y + h);
+  // Bottom-left corner
+  ctx.quadraticCurveTo(x - bx * 0.3, y + h + by * 0.3, x, y + h - r4);
+  // Left edge
+  ctx.lineTo(x, y + r1);
+  // Top-left corner
+  ctx.quadraticCurveTo(x - bx * 0.3, y - by * 0.3, x + r1, y);
   ctx.closePath();
   ctx.fill();
 }
