@@ -10,11 +10,6 @@ interface PrintableQRCodeProps {
   targetUrl: string;
 }
 
-/**
- * QR code with organic wobbly modules and large Chanv logo.
- * Uses toCanvas to generate the QR, reads pixel data to get the matrix,
- * then redraws with custom organic shapes.
- */
 export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCodeProps) {
   const [finalDataUrl, setFinalDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,52 +23,33 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         const draw = drawRef.current;
         if (!source || !draw) return;
 
-        // Step 1: Generate standard QR onto hidden canvas
-        const tempSize = 400;
+        // Step 1: Render QR at scale=1 so each module = 1 pixel (no margin)
         await QRCode.toCanvas(source, targetUrl, {
-          width: tempSize,
+          scale: 1,
           margin: 0,
           color: { dark: "#000000", light: "#FFFFFF" },
           errorCorrectionLevel: "H",
         });
 
-        // Step 2: Read the pixel data to extract module matrix
+        // Now source.width = moduleCount (each module is exactly 1px)
+        const moduleCount = source.width;
         const srcCtx = source.getContext("2d");
         if (!srcCtx) return;
-        const imgData = srcCtx.getImageData(0, 0, tempSize, tempSize);
+        const imgData = srcCtx.getImageData(0, 0, moduleCount, moduleCount);
 
-        // Detect module size by scanning top row for first dark pixel
-        let moduleSize = 1;
-        const firstDarkX = findFirstDark(imgData, tempSize);
-        if (firstDarkX >= 0) {
-          // Count consecutive dark pixels to get module size
-          let count = 0;
-          for (let x = firstDarkX; x < tempSize; x++) {
-            const idx = x * 4;
-            if (imgData.data[idx] < 128) count++;
-            else break;
-          }
-          moduleSize = Math.max(1, count);
-        }
-
-        const moduleCount = Math.round(tempSize / moduleSize);
-
-        // Build boolean matrix
+        // Build boolean matrix (1px per module, trivial)
         const matrix: boolean[][] = [];
         for (let r = 0; r < moduleCount; r++) {
           matrix[r] = [];
           for (let c = 0; c < moduleCount; c++) {
-            // Sample center of module
-            const px = Math.floor(c * moduleSize + moduleSize / 2);
-            const py = Math.floor(r * moduleSize + moduleSize / 2);
-            const idx = (py * tempSize + px) * 4;
-            matrix[r][c] = idx < imgData.data.length && imgData.data[idx] < 128;
+            const idx = (r * moduleCount + c) * 4;
+            matrix[r][c] = imgData.data[idx] < 128;
           }
         }
 
-        // Step 3: Redraw with organic style
-        const drawMargin = 4; // modules of whitespace
-        const drawModuleSize = 14; // px per module
+        // Step 2: Redraw with organic style
+        const drawMargin = 3;
+        const drawModuleSize = Math.max(8, Math.floor(600 / (moduleCount + drawMargin * 2)));
         const totalModules = moduleCount + drawMargin * 2;
         const canvasSize = totalModules * drawModuleSize;
 
@@ -92,12 +68,11 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           return v - Math.floor(v);
         }
 
-        const dotColor = "#282828";
-        ctx.fillStyle = dotColor;
+        ctx.fillStyle = "#282828";
 
         for (let row = 0; row < moduleCount; row++) {
           for (let col = 0; col < moduleCount; col++) {
-            if (!matrix[row]?.[col]) continue;
+            if (!matrix[row][col]) continue;
 
             const seed = row * moduleCount + col;
             const px = (col + drawMargin) * drawModuleSize;
@@ -110,34 +85,36 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
 
             if (isFinder) {
               // Clean rounded squares for finder patterns
-              const pad = drawModuleSize * 0.06;
-              const rr = drawModuleSize * 0.32;
-              drawWobblyRect(ctx, px + pad, py + pad, drawModuleSize - pad * 2, drawModuleSize - pad * 2, rr, 0, 0);
+              const pad = drawModuleSize * 0.05;
+              const rr = drawModuleSize * 0.30;
+              drawRoundedRect(ctx, px + pad, py + pad, drawModuleSize - pad * 2, drawModuleSize - pad * 2, rr);
             } else {
               // Organic wobbly modules
-              const pad = drawModuleSize * 0.08;
-              const baseRadius = drawModuleSize * 0.28;
-              const wobbleAmount = drawModuleSize * 0.12;
-              const jx = (sr(seed + 1) - 0.5) * drawModuleSize * 0.06;
-              const jy = (sr(seed + 2) - 0.5) * drawModuleSize * 0.06;
-              drawWobblyRect(
-                ctx,
-                px + pad + jx, py + pad + jy,
-                drawModuleSize - pad * 2, drawModuleSize - pad * 2,
-                baseRadius, wobbleAmount, seed
-              );
+              const pad = drawModuleSize * 0.07;
+              const baseRadius = drawModuleSize * 0.25;
+              const wobble = drawModuleSize * 0.10;
+              const jx = (sr(seed + 1) - 0.5) * drawModuleSize * 0.05;
+              const jy = (sr(seed + 2) - 0.5) * drawModuleSize * 0.05;
+
+              // Variable corner radii
+              const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble * 2);
+              const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble * 2);
+              const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble * 2);
+              const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble * 2);
+
+              drawVariableRect(ctx, px + pad + jx, py + pad + jy, drawModuleSize - pad * 2, drawModuleSize - pad * 2, r1, r2, r3, r4);
             }
           }
         }
 
-        // Step 4: Draw logo
+        // Step 3: Logo overlay (20% — balanced visibility vs scannability)
         const logo = new Image();
         logo.crossOrigin = "anonymous";
         logo.src = "/favicon.svg";
 
         logo.onload = () => {
-          const logoSize = canvasSize * 0.30;
-          const logoPad = logoSize * 0.14;
+          const logoSize = canvasSize * 0.20;
+          const logoPad = logoSize * 0.18;
           const cx = canvasSize / 2;
           const cy = canvasSize / 2;
 
@@ -147,12 +124,11 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           ctx.fillStyle = "#FFFFFF";
           ctx.fill();
           ctx.strokeStyle = "#E0D5C0";
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 1.5;
           ctx.stroke();
 
           // Draw logo
           ctx.drawImage(logo, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize);
-
           setFinalDataUrl(draw.toDataURL("image/png"));
         };
 
@@ -215,45 +191,38 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   );
 }
 
-/** Find the X coordinate of the first dark pixel in the top row */
-function findFirstDark(imgData: ImageData, width: number): number {
-  for (let x = 0; x < width; x++) {
-    if (imgData.data[x * 4] < 128) return x;
-  }
-  return -1;
+/** Clean rounded rect (for finder patterns) */
+function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
 }
 
-/** Draw a filled rounded rect with optional organic wobble */
-function drawWobblyRect(
+/** Rounded rect with 4 different corner radii (for organic modules) */
+function drawVariableRect(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
-  baseR: number,
-  wobble: number = 0,
-  seed: number = 0
+  r1: number, r2: number, r3: number, r4: number
 ) {
-  function sr(s: number): number {
-    const v = Math.sin(s * 9301 + 49297) * 49271;
-    return v - Math.floor(v);
-  }
-
-  const r1 = Math.max(1, baseR + (sr(seed + 10) - 0.5) * wobble * 2);
-  const r2 = Math.max(1, baseR + (sr(seed + 20) - 0.5) * wobble * 2);
-  const r3 = Math.max(1, baseR + (sr(seed + 30) - 0.5) * wobble * 2);
-  const r4 = Math.max(1, baseR + (sr(seed + 40) - 0.5) * wobble * 2);
-
-  const bx = wobble > 0 ? (sr(seed + 50) - 0.5) * wobble * 0.6 : 0;
-  const by = wobble > 0 ? (sr(seed + 60) - 0.5) * wobble * 0.6 : 0;
-
   ctx.beginPath();
   ctx.moveTo(x + r1, y);
   ctx.lineTo(x + w - r2, y);
-  ctx.quadraticCurveTo(x + w + bx * 0.3, y - by * 0.3, x + w, y + r2);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r2);
   ctx.lineTo(x + w, y + h - r3);
-  ctx.quadraticCurveTo(x + w + bx * 0.3, y + h + by * 0.3, x + w - r3, y + h);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r3, y + h);
   ctx.lineTo(x + r4, y + h);
-  ctx.quadraticCurveTo(x - bx * 0.3, y + h + by * 0.3, x, y + h - r4);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r4);
   ctx.lineTo(x, y + r1);
-  ctx.quadraticCurveTo(x - bx * 0.3, y - by * 0.3, x + r1, y);
+  ctx.quadraticCurveTo(x, y, x + r1, y);
   ctx.closePath();
   ctx.fill();
 }
