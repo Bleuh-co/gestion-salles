@@ -31,7 +31,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
           errorCorrectionLevel: "H",
         });
 
-        const mc = source.width; // module count
+        const mc = source.width;
         const srcCtx = source.getContext("2d");
         if (!srcCtx) return;
         const imgData = srcCtx.getImageData(0, 0, mc, mc);
@@ -46,12 +46,13 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         }
 
         // Step 2: Sizing
-        const quietZone = 3;
+        const quietZone = 4;
         const m = Math.max(8, Math.floor(600 / (mc + quietZone * 2)));
         const canvasSize = (mc + quietZone * 2) * m;
         const center = canvasSize / 2;
         const qrOx = quietZone * m;
         const qrOy = quietZone * m;
+        const qrSide = mc * m;
 
         draw.width = canvasSize;
         draw.height = canvasSize;
@@ -62,108 +63,88 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-        // Seeded random
-        function sr(seed: number): number {
-          const v = Math.sin(seed * 9301 + 49297) * 49271;
-          return v - Math.floor(v);
-        }
+        // Step 3: Draw ALL QR modules — standard squares, no wobble
+        ctx.fillStyle = "#242424";
 
-        // Step 3: Wavy boundary function
-        // For each edge, a sine wave determines how far modules extend
-        // Returns true if module (row, col) is inside the wavy shape
-        function isInsideWavyBorder(row: number, col: number): boolean {
-          // Always keep finder patterns (7×7 corners)
-          const isFinder =
-            (row < 7 && col < 7) ||
-            (row < 7 && col >= mc - 7) ||
-            (row >= mc - 7 && col < 7);
-          if (isFinder) return true;
-
-          // Wavy edge: sine wave with amplitude ~1.5 modules
-          const amp = 1.8;
-          const freq = 0.45; // wave frequency
-
-          // Distance from each edge
-          const fromTop = row;
-          const fromBottom = mc - 1 - row;
-          const fromLeft = col;
-          const fromRight = mc - 1 - col;
-
-          // Wavy threshold for each edge (how many modules are "cut" on each side)
-          const wavyTop = amp * Math.sin(col * freq + 0.5) + amp;
-          const wavyBottom = amp * Math.sin(col * freq + 2.0) + amp;
-          const wavyLeft = amp * Math.sin(row * freq + 1.0) + amp;
-          const wavyRight = amp * Math.sin(row * freq + 3.0) + amp;
-
-          // Module is outside if it's too close to any wavy edge
-          if (fromTop < wavyTop) return false;
-          if (fromBottom < wavyBottom) return false;
-          if (fromLeft < wavyLeft) return false;
-          if (fromRight < wavyRight) return false;
-
-          return true;
-        }
-
-        // Step 4: Draw modules
         for (let row = 0; row < mc; row++) {
           for (let col = 0; col < mc; col++) {
             if (!matrix[row][col]) continue;
-            if (!isInsideWavyBorder(row, col)) continue;
-
-            const seed = row * mc + col;
             const px = qrOx + col * m;
             const py = qrOy + row * m;
-
-            const isFinder =
-              (row < 7 && col < 7) ||
-              (row < 7 && col >= mc - 7) ||
-              (row >= mc - 7 && col < 7);
-
-            ctx.fillStyle = "#242424";
-
-            if (isFinder) {
-              const pad = m * 0.04;
-              const rr = m * 0.28;
-              drawRoundedRect(ctx, px + pad, py + pad, m - pad * 2, m - pad * 2, rr);
-            } else {
-              const pad = m * 0.05;
-              const mw = m - pad * 2;
-              const baseRadius = mw * 0.30;
-              const wobble = mw * 0.18;
-              const jx = (sr(seed + 1) - 0.5) * m * 0.04;
-              const jy = (sr(seed + 2) - 0.5) * m * 0.04;
-
-              const r1 = Math.max(1, baseRadius + (sr(seed + 10) - 0.5) * wobble);
-              const r2 = Math.max(1, baseRadius + (sr(seed + 20) - 0.5) * wobble);
-              const r3 = Math.max(1, baseRadius + (sr(seed + 30) - 0.5) * wobble);
-              const r4 = Math.max(1, baseRadius + (sr(seed + 40) - 0.5) * wobble);
-
-              drawVariableRect(ctx, px + pad + jx, py + pad + jy, mw, mw, r1, r2, r3, r4);
-            }
+            ctx.fillRect(px, py, m, m);
           }
         }
 
-        // Step 5: Logo in center — just the N with white circle background
+        // Step 4: Wavy solid border around the QR perimeter
+        const borderWidth = m * 0.8;
+        const waveAmp = m * 1.2; // wave amplitude
+        const waveFreq = 0.08; // wave frequency
+        const steps = 200; // smoothness
+
+        ctx.strokeStyle = "#242424";
+        ctx.lineWidth = borderWidth;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+
+        // QR bounding box
+        const bx = qrOx - m * 0.5;
+        const by = qrOy - m * 0.5;
+        const bw = qrSide + m;
+        const bh = qrSide + m;
+
+        ctx.beginPath();
+
+        // Top edge (left to right)
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = bx + t * bw;
+          const y = by + Math.sin(t * Math.PI * 6 + 0.5) * waveAmp;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        // Right edge (top to bottom)
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = bx + bw + Math.sin(t * Math.PI * 6 + 1.5) * waveAmp;
+          const y = by + t * bh;
+          ctx.lineTo(x, y);
+        }
+
+        // Bottom edge (right to left)
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = bx + bw - t * bw;
+          const y = by + bh + Math.sin(t * Math.PI * 6 + 2.5) * waveAmp;
+          ctx.lineTo(x, y);
+        }
+
+        // Left edge (bottom to top)
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = bx + Math.sin(t * Math.PI * 6 + 3.5) * waveAmp;
+          const y = by + bh - t * bh;
+          ctx.lineTo(x, y);
+        }
+
+        ctx.closePath();
+        ctx.stroke();
+
+        // Step 5: Chanv icon in center — just the icon, no extra border
         const icon = new Image();
         icon.crossOrigin = "anonymous";
         icon.src = "/favicon.svg";
 
         icon.onload = () => {
-          const logoR = canvasSize * 0.11;
-
-          // White circle
+          // White background circle (no stroke)
+          const logoR = canvasSize * 0.138;
           ctx.beginPath();
           ctx.arc(center, center, logoR, 0, Math.PI * 2);
           ctx.fillStyle = "#FFFFFF";
           ctx.fill();
 
-          // Thin border
-          ctx.strokeStyle = "#242424";
-          ctx.lineWidth = m * 0.2;
-          ctx.stroke();
-
           // Draw icon
-          const iconSize = logoR * 1.65;
+          const iconSize = logoR * 1.8;
           ctx.drawImage(icon, center - iconSize / 2, center - iconSize / 2, iconSize, iconSize);
 
           setFinalDataUrl(draw.toDataURL("image/png"));
@@ -226,38 +207,4 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
       </button>
     </div>
   );
-}
-
-function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawVariableRect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number,
-  r1: number, r2: number, r3: number, r4: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r1, y);
-  ctx.lineTo(x + w - r2, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r2);
-  ctx.lineTo(x + w, y + h - r3);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r3, y + h);
-  ctx.lineTo(x + r4, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r4);
-  ctx.lineTo(x, y + r1);
-  ctx.quadraticCurveTo(x, y, x + r1, y);
-  ctx.closePath();
-  ctx.fill();
 }
