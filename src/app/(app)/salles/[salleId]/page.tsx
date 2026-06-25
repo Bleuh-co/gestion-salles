@@ -8,7 +8,7 @@ import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
 import { loadLocalOverride } from "@/lib/locaux-overrides";
 import type { SensorReading } from "@/lib/types";
-import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
+import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory, Printer } from "lucide-react";
 
 interface Props {
   params: Promise<{ salleId: string }>;
@@ -120,14 +120,24 @@ export default async function SalleDetailPage({ params }: Props) {
           {local.nomSalle && <p className="text-sm text-slate-500">{local.id}</p>}
           <p className="text-sm text-slate-600">{local.vocation}</p>
         </div>
-        <Link
-          href={`/salles/${encodeURIComponent(local.id)}/qr`}
-          className="btn-primary flex items-center gap-2 shrink-0"
-          target="_blank"
-        >
-          <QrCode className="w-4 h-4" />
-          QR Code
-        </Link>
+        <div className="flex gap-2 shrink-0">
+          <Link
+            href={`/salles/${encodeURIComponent(local.id)}/sign`}
+            className="btn-primary flex items-center gap-2"
+            target="_blank"
+          >
+            <Printer className="w-4 h-4" />
+            Panneau
+          </Link>
+          <Link
+            href={`/salles/${encodeURIComponent(local.id)}/qr`}
+            className="btn-ghost flex items-center gap-2 border border-chanv-fibre"
+            target="_blank"
+          >
+            <QrCode className="w-4 h-4" />
+            QR
+          </Link>
+        </div>
       </div>
 
       {/* Tabs (Infos + Actifs + Capteurs) */}
