@@ -20,19 +20,19 @@ const SAFETY_ITEMS: Record<string, SafetyItem[]> = {
     { icon: "🥾", label: "Porter des bottes de sécurité" },
     { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
     { icon: "🥼", label: "Porter un sarot" },
-    { icon: "🚫💍", label: "Aucun bijoux" },
+    { icon: "❌", label: "Aucun bijoux" },
   ],
   PSN: [
     { icon: "🥾", label: "Porter des bottes de sécurité" },
     { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
     { icon: "🥼", label: "Porter un sarot" },
-    { icon: "🚫💍", label: "Aucun bijoux" },
+    { icon: "❌", label: "Aucun bijoux" },
   ],
   ALI: [
     { icon: "🥾", label: "Porter des bottes de sécurité" },
     { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
     { icon: "🥼", label: "Porter un sarot" },
-    { icon: "🚫💍", label: "Aucun bijoux" },
+    { icon: "❌", label: "Aucun bijoux" },
   ],
   "CANNABIS_R&D": [
     { icon: "🥾", label: "Porter des bottes de sécurité" },
@@ -53,7 +53,7 @@ const SAFETY_ITEMS: Record<string, SafetyItem[]> = {
     { icon: "🥾", label: "Porter des bottes de sécurité" },
     { icon: "🧢", label: "Porter un filet à cheveux" },
     { icon: "🥼", label: "Porter un sarot" },
-    { icon: "🚫💍", label: "Aucun bijoux" },
+    { icon: "❌", label: "Aucun bijoux" },
   ],
 };
 

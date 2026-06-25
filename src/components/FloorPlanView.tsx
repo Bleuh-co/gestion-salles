@@ -765,7 +765,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                 Voir détails
               </Link>
               <Link
-                href={`/salles/${encodeURIComponent(selectedLocal.id)}/qr`}
+                href={`/salles/${encodeURIComponent(selectedLocal.id)}/sign`}
                 className="btn-ghost border border-chanv-fibre flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-xl"
                 target="_blank"
               >
