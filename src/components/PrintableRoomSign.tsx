@@ -195,31 +195,14 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
   // Adaptive font size: smaller for longer names
   const len = displayName.length;
-  const nameFontSize = len > 30 ? "2.8vw" : len > 22 ? "3.5vw" : len > 15 ? "4.5vw" : "5.5vw";
+  const nameFontSize = len > 30 ? "3.8vw" : len > 22 ? "4.8vw" : len > 15 ? "6vw" : "7.5vw";
 
   return (
     <>
       <canvas ref={sourceRef} style={{ display: "none" }} />
       <canvas ref={drawRef} style={{ display: "none" }} />
 
-      {/* Print buttons */}
-      <div className="print:hidden" style={{ position: "fixed", top: 16, left: 16, zIndex: 50, display: "flex", gap: 8 }}>
-        <button
-          onClick={() => window.history.back()}
-          style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#64748b", background: "#fff", padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", cursor: "pointer" }}
-        >
-          <ArrowLeft style={{ width: 16, height: 16 }} />
-          Retour
-        </button>
-        <button
-          onClick={() => window.print()}
-          className="btn-primary"
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <Printer style={{ width: 16, height: 16 }} />
-          Imprimer
-        </button>
-      </div>
+
 
       {/* ============================================================ */}
       {/* THE SIGN                                                      */}
@@ -254,7 +237,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           alignItems: "center",
           justifyContent: "center",
           color: "white",
-          fontSize: "5vw",
+          fontSize: "7vw",
           fontWeight: 900,
           lineHeight: 1,
         }}>
@@ -285,7 +268,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             </div>
             {local.nomSalle && (
               <div style={{
-                fontSize: "1.5vw",
+                fontSize: "2vw",
                 fontWeight: 500,
                 color: "#aaa",
                 marginTop: "0.8%",
@@ -347,72 +330,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           padding: "1.5% 3%",
           justifyContent: "center",
         }}>
-          {safetyItems.length > 0 ? (
-            <>
-              <div style={{
-                fontSize: "0.9vw",
-                fontWeight: 800,
-                color: "#1a3a6b",
-                letterSpacing: "0.15em",
-                textAlign: "center",
-                marginBottom: "1.5%",
-                textTransform: "uppercase",
-              }}>
-                Obligatoire
-              </div>
-              <div style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "3%",
-              }}>
-                {safetyItems.map((item, i) => (
-                  <div key={i} style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "4%",
-                    flex: "0 1 auto",
-                    maxWidth: "22%",
-                  }}>
-                    <div style={{
-                      width: "3.5vw",
-                      height: "3.5vw",
-                      borderRadius: "50%",
-                      background: "#1a3a6b",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "1.8vw",
-                    }}>
-                      {item.icon}
-                    </div>
-                    <div style={{
-                      fontSize: "0.55vw",
-                      fontWeight: 700,
-                      color: "#1a3a6b",
-                      textAlign: "center",
-                      textTransform: "uppercase",
-                      lineHeight: 1.3,
-                    }}>
-                      {item.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              height: "100%",
-            }}>
-              <div style={{ fontSize: "1.3vw", fontWeight: 800, color: "#94a3b8" }}>{local.famille}</div>
-              <div style={{ fontSize: "0.9vw", color: "#94a3b8" }}>{local.vocation}</div>
-            </div>
-          )}
+          {/* Empty for now */}
         </div>
       </div>
 
@@ -439,6 +357,15 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             overflow: hidden !important;
             page-break-inside: avoid;
             break-inside: avoid;
+          }
+          /* Hide ALL external widgets */
+          [data-feedback], [class*="feedback"],
+          [data-gandalf], [class*="gandalf"],
+          iframe, .intercom-lightweight-app,
+          .crisp-client, #hubspot-messages-iframe-container,
+          div[style*="z-index: 2147"], div[style*="z-index: 9999"] {
+            display: none !important;
+            visibility: hidden !important;
           }
         }
         @media screen {
