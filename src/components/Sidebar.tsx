@@ -23,7 +23,7 @@ export function Sidebar() {
       { label: "Locaux", icon: "🏢", href: "/salles" },
     ];
     if (isAdmin) {
-      links.push({ label: "Administration", icon: "⚙️", href: "/admin" });
+      links.push({ label: "Administration", icon: "⚙️", href: "/admin", mobileOnly: true });
     }
     return links;
   }, [isAdmin]);
