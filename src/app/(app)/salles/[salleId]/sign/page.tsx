@@ -3,6 +3,8 @@ import { getLocal } from "@/lib/data";
 import { loadLocalOverride } from "@/lib/locaux-overrides";
 import { SignPageClient } from "./SignClient";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ salleId: string }>;
 }

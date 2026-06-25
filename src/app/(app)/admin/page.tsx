@@ -4,6 +4,8 @@ import { getLocaux, actifs, auditLogs } from "@/lib/data";
 import { AdminClient } from "@/components/AdminClient";
 import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Administration — Gestion Salles",
   description: "Administration des locaux et actifs ChanvHQ.",

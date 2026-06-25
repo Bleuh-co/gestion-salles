@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth-server";
 import { SallesPageClient } from "@/components/SallesPageClient";
 import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Gestion des Salles — ChanvHQ",
   description: "Vue d'ensemble des locaux de l'usine ChanvHQ du Groupe Chanv.",

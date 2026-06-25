@@ -10,6 +10,9 @@ import { loadLocalOverride } from "@/lib/locaux-overrides";
 import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory, Printer } from "lucide-react";
 
+// Force dynamic rendering — Firestore overrides + TempStick API
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ salleId: string }>;
 }
