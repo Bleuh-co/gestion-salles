@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLocal, getActifsBySalle } from "@/lib/data";
+import { getLocal, getActifsBySalle, getLocaux } from "@/lib/data";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { SalleTabs } from "@/components/SalleTabs";
+import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
+import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
+import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
 
 interface Props {
@@ -20,14 +23,44 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
+async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
+  if (!isTempStickConfigured()) return [];
+  try {
+    const allLocaux = getLocaux({ includeArchived: true });
+    const localIds = allLocaux.map((l) => l.id);
+    const [sensors, overrides] = await Promise.all([
+      listTempStickSensors(),
+      loadOverrides(),
+    ]);
+    const matched = matchAllSensors(sensors, localIds, overrides);
+    return getSensorsForRoom(matched, localId).map((s) => ({
+      sensor_id: s.sensor_id,
+      sensor_name: s.sensor_name,
+      last_temp_c: s.last_temp_c,
+      last_humidity: s.last_humidity,
+      last_checkin_utc: s.last_checkin_utc,
+      offline: s.offline,
+      battery: s.battery,
+      match_source: s.match_source as "auto" | "override",
+    }));
+  } catch (e) {
+    console.warn("[sensors] Failed to fetch for room", localId, e);
+    return [];
+  }
+}
+
 export default async function SalleDetailPage({ params }: Props) {
   const { salleId } = await params;
   const local = getLocal(decodeURIComponent(salleId));
   if (!local) notFound();
 
   const actifs = getActifsBySalle(local.id);
+  const sensors = await fetchRoomSensors(local.id);
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence;
+
+  // Best sensor reading for header badge (prefer online sensors)
+  const liveSensor = sensors.find((s) => !s.offline) || sensors[0] || null;
 
   return (
     <div className="space-y-6 pt-6">
@@ -53,6 +86,31 @@ export default async function SalleDetailPage({ params }: Props) {
           <div className="flex items-start gap-3 flex-wrap">
             <h1 className="text-xl font-bold text-chanv-terre">{local.id}</h1>
             <LocalStatusBadge status={local.statut} />
+            {/* Live sensor badge */}
+            {liveSensor && (
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
+                style={{
+                  background: liveSensor.offline ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)",
+                  borderColor: liveSensor.offline ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.2)",
+                  color: liveSensor.offline ? "#dc2626" : "#16a34a",
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: liveSensor.offline ? "#ef4444" : "#22c55e",
+                  }}
+                />
+                {liveSensor.last_temp_c != null && (
+                  <span>{liveSensor.last_temp_c.toFixed(1)}°</span>
+                )}
+                {liveSensor.last_humidity != null && (
+                  <span className="text-blue-500">{Math.round(liveSensor.last_humidity)}%</span>
+                )}
+                {liveSensor.offline && <span>Hors ligne</span>}
+              </div>
+            )}
           </div>
           {local.nomSalle && <p className="text-sm text-slate-500">{local.nomSalle}</p>}
           <p className="text-sm text-slate-600">{local.vocation}</p>
@@ -67,8 +125,8 @@ export default async function SalleDetailPage({ params }: Props) {
         </Link>
       </div>
 
-      {/* Tabs (Infos + Actifs) */}
-      <SalleTabs actifs={actifs}>
+      {/* Tabs (Infos + Actifs + Capteurs) */}
+      <SalleTabs actifs={actifs} sensors={sensors}>
         {/* This is the infos panel content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InfoCard icon={<Building className="w-4 h-4" />} label="Bâtiment" value={local.batiment} />

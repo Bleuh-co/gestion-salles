@@ -145,3 +145,30 @@ export interface LocalAssignationSummary {
   assignments: ProductionAssignment[];
   totalEmployees: number;
 }
+
+// ============================================================
+// TempStick — capteurs température / humidité
+// ============================================================
+
+export interface SensorReading {
+  sensor_id: string;
+  sensor_name: string | null;
+  last_temp_c: number | null;
+  last_humidity: number | null;
+  last_checkin_utc: string | null;
+  offline: boolean;
+  battery: number | null;
+  match_source: "auto" | "override";
+}
+
+export interface SensorMapping {
+  sensor_id: string;
+  sensor_name: string | null;
+  matched_local_id: string | null;
+  match_source: "auto" | "override" | "none";
+  last_temp_c: number | null;
+  last_humidity: number | null;
+  offline: boolean;
+  battery: number | null;
+  last_checkin_utc: string | null;
+}

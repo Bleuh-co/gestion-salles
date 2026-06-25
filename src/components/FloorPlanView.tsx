@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Local } from "@/lib/types";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
@@ -8,7 +8,7 @@ import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
   Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save,
-  Plus, EyeOff, ChevronDown, ChevronRight, Search
+  Plus, EyeOff, ChevronDown, ChevronRight, Search, Droplets, Battery
 } from "lucide-react";
 
 // ============================================================
@@ -23,11 +23,22 @@ interface PlanInfo {
   room_count: number;
 }
 
+interface SnapshotSensor {
+  sensor_id: string;
+  sensor_name: string | null;
+  last_temp_c: number | null;
+  last_humidity: number | null;
+  last_checkin_utc: string | null;
+  offline: boolean;
+  battery: number | null;
+}
+
 interface Snapshot {
   plan_id: string;
   plan_name: string;
   image_url: string | null;
   room_positions: Record<string, { x: number; y: number }>;
+  sensors?: SnapshotSensor[];
 }
 
 interface FloorPlanViewProps {
@@ -39,13 +50,58 @@ interface FloorPlanViewProps {
 // Unplaced rooms are shown in the tray panel during edit mode.
 
 
-
 // ============================================================
 // Component
 // ============================================================
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 6;
+
+// ---- Client-side sensor→room matching (simplified, no Firestore overrides) ----
+
+function stripAccents(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function normaliseName(s: string): string {
+  return stripAccents(s).toUpperCase().replace(/\s+/g, " ").trim();
+}
+
+function stripSuffix(s: string): string {
+  const m = s.match(/^(.+\d)[A-Za-z]$/);
+  if (m && m[1].length >= 3) return m[1];
+  return s;
+}
+
+function clientMatchSensors(
+  sensors: SnapshotSensor[],
+  localIds: string[]
+): Map<string, SnapshotSensor[]> {
+  const normMap = new Map<string, string>();
+  for (const id of localIds) {
+    normMap.set(normaliseName(id), id);
+  }
+
+  const result = new Map<string, SnapshotSensor[]>();
+
+  for (const sensor of sensors) {
+    if (!sensor.sensor_name) continue;
+    const norm = normaliseName(sensor.sensor_name);
+    const stripped = normaliseName(stripSuffix(sensor.sensor_name));
+
+    let matchedId: string | null = null;
+    if (normMap.has(norm)) matchedId = normMap.get(norm)!;
+    else if (normMap.has(stripped)) matchedId = normMap.get(stripped)!;
+
+    if (matchedId) {
+      const arr = result.get(matchedId) || [];
+      arr.push(sensor);
+      result.set(matchedId, arr);
+    }
+  }
+
+  return result;
+}
 
 export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
   const [plans, setPlans] = useState<PlanInfo[]>([]);
@@ -57,6 +113,12 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
   const [editMode, setEditMode] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Sensor→room mapping (computed from snapshot sensors)
+  const sensorsByRoom = useMemo(() => {
+    if (!snapshot?.sensors?.length) return new Map<string, SnapshotSensor[]>();
+    return clientMatchSensors(snapshot.sensors, locaux.map((l) => l.id));
+  }, [snapshot, locaux]);
 
   // Pan / Zoom
   const [scale, setScale] = useState(1);
@@ -549,29 +611,76 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                   >
                     {short}
                   </div>
-                  {/* Room name */}
+                  {/* Room name + sensor badge */}
                   <div
                     style={{
                       position: "absolute",
                       top: "calc(100% + 3px)",
                       left: "50%",
                       transform: "translateX(-50%)",
-                      background: "rgba(255,255,255,0.95)",
-                      color: "#333",
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                      fontSize: 9,
-                      fontWeight: 700,
-                      whiteSpace: "nowrap",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 2,
                       pointerEvents: "none",
-                      maxWidth: 110,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      border: "1px solid rgba(0,0,0,0.06)",
                     }}
                   >
-                    {local.id}
+                    <div
+                      style={{
+                        background: "rgba(255,255,255,0.95)",
+                        color: "#333",
+                        padding: "2px 7px",
+                        borderRadius: 5,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        whiteSpace: "nowrap",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                        maxWidth: 110,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        border: "1px solid rgba(0,0,0,0.06)",
+                      }}
+                    >
+                      {local.id}
+                    </div>
+                    {/* Sensor badge */}
+                    {(() => {
+                      const roomSensors = sensorsByRoom.get(roomId);
+                      if (!roomSensors?.length) return null;
+                      const best = roomSensors.find((s) => !s.offline) || roomSensors[0];
+                      return (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 3,
+                            background: best.offline ? "rgba(30,30,30,0.85)" : "rgba(20,20,20,0.88)",
+                            padding: "2px 6px",
+                            borderRadius: 6,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            color: "white",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 5,
+                              height: 5,
+                              borderRadius: "50%",
+                              backgroundColor: best.offline ? "#ef4444" : "#22c55e",
+                              flexShrink: 0,
+                            }}
+                          />
+                          {best.last_temp_c != null && (
+                            <span style={{ color: "#fca5a5" }}>{best.last_temp_c.toFixed(1)}°</span>
+                          )}
+                          {best.last_humidity != null && (
+                            <span style={{ color: "#93c5fd" }}>{Math.round(best.last_humidity)}%</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -615,6 +724,34 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">{selectedLocal.vocation || "—"}</p>
+
+              {/* Live sensor readings */}
+              {(() => {
+                const roomSensors = selectedRoom ? sensorsByRoom.get(selectedRoom) : undefined;
+                if (!roomSensors?.length) return null;
+                return (
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: "linear-gradient(135deg, #f0fdf4, #eff6ff)", border: "1px solid #e2e8f0" }}>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Capteurs live</div>
+                    {roomSensors.map((s) => (
+                      <div key={s.sensor_id} className="flex items-center gap-2 text-xs">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: s.offline ? "#ef4444" : "#22c55e" }}
+                        />
+                        <span className="text-slate-600 truncate flex-1" title={s.sensor_name || s.sensor_id}>
+                          {s.sensor_name || s.sensor_id}
+                        </span>
+                        {s.last_temp_c != null && (
+                          <span className="font-bold text-rose-600">{s.last_temp_c.toFixed(1)}°</span>
+                        )}
+                        {s.last_humidity != null && (
+                          <span className="font-bold text-blue-600">{Math.round(s.last_humidity)}%</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="flex items-center gap-1.5 text-slate-500">
