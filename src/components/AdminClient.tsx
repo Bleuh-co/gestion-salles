@@ -123,6 +123,9 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
 // ============================================================
 
 function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; search: string; showArchived: boolean }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
   const filtered = useMemo(() => {
     let result = locaux;
     if (!showArchived) result = result.filter((l) => !l.archived);
@@ -150,6 +153,7 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
           <thead>
             <tr className="border-b border-chanv-fibre text-left">
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">ID</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Nom Salle</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Famille</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Étage</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Vocation</th>
@@ -163,9 +167,60 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                 key={l.id}
                 className={`border-b border-chanv-fibre/50 hover:bg-chanv-fibre/20 transition-colors ${l.archived ? "opacity-40" : ""}`}
               >
-                <td className="px-3 py-2.5 font-medium text-chanv-terre">
+                <td className="px-3 py-2.5 font-medium text-chanv-terre text-xs font-mono">
                   {l.id}
-                  {l.nomSalle && <span className="text-slate-400 ml-1 text-xs">({l.nomSalle})</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  {editingId === l.id ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            // TODO: persist to Firestore when data source migrated
+                            l.nomSalle = editValue;
+                            setEditingId(null);
+                          }
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        className="text-xs border border-chanv-terre/30 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-chanv-terre/30"
+                        autoFocus
+                        placeholder="Nom de la salle…"
+                      />
+                      <button
+                        onClick={() => {
+                          l.nomSalle = editValue;
+                          setEditingId(null);
+                        }}
+                        className="p-1 text-green-600 hover:bg-green-50 rounded"
+                        title="Sauvegarder"
+                      >
+                        <Save className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                        title="Annuler"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center gap-1 group cursor-pointer"
+                      onClick={() => {
+                        setEditingId(l.id);
+                        setEditValue(l.nomSalle || "");
+                      }}
+                    >
+                      <span className={`text-xs ${l.nomSalle ? "text-chanv-terre font-medium" : "text-slate-300 italic"}`}>
+                        {l.nomSalle || "—"}
+                      </span>
+                      <Pencil className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </td>
                 <td className="px-3 py-2.5">
                   <span
@@ -511,7 +566,7 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
                       >
                         <option value="">— Non associé —</option>
                         {locaux.map((l) => (
-                          <option key={l.id} value={l.id}>{l.id}</option>
+                          <option key={l.id} value={l.id}>{l.nomSalle || l.id}{l.nomSalle ? ` (${l.id})` : ""}</option>
                         ))}
                       </select>
                     )}

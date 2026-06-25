@@ -641,7 +641,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                         border: "1px solid rgba(0,0,0,0.06)",
                       }}
                     >
-                      {local.id}
+                      {local.nomSalle || local.id}
                     </div>
                     {/* Sensor badge */}
                     {(() => {
@@ -702,9 +702,9 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                 {FAMILLE_SHORT[selectedLocal.famille] || "?"}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-chanv-terre text-sm truncate">{selectedLocal.id}</h3>
+                <h3 className="font-bold text-chanv-terre text-sm truncate">{selectedLocal.nomSalle || selectedLocal.id}</h3>
                 {selectedLocal.nomSalle && (
-                  <p className="text-[11px] text-slate-400 truncate">{selectedLocal.nomSalle}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{selectedLocal.id}</p>
                 )}
               </div>
               <button
@@ -925,11 +925,11 @@ function RoomTray({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-[11px] font-semibold text-slate-700 truncate">
-                          {room.id}
+                          {room.nomSalle || room.id}
                         </div>
                         {room.nomSalle && (
                           <div className="text-[9px] text-slate-400 truncate">
-                            {room.nomSalle}
+                            {room.id}
                           </div>
                         )}
                       </div>

@@ -31,10 +31,10 @@ export function LocalCard({ local, assignedCount }: LocalCardProps) {
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-chanv-terre text-sm leading-tight truncate">
-              {local.id}
+              {local.nomSalle || local.id}
             </h3>
             {local.nomSalle && (
-              <p className="text-xs text-slate-400 truncate">{local.nomSalle}</p>
+              <p className="text-xs text-slate-400 truncate">{local.id}</p>
             )}
           </div>
         </div>

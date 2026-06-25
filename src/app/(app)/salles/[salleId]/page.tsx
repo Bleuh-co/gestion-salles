@@ -84,7 +84,7 @@ export default async function SalleDetailPage({ params }: Props) {
         </div>
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-start gap-3 flex-wrap">
-            <h1 className="text-xl font-bold text-chanv-terre">{local.id}</h1>
+            <h1 className="text-xl font-bold text-chanv-terre">{local.nomSalle || local.id}</h1>
             <LocalStatusBadge status={local.statut} />
             {/* Live sensor badge */}
             {liveSensor && (
@@ -112,7 +112,7 @@ export default async function SalleDetailPage({ params }: Props) {
               </div>
             )}
           </div>
-          {local.nomSalle && <p className="text-sm text-slate-500">{local.nomSalle}</p>}
+          {local.nomSalle && <p className="text-sm text-slate-500">{local.id}</p>}
           <p className="text-sm text-slate-600">{local.vocation}</p>
         </div>
         <Link
