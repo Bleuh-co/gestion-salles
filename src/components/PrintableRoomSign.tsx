@@ -473,18 +473,29 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
       <style>{`
         @media print {
           @page {
-            size: 11in 8.5in landscape;
+            size: 11in 8.5in;
             margin: 0;
           }
-          body {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
+            background-image: none !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           .room-sign-page {
             margin: 0 !important;
-            page-break-after: always;
+            width: 11in !important;
+            height: 8.5in !important;
+            overflow: hidden !important;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+        }
+        @media screen {
+          .room-sign-page {
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
           }
         }
       `}</style>

@@ -379,3 +379,24 @@ h4 {
   100% { box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.35), 0 0 0 0 rgba(16,185,129,0); }
 }
 
+/* ---- Print ---- */
+@media print {
+  html, body {
+    background: white !important;
+    background-image: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .chanv-header,
+  .chanv-header::after,
+  .sidebar-overlay,
+  .sidebar-panel,
+  .chanv-surface,
+  nav.print\\:hidden,
+  .print\\:hidden {
+    display: none !important;
+  }
+}
+

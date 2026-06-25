@@ -1,0 +1,63 @@
+steps:
+  # Build Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_API_KEY=${_NEXT_PUBLIC_FIREBASE_API_KEY}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_NEXT_PUBLIC_FIREBASE_PROJECT_ID}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_APP_ID=${_NEXT_PUBLIC_FIREBASE_APP_ID}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=${_NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_HUB_URL=${_NEXT_PUBLIC_HUB_URL}"
+      - "-t"
+      - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
+      - "."
+
+  # Push image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
+
+  # Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "gestion-salles"
+      - "--image"
+      - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
+      - "--region"
+      - "northamerica-northeast1"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--port"
+      - "8080"
+
+images:
+  - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
+
+substitutions:
+  _NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyDIzsBK6Oq0Nzpe4WHXFHJ6cT3vVPMRlqY"
+  _NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "antigravity-20260107.firebaseapp.com"
+  _NEXT_PUBLIC_FIREBASE_PROJECT_ID: "antigravity-20260107"
+  _NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "antigravity-20260107.firebasestorage.app"
+  _NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "271227085398"
+  _NEXT_PUBLIC_FIREBASE_APP_ID: "1:271227085398:web:default"
+  _NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS: "chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com"
+  _NEXT_PUBLIC_HUB_URL: "https://chanv-apps-hub-fkdfx4bpva-nn.a.run.app"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

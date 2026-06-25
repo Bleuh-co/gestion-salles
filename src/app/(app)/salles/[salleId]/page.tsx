@@ -125,7 +125,7 @@ export default async function SalleDetailPage({ params }: Props) {
         </div>
         <div className="flex gap-2 shrink-0">
           <Link
-            href={`/salles/${encodeURIComponent(local.id)}/sign`}
+            href={`/sign/${encodeURIComponent(local.id)}`}
             className="btn-primary flex items-center gap-2"
             target="_blank"
           >
