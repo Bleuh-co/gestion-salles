@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import type { Local } from "@/lib/types";
-import type { SensorSummary } from "@/app/(app)/salles/page";
 import { LocalCard } from "@/components/LocalCard";
 import { FamilleFilter } from "@/components/FamilleFilter";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,10 +11,9 @@ interface SallesListClientProps {
   locaux: Local[];
   familles: string[];
   etages: string[];
-  sensorMap?: Record<string, SensorSummary>;
 }
 
-export function SallesListClient({ locaux, familles, etages, sensorMap }: SallesListClientProps) {
+export function SallesListClient({ locaux, familles, etages }: SallesListClientProps) {
   const [selectedFamille, setSelectedFamille] = useState<string | null>(null);
   const [selectedEtage, setSelectedEtage] = useState<string | null>(null);
   const [selectedStatut, setSelectedStatut] = useState<string | null>(null);
@@ -114,7 +112,7 @@ export function SallesListClient({ locaux, familles, etages, sensorMap }: Salles
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((local) => (
-            <LocalCard key={local.id} local={local} sensorData={sensorMap?.[local.id]} />
+            <LocalCard key={local.id} local={local} />
           ))}
         </div>
       )}

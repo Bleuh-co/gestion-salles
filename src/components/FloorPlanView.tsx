@@ -37,14 +37,16 @@ interface Snapshot {
   plan_id: string;
   plan_name: string;
   image_url: string | null;
+  image_width: number | null;
+  image_height: number | null;
   room_positions: Record<string, { x: number; y: number }>;
-  sensors?: SnapshotSensor[];
+  sensors: SnapshotSensor[];
+  sensor_overrides?: Record<string, string>;
 }
 
 interface FloorPlanViewProps {
   locaux: Local[];
   isAdmin?: boolean;
-  sensorMap?: Record<string, { temp: number | null; humidity: number | null; offline: boolean }>;
 }
 
 // No auto-layout — only placed rooms appear on the plan.
@@ -76,23 +78,32 @@ function stripSuffix(s: string): string {
 
 function clientMatchSensors(
   sensors: SnapshotSensor[],
-  localIds: string[]
+  localIds: string[],
+  overrides?: Record<string, string>
 ): Map<string, SnapshotSensor[]> {
   const normMap = new Map<string, string>();
   for (const id of localIds) {
     normMap.set(normaliseName(id), id);
   }
 
+  const localIdSet = new Set(localIds);
   const result = new Map<string, SnapshotSensor[]>();
 
   for (const sensor of sensors) {
-    if (!sensor.sensor_name) continue;
-    const norm = normaliseName(sensor.sensor_name);
-    const stripped = normaliseName(stripSuffix(sensor.sensor_name));
-
     let matchedId: string | null = null;
-    if (normMap.has(norm)) matchedId = normMap.get(norm)!;
-    else if (normMap.has(stripped)) matchedId = normMap.get(stripped)!;
+
+    // 1. Check admin overrides first
+    if (overrides && overrides[sensor.sensor_id] && localIdSet.has(overrides[sensor.sensor_id])) {
+      matchedId = overrides[sensor.sensor_id];
+    }
+
+    // 2. Auto-match by name
+    if (!matchedId && sensor.sensor_name) {
+      const norm = normaliseName(sensor.sensor_name);
+      const stripped = normaliseName(stripSuffix(sensor.sensor_name));
+      if (normMap.has(norm)) matchedId = normMap.get(norm)!;
+      else if (normMap.has(stripped)) matchedId = normMap.get(stripped)!;
+    }
 
     if (matchedId) {
       const arr = result.get(matchedId) || [];
@@ -115,10 +126,10 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Sensor→room mapping (computed from snapshot sensors)
+  // Sensor→room mapping (computed from snapshot sensors + overrides)
   const sensorsByRoom = useMemo(() => {
     if (!snapshot?.sensors?.length) return new Map<string, SnapshotSensor[]>();
-    return clientMatchSensors(snapshot.sensors, locaux.map((l) => l.id));
+    return clientMatchSensors(snapshot.sensors, locaux.map((l) => l.id), snapshot.sensor_overrides);
   }, [snapshot, locaux]);
 
   // Pan / Zoom

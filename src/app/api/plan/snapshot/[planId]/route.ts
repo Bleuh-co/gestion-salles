@@ -34,6 +34,16 @@ export async function GET(_req: NextRequest, { params }: Props) {
       sensorsError = "TEMPSTICK_API_KEY non configurée";
     }
 
+    // Sensor overrides (admin-assigned sensor→room mappings)
+    const overridesSnap = await db.collection("sensor_overrides").get();
+    const sensorOverrides: Record<string, string> = {};
+    for (const odoc of overridesSnap.docs) {
+      const odata = odoc.data();
+      if (odata.local_id && typeof odata.local_id === "string") {
+        sensorOverrides[odoc.id] = odata.local_id;
+      }
+    }
+
     return NextResponse.json({
       plan_id: doc.id,
       plan_name: d.name || doc.id,
@@ -43,6 +53,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
       sensor_positions: d.sensor_positions || {},
       room_positions: d.room_positions || {},
       sensors,
+      sensor_overrides: sensorOverrides,
       sensors_error: sensorsError,
       fetched_at: new Date().toISOString(),
     });
