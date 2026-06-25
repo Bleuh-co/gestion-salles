@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Local } from "@/lib/types";
+import type { SensorSummary } from "@/app/(app)/salles/page";
 import { SallesListClient } from "./SallesListClient";
 import { FloorPlanView } from "./FloorPlanView";
 import {
@@ -14,6 +15,7 @@ interface Props {
   familles: string[];
   etages: string[];
   isAdmin?: boolean;
+  sensorMap?: Record<string, SensorSummary>;
   stats: {
     total: number;
     enService: number;
@@ -23,7 +25,7 @@ interface Props {
   };
 }
 
-export function SallesPageClient({ locaux, familles, etages, stats, isAdmin }: Props) {
+export function SallesPageClient({ locaux, familles, etages, stats, isAdmin, sensorMap }: Props) {
   const [view, setView] = useState<"plan" | "list">("plan");
 
   return (
@@ -75,9 +77,9 @@ export function SallesPageClient({ locaux, familles, etages, stats, isAdmin }: P
 
       {/* Content */}
       {view === "plan" ? (
-        <FloorPlanView locaux={locaux} isAdmin={isAdmin} />
+        <FloorPlanView locaux={locaux} isAdmin={isAdmin} sensorMap={sensorMap} />
       ) : (
-        <SallesListClient locaux={locaux} familles={familles} etages={etages} />
+        <SallesListClient locaux={locaux} familles={familles} etages={etages} sensorMap={sensorMap} />
       )}
     </div>
   );

@@ -4,14 +4,21 @@ import Link from "next/link";
 import type { Local } from "@/lib/types";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "./LocalStatusBadge";
-import { DoorOpen, Thermometer, Shield, Users } from "lucide-react";
+import { DoorOpen, Thermometer, Shield, Users, Droplets, Wifi, WifiOff } from "lucide-react";
+
+interface SensorData {
+  temp: number | null;
+  humidity: number | null;
+  offline: boolean;
+}
 
 interface LocalCardProps {
   local: Local;
   assignedCount?: number;
+  sensorData?: SensorData;
 }
 
-export function LocalCard({ local, assignedCount }: LocalCardProps) {
+export function LocalCard({ local, assignedCount, sensorData }: LocalCardProps) {
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence;
 
@@ -45,6 +52,36 @@ export function LocalCard({ local, assignedCount }: LocalCardProps) {
       <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
         {local.vocation || "—"}
       </p>
+
+      {/* Sensor data */}
+      {sensorData && (
+        <div className="flex items-center gap-3 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
+          {sensorData.offline ? (
+            <span className="flex items-center gap-1.5 text-[11px] text-red-400 font-medium">
+              <WifiOff className="w-3 h-3" />
+              Capteur hors ligne
+            </span>
+          ) : (
+            <>
+              {sensorData.temp !== null && (
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                  <Thermometer className="w-3 h-3" />
+                  {sensorData.temp.toFixed(1)}°C
+                </span>
+              )}
+              {sensorData.humidity !== null && (
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-blue-500">
+                  <Droplets className="w-3 h-3" />
+                  {sensorData.humidity.toFixed(0)}%
+                </span>
+              )}
+              <span className="flex items-center gap-1 ml-auto text-[10px] text-green-500">
+                <Wifi className="w-3 h-3" />
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center gap-3 pt-2 border-t border-chanv-fibre mt-auto text-[11px] text-slate-500">

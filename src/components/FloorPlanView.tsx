@@ -44,6 +44,7 @@ interface Snapshot {
 interface FloorPlanViewProps {
   locaux: Local[];
   isAdmin?: boolean;
+  sensorMap?: Record<string, { temp: number | null; humidity: number | null; offline: boolean }>;
 }
 
 // No auto-layout — only placed rooms appear on the plan.
