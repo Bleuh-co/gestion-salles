@@ -34,6 +34,7 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
   const [activeTab, setActiveTab] = useState<AdminTab>("locaux");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   return (
     <div className="space-y-6 pt-6">
@@ -89,15 +90,42 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
           />
         </div>
         {activeTab === "locaux" && (
-          <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              className="rounded"
-            />
-            Archivés
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="rounded"
+              />
+              Archivés
+            </label>
+            <button
+              onClick={async () => {
+                setSyncing(true);
+                try {
+                  const res = await fetch("/api/admin/sync-nomSalle", { method: "POST" });
+                  const data = await res.json();
+                  if (res.ok) {
+                    alert(`✅ ${data.imported} noms importés depuis le Sheet`);
+                    window.location.reload();
+                  } else {
+                    alert(`❌ Erreur: ${data.error}`);
+                  }
+                } catch {
+                  alert("❌ Erreur réseau");
+                } finally {
+                  setSyncing(false);
+                }
+              }}
+              disabled={syncing}
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-chanv-terre transition-colors disabled:opacity-50"
+              title="Importer les noms de salle depuis le Google Sheet"
+            >
+              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              Sync Sheet
+            </button>
+          </div>
         )}
       </div>
 

@@ -7,54 +7,53 @@ import type { Local } from "@/lib/types";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 
 // ============================================================
-// Safety pictograms per famille (can be extended)
+// Safety pictograms per famille
 // ============================================================
 
 interface SafetyItem {
-  icon: string; // emoji or text
+  icon: string;
   label: string;
 }
 
-// Default safety requirements by famille — adapt as needed
 const SAFETY_ITEMS: Record<string, SafetyItem[]> = {
   CANNABIS: [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🧢", label: "FILET À CHEVEUX" },
-    { icon: "🥼", label: "SARRAU" },
-    { icon: "🚫💍", label: "AUCUN BIJOU" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
+    { icon: "🥼", label: "Porter un sarot" },
+    { icon: "🚫💍", label: "Aucun bijoux" },
   ],
   PSN: [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🧢", label: "FILET À CHEVEUX" },
-    { icon: "🥼", label: "SARRAU" },
-    { icon: "🚫💍", label: "AUCUN BIJOU" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
+    { icon: "🥼", label: "Porter un sarot" },
+    { icon: "🚫💍", label: "Aucun bijoux" },
   ],
   ALI: [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🧢", label: "FILET À CHEVEUX" },
-    { icon: "🥼", label: "SARRAU" },
-    { icon: "🚫💍", label: "AUCUN BIJOU" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
+    { icon: "🥼", label: "Porter un sarot" },
+    { icon: "🚫💍", label: "Aucun bijoux" },
   ],
   "CANNABIS_R&D": [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🧢", label: "FILET À CHEVEUX" },
-    { icon: "🥼", label: "SARRAU" },
-    { icon: "🧤", label: "GANTS" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🧢", label: "Porter un filet à cheveux" },
+    { icon: "🥼", label: "Porter un sarot" },
+    { icon: "🧤", label: "Porter des gants" },
   ],
   "SERVICES PRODUCTION": [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🧢", label: "FILET À CHEVEUX" },
-    { icon: "🥼", label: "SARRAU" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🧢", label: "Porter un filet à cheveux" },
+    { icon: "🥼", label: "Porter un sarot" },
   ],
   "SERVICES TECHNIQUES": [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🦺", label: "VÊTEMENTS DE SÉCURITÉ" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🦺", label: "Vêtements de sécurité" },
   ],
   "MAISON D'HERBES": [
-    { icon: "🥾", label: "BOTTES DE SÉCURITÉ" },
-    { icon: "🧢", label: "FILET À CHEVEUX" },
-    { icon: "🥼", label: "SARRAU" },
-    { icon: "🚫💍", label: "AUCUN BIJOU" },
+    { icon: "🥾", label: "Porter des bottes de sécurité" },
+    { icon: "🧢", label: "Porter un filet à cheveux" },
+    { icon: "🥼", label: "Porter un sarot" },
+    { icon: "🚫💍", label: "Aucun bijoux" },
   ],
 };
 
@@ -68,7 +67,7 @@ interface RoomSignProps {
 }
 
 // ============================================================
-// Component
+// Component — US Letter landscape sign matching the reference
 // ============================================================
 
 export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
@@ -125,7 +124,6 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvasSize, canvasSize);
-
         ctx.fillStyle = "#242424";
         for (let row = 0; row < mc; row++) {
           for (let col = 0; col < mc; col++) {
@@ -142,29 +140,13 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
         ctx.lineWidth = borderWidth;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
-        const bx = qrOx - m * 0.5;
-        const by = qrOy - m * 0.5;
-        const bw = qrSide + m;
-        const bh = qrSide + m;
+        const bx = qrOx - m * 0.5, by = qrOy - m * 0.5;
+        const bw = qrSide + m, bh = qrSide + m;
         ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          const x = bx + t * bw;
-          const y = by + Math.sin(t * Math.PI * 6 + 0.5) * waveAmp;
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          ctx.lineTo(bx + bw + Math.sin(t * Math.PI * 6 + 1.5) * waveAmp, by + t * bh);
-        }
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          ctx.lineTo(bx + bw - t * bw, by + bh + Math.sin(t * Math.PI * 6 + 2.5) * waveAmp);
-        }
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          ctx.lineTo(bx + Math.sin(t * Math.PI * 6 + 3.5) * waveAmp, by + bh - t * bh);
-        }
+        for (let i = 0; i <= steps; i++) { const t = i / steps; const x = bx + t * bw; const y = by + Math.sin(t * Math.PI * 6 + 0.5) * waveAmp; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+        for (let i = 0; i <= steps; i++) { const t = i / steps; ctx.lineTo(bx + bw + Math.sin(t * Math.PI * 6 + 1.5) * waveAmp, by + t * bh); }
+        for (let i = 0; i <= steps; i++) { const t = i / steps; ctx.lineTo(bx + bw - t * bw, by + bh + Math.sin(t * Math.PI * 6 + 2.5) * waveAmp); }
+        for (let i = 0; i <= steps; i++) { const t = i / steps; ctx.lineTo(bx + Math.sin(t * Math.PI * 6 + 3.5) * waveAmp, by + bh - t * bh); }
         ctx.closePath();
         ctx.stroke();
 
@@ -174,18 +156,13 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
         icon.src = "/favicon.svg";
         icon.onload = () => {
           const logoR = canvasSize * 0.138;
-          ctx.beginPath();
-          ctx.arc(center, center, logoR, 0, Math.PI * 2);
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fill();
+          ctx.beginPath(); ctx.arc(center, center, logoR, 0, Math.PI * 2); ctx.fillStyle = "#FFFFFF"; ctx.fill();
           const iconSize = logoR * 1.8;
           ctx.drawImage(icon, center - iconSize / 2, center - iconSize / 2, iconSize, iconSize);
           setQrDataUrl(draw.toDataURL("image/png"));
         };
         icon.onerror = () => setQrDataUrl(draw.toDataURL("image/png"));
-      } catch (err) {
-        console.error("QR generation error:", err);
-      }
+      } catch (err) { console.error("QR generation error:", err); }
     }
     generate();
   }, [targetUrl]);
@@ -203,13 +180,16 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
     );
   }
 
+  // Adaptive font size for room name
+  const nameFontSize = displayName.length > 25 ? 48 : displayName.length > 18 ? 56 : displayName.length > 12 ? 72 : 88;
+
   return (
     <>
       <canvas ref={sourceRef} style={{ display: "none" }} />
       <canvas ref={drawRef} style={{ display: "none" }} />
 
-      {/* Print button — hidden when printing */}
-      <div className="print:hidden fixed top-6 left-6 z-50 flex gap-3">
+      {/* Print buttons — hidden when printing */}
+      <div className="print:hidden fixed top-4 left-4 z-50 flex gap-2">
         <button
           onClick={() => window.history.back()}
           className="flex items-center gap-2 text-sm text-slate-500 hover:text-chanv-terre transition-colors bg-white px-3 py-2 rounded-lg shadow"
@@ -226,127 +206,102 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
         </button>
       </div>
 
-      {/* =========================================================== */}
-      {/* THE SIGN — US Letter landscape: 11" × 8.5"                  */}
-      {/* =========================================================== */}
-      <div
-        className="room-sign-page"
-        style={{
-          width: "11in",
-          height: "8.5in",
-          background: "#3a3a3a",
-          margin: "0 auto",
-          padding: "0.3in",
-          display: "grid",
-          gridTemplateColumns: "2.5in 1fr",
-          gridTemplateRows: "1fr 2.5in",
-          gap: "0.2in",
-          fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}
-      >
-        {/* ── TOP-LEFT: Famille badge + QR code ── */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.2in",
-          }}
-        >
-          {/* Famille badge */}
-          <div
-            style={{
-              backgroundColor: familleColor,
-              borderRadius: 12,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontSize: "2.2in",
-              fontWeight: 900,
-              lineHeight: 1,
-              height: "2.5in",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {isProd ? "P" : familleShort.charAt(0)}
-          </div>
+      {/* ============================================================ */}
+      {/* THE SIGN — US Letter landscape 11" × 8.5"                    */}
+      {/* 3 rows × 2 columns matching the reference model              */}
+      {/* ============================================================ */}
+      <div className="room-sign-page" style={{
+        width: 1056,   /* 11in @ 96dpi */
+        height: 816,   /* 8.5in @ 96dpi */
+        background: "#4a4a4a",
+        margin: "60px auto 40px",
+        padding: 16,
+        display: "grid",
+        gridTemplateColumns: "220px 1fr",
+        gridTemplateRows: "1fr 1fr 200px",
+        gap: 12,
+        fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+        boxSizing: "border-box",
+        overflow: "hidden",
+        borderRadius: 16,
+      }}>
 
-          {/* QR Code */}
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0.15in",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={qrDataUrl}
-              alt="QR Code"
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          </div>
+        {/* ── Row 1, Col 1: Famille badge ── */}
+        <div style={{
+          backgroundColor: familleColor,
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+          fontSize: 120,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}>
+          {isProd ? "P" : familleShort.charAt(0)}
         </div>
 
-        {/* ── TOP-RIGHT: Room name ── */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0.4in",
-            textAlign: "center",
-          }}
-        >
+        {/* ── Row 1+2, Col 2: Room name (spans 2 rows) ── */}
+        <div style={{
+          background: "#fff",
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px 40px",
+          textAlign: "center",
+          gridRow: "1 / 3",
+        }}>
           <div>
-            <div
-              style={{
-                fontSize: displayName.length > 20 ? "2.4in" : displayName.length > 12 ? "2.8in" : "3.2in",
-                fontWeight: 900,
-                color: "#1a1a1a",
-                lineHeight: 1,
-                letterSpacing: "-0.03em",
-                textTransform: "capitalize",
-                wordBreak: "break-word",
-              }}
-            >
-              {displayName.toLowerCase()}
+            <div style={{
+              fontSize: nameFontSize,
+              fontWeight: 800,
+              color: "#1a1a1a",
+              lineHeight: 1.1,
+              letterSpacing: "-0.02em",
+            }}>
+              {displayName}
             </div>
             {local.nomSalle && (
-              <div
-                style={{
-                  fontSize: "0.5in",
-                  fontWeight: 500,
-                  color: "#888",
-                  marginTop: "0.15in",
-                  letterSpacing: "0.05em",
-                }}
-              >
+              <div style={{
+                fontSize: 24,
+                fontWeight: 500,
+                color: "#999",
+                marginTop: 8,
+                letterSpacing: "0.02em",
+              }}>
                 {local.id}
               </div>
             )}
           </div>
         </div>
 
-        {/* ── BOTTOM-LEFT: Chanv logo ── */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0.3in",
-          }}
-        >
+        {/* ── Row 2, Col 1: QR Code ── */}
+        <div style={{
+          background: "#fff",
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 12,
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrDataUrl}
+            alt="QR Code"
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          />
+        </div>
+
+        {/* ── Row 3, Col 1: Chanv logo ── */}
+        <div style={{
+          background: "#fff",
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "16px 20px",
+        }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo-groupe-chanv.svg"
@@ -355,77 +310,61 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           />
         </div>
 
-        {/* ── BOTTOM-RIGHT: Safety requirements ── */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 12,
-            display: "flex",
-            flexDirection: "column",
-            padding: "0.25in 0.35in",
-            justifyContent: "center",
-          }}
-        >
+        {/* ── Row 3, Col 2: Safety requirements ── */}
+        <div style={{
+          background: "#fff",
+          borderRadius: 10,
+          display: "flex",
+          flexDirection: "column",
+          padding: "12px 24px",
+          justifyContent: "center",
+        }}>
           {safetyItems.length > 0 ? (
             <>
-              <div
-                style={{
-                  fontSize: "0.22in",
-                  fontWeight: 800,
-                  color: "#1a3a6b",
-                  letterSpacing: "0.12em",
-                  textAlign: "center",
-                  marginBottom: "0.18in",
-                  textTransform: "uppercase",
-                }}
-              >
+              <div style={{
+                fontSize: 13,
+                fontWeight: 800,
+                color: "#1a3a6b",
+                letterSpacing: "0.15em",
+                textAlign: "center",
+                marginBottom: 10,
+                textTransform: "uppercase",
+              }}>
                 Obligatoire
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "0.3in",
-                  flexWrap: "wrap",
-                }}
-              >
+              <div style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 24,
+              }}>
                 {safetyItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
+                  <div key={i} style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
+                    maxWidth: 120,
+                  }}>
+                    <div style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: "50%",
+                      background: "#1a3a6b",
                       display: "flex",
-                      flexDirection: "column",
                       alignItems: "center",
-                      gap: "0.08in",
-                      width: "1.3in",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "0.9in",
-                        height: "0.9in",
-                        borderRadius: "50%",
-                        background: "#1a3a6b",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "0.5in",
-                        color: "white",
-                      }}
-                    >
+                      justifyContent: "center",
+                      fontSize: 28,
+                    }}>
                       {item.icon}
                     </div>
-                    <div
-                      style={{
-                        fontSize: "0.11in",
-                        fontWeight: 700,
-                        color: "#1a3a6b",
-                        textAlign: "center",
-                        textTransform: "uppercase",
-                        lineHeight: 1.2,
-                        letterSpacing: "0.02em",
-                      }}
-                    >
+                    <div style={{
+                      fontSize: 8,
+                      fontWeight: 700,
+                      color: "#1a3a6b",
+                      textAlign: "center",
+                      textTransform: "uppercase",
+                      lineHeight: 1.2,
+                    }}>
                       {item.label}
                     </div>
                   </div>
@@ -433,40 +372,24 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
               </div>
             </>
           ) : (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.15in",
-                height: "100%",
-              }}
-            >
-              <div style={{ fontSize: "0.28in", fontWeight: 800, color: "#94a3b8" }}>
-                {local.famille}
-              </div>
-              <div style={{ fontSize: "0.18in", color: "#94a3b8" }}>
-                {local.vocation}
-              </div>
-              {local.niveauAcces && local.niveauAcces !== "Employés" && (
-                <div
-                  style={{
-                    fontSize: "0.16in",
-                    fontWeight: 700,
-                    color: "#d97706",
-                    border: "2px solid #d97706",
-                    borderRadius: 8,
-                    padding: "0.05in 0.15in",
-                    marginTop: "0.05in",
-                  }}
-                >
-                  ⚠️ Accès {local.niveauAcces}
-                </div>
-              )}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              height: "100%",
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#94a3b8" }}>{local.famille}</div>
+              <div style={{ fontSize: 13, color: "#94a3b8" }}>{local.vocation}</div>
             </div>
           )}
         </div>
+      </div>
+
+      {/* Small ID reference under sign */}
+      <div className="print:hidden text-center text-xs text-slate-400 font-mono mt-2 mb-8">
+        {local.id}
       </div>
 
       {/* ── Print styles ── */}
@@ -486,6 +409,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           }
           .room-sign-page {
             margin: 0 !important;
+            border-radius: 0 !important;
             width: 11in !important;
             height: 8.5in !important;
             overflow: hidden !important;
