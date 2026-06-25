@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-server";
-import { locaux, actifs, auditLogs } from "@/lib/data";
+import { getLocaux, actifs, auditLogs } from "@/lib/data";
 import { AdminClient } from "@/components/AdminClient";
+import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
 
 export const metadata = {
   title: "Administration — Gestion Salles",
@@ -17,5 +18,9 @@ export default async function AdminPage() {
     redirect("/salles");
   }
 
-  return <AdminClient locaux={locaux} actifs={actifs} auditLogs={auditLogs} />;
+  const baseLocaux = getLocaux({ includeArchived: true });
+  const overrides = await loadLocauxOverrides();
+  const mergedLocaux = mergeOverrides(baseLocaux, overrides);
+
+  return <AdminClient locaux={mergedLocaux} actifs={actifs} auditLogs={auditLogs} />;
 }

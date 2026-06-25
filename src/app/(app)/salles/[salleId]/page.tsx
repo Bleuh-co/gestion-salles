@@ -6,6 +6,7 @@ import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { SalleTabs } from "@/components/SalleTabs";
 import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
+import { loadLocalOverride } from "@/lib/locaux-overrides";
 import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
 
@@ -51,8 +52,12 @@ async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
 
 export default async function SalleDetailPage({ params }: Props) {
   const { salleId } = await params;
-  const local = getLocal(decodeURIComponent(salleId));
-  if (!local) notFound();
+  const baseLocal = getLocal(decodeURIComponent(salleId));
+  if (!baseLocal) notFound();
+
+  // Merge Firestore overrides on top of static data
+  const override = await loadLocalOverride(baseLocal.id);
+  const local = override ? { ...baseLocal, ...override } : baseLocal;
 
   const actifs = getActifsBySalle(local.id);
   const sensors = await fetchRoomSensors(local.id);

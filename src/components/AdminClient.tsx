@@ -125,6 +125,33 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
 function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; search: string; showArchived: boolean }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [localOverrides, setLocalOverrides] = useState<Record<string, string>>({});
+
+  const saveNomSalle = async (localId: string, value: string) => {
+    setSavingId(localId);
+    try {
+      const res = await fetch("/api/admin/locaux-overrides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ local_id: localId, field: "nomSalle", value }),
+      });
+      if (!res.ok) throw new Error("Erreur sauvegarde");
+      // Update local state for instant feedback
+      setLocalOverrides((prev) => ({ ...prev, [localId]: value }));
+    } catch (e) {
+      console.error("Save nomSalle failed", e);
+    } finally {
+      setSavingId(null);
+      setEditingId(null);
+    }
+  };
+
+  const getNomSalle = (l: Local): string => {
+    // Local override takes precedence (just saved), then server-side data
+    if (localOverrides[l.id] !== undefined) return localOverrides[l.id];
+    return l.nomSalle || "";
+  };
 
   const filtered = useMemo(() => {
     let result = locaux;
@@ -134,13 +161,13 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
       result = result.filter(
         (l) =>
           l.id.toLowerCase().includes(q) ||
-          l.nomSalle.toLowerCase().includes(q) ||
+          getNomSalle(l).toLowerCase().includes(q) ||
           l.famille.toLowerCase().includes(q) ||
           l.vocation.toLowerCase().includes(q)
       );
     }
     return result;
-  }, [locaux, search, showArchived]);
+  }, [locaux, search, showArchived, localOverrides]);
 
   if (filtered.length === 0) {
     return <EmptyState icon="🏢" title="Aucun local" description="Aucun local ne correspond aux critères." />;
@@ -162,7 +189,9 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
             </tr>
           </thead>
           <tbody>
-            {filtered.map((l) => (
+            {filtered.map((l) => {
+              const nomSalle = getNomSalle(l);
+              return (
               <tr
                 key={l.id}
                 className={`border-b border-chanv-fibre/50 hover:bg-chanv-fibre/20 transition-colors ${l.archived ? "opacity-40" : ""}`}
@@ -171,18 +200,16 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                   {l.id}
                 </td>
                 <td className="px-3 py-2.5">
-                  {editingId === l.id ? (
+                  {savingId === l.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-chanv-terre" />
+                  ) : editingId === l.id ? (
                     <div className="flex items-center gap-1">
                       <input
                         type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            // TODO: persist to Firestore when data source migrated
-                            l.nomSalle = editValue;
-                            setEditingId(null);
-                          }
+                          if (e.key === "Enter") saveNomSalle(l.id, editValue);
                           if (e.key === "Escape") setEditingId(null);
                         }}
                         className="text-xs border border-chanv-terre/30 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-chanv-terre/30"
@@ -190,10 +217,7 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                         placeholder="Nom de la salle…"
                       />
                       <button
-                        onClick={() => {
-                          l.nomSalle = editValue;
-                          setEditingId(null);
-                        }}
+                        onClick={() => saveNomSalle(l.id, editValue)}
                         className="p-1 text-green-600 hover:bg-green-50 rounded"
                         title="Sauvegarder"
                       >
@@ -212,11 +236,11 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                       className="flex items-center gap-1 group cursor-pointer"
                       onClick={() => {
                         setEditingId(l.id);
-                        setEditValue(l.nomSalle || "");
+                        setEditValue(nomSalle);
                       }}
                     >
-                      <span className={`text-xs ${l.nomSalle ? "text-chanv-terre font-medium" : "text-slate-300 italic"}`}>
-                        {l.nomSalle || "—"}
+                      <span className={`text-xs ${nomSalle ? "text-chanv-terre font-medium" : "text-slate-300 italic"}`}>
+                        {nomSalle || "—"}
                       </span>
                       <Pencil className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
@@ -234,7 +258,8 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                 <td className="px-3 py-2.5"><LocalStatusBadge status={l.statut} size="sm" /></td>
                 <td className="px-3 py-2.5 text-xs text-slate-600">{l.niveauAcces}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1,6 +1,7 @@
 import { getLocaux, getUniqueFamilles, getUniqueEtages, getStats } from "@/lib/data";
 import { getSession } from "@/lib/auth-server";
 import { SallesPageClient } from "@/components/SallesPageClient";
+import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
 
 export const metadata = {
   title: "Gestion des Salles — ChanvHQ",
@@ -8,7 +9,9 @@ export const metadata = {
 };
 
 export default async function SallesPage() {
-  const locaux = getLocaux();
+  const baseLocaux = getLocaux();
+  const overrides = await loadLocauxOverrides();
+  const locaux = mergeOverrides(baseLocaux, overrides);
   const familles = getUniqueFamilles();
   const etages = getUniqueEtages();
   const stats = getStats();
