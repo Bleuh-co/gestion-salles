@@ -655,44 +655,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                     >
                       {local.nomSalle || local.id}
                     </div>
-                    {/* Sensor badge */}
-                    {(() => {
-                      const roomSensors = sensorsByRoom.get(roomId);
-                      if (!roomSensors?.length) return null;
-                      const best = roomSensors.find((s) => !s.offline) || roomSensors[0];
-                      return (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 3,
-                            background: best.offline ? "rgba(30,30,30,0.85)" : "rgba(20,20,20,0.88)",
-                            padding: "2px 6px",
-                            borderRadius: 6,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                            color: "white",
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 5,
-                              height: 5,
-                              borderRadius: "50%",
-                              backgroundColor: best.offline ? "#ef4444" : "#22c55e",
-                              flexShrink: 0,
-                            }}
-                          />
-                          {best.last_temp_c != null && (
-                            <span style={{ color: "#fca5a5" }}>{best.last_temp_c.toFixed(1)}°</span>
-                          )}
-                          {best.last_humidity != null && (
-                            <span style={{ color: "#93c5fd" }}>{Math.round(best.last_humidity)}%</span>
-                          )}
-                        </div>
-                      );
-                    })()}
+
                   </div>
                 </div>
               );
@@ -737,6 +700,34 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
 
               <p className="text-xs text-slate-600 leading-relaxed">{selectedLocal.vocation || "—"}</p>
 
+              {/* Live sensor readings */}
+              {(() => {
+                const roomSensors = selectedRoom ? sensorsByRoom.get(selectedRoom) : undefined;
+                if (!roomSensors?.length) return null;
+                return (
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: "linear-gradient(135deg, #f0fdf4, #eff6ff)", border: "1px solid #e2e8f0" }}>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Capteurs live</div>
+                    {roomSensors.map((s) => (
+                      <div key={s.sensor_id} className="flex items-center gap-2 text-xs">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: s.offline ? "#ef4444" : "#22c55e" }}
+                        />
+                        <span className="text-slate-600 truncate flex-1" title={s.sensor_name || s.sensor_id}>
+                          {s.sensor_name || s.sensor_id}
+                        </span>
+                        {s.last_temp_c != null && (
+                          <span className="font-bold text-rose-600">{s.last_temp_c.toFixed(1)}°</span>
+                        )}
+                        {s.last_humidity != null && (
+                          <span className="font-bold text-blue-600">{Math.round(s.last_humidity)}%</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
 
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="flex items-center gap-1.5 text-slate-500">
@@ -765,7 +756,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                 Voir détails
               </Link>
               <Link
-                href={`/salles/${encodeURIComponent(selectedLocal.id)}/sign`}
+                href={`/sign/${encodeURIComponent(selectedLocal.id)}`}
                 className="btn-ghost border border-chanv-fibre flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-xl"
                 target="_blank"
               >
