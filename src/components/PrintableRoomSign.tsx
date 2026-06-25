@@ -246,6 +246,8 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
       >
         {/* ── Row 1, Col 1: Famille badge ── */}
         <div style={{
+          gridRow: 1,
+          gridColumn: 1,
           backgroundColor: familleColor,
           borderRadius: 10,
           display: "flex",
@@ -261,6 +263,8 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
         {/* ── Row 1+2, Col 2: Room name (spans 2 rows) ── */}
         <div style={{
+          gridRow: "1 / 3",
+          gridColumn: 2,
           background: "#fff",
           borderRadius: 10,
           display: "flex",
@@ -268,7 +272,6 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           justifyContent: "center",
           padding: "4% 5%",
           textAlign: "center",
-          gridRow: "1 / 3",
         }}>
           <div>
             <div style={{
@@ -296,12 +299,15 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
         {/* ── Row 2, Col 1: QR Code ── */}
         <div style={{
+          gridRow: 2,
+          gridColumn: 1,
           background: "#fff",
           borderRadius: 10,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: "6%",
+          overflow: "hidden",
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -313,6 +319,8 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
         {/* ── Row 3, Col 1: Chanv logo ── */}
         <div style={{
+          gridRow: 3,
+          gridColumn: 1,
           background: "#fff",
           borderRadius: 10,
           display: "flex",
@@ -330,10 +338,12 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
         {/* ── Row 3, Col 2: Safety requirements ── */}
         <div style={{
+          gridRow: 3,
+          gridColumn: 2,
           background: "#fff",
           borderRadius: 10,
           display: "flex",
-          flexDirection: "column",
+          flexDirection: "column" as const,
           padding: "1.5% 3%",
           justifyContent: "center",
         }}>
