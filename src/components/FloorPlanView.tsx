@@ -8,6 +8,7 @@ import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
   Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save,
+  Package,
   Plus, EyeOff, ChevronDown, ChevronRight, Search, Droplets, Battery
 } from "lucide-react";
 
@@ -125,12 +126,36 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
   const [editMode, setEditMode] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [roomActifs, setRoomActifs] = useState<{ nom: string; matricule: string }[]>([]);
+  const [actifsLoading, setActifsLoading] = useState(false);
 
   // Sensor→room mapping (computed from snapshot sensors + overrides)
   const sensorsByRoom = useMemo(() => {
     if (!snapshot?.sensors?.length) return new Map<string, SnapshotSensor[]>();
     return clientMatchSensors(snapshot.sensors, locaux.map((l) => l.id), snapshot.sensor_overrides);
   }, [snapshot, locaux]);
+
+  // Fetch actifs when a room is selected
+  useEffect(() => {
+    if (!selectedRoom) {
+      setRoomActifs([]);
+      return;
+    }
+    let cancelled = false;
+    setActifsLoading(true);
+    fetch(`/api/salles/${encodeURIComponent(selectedRoom)}/actifs`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: { nom: string; matricule: string }[]) => {
+        if (!cancelled) setRoomActifs(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRoomActifs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setActifsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedRoom]);
 
   // Pan / Zoom
   const [scale, setScale] = useState(1);
@@ -745,6 +770,26 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
                   </div>
                 )}
               </div>
+
+              {/* Actifs list */}
+              {actifsLoading ? (
+                <div className="text-[10px] text-slate-400 italic">Chargement actifs…</div>
+              ) : roomActifs.length > 0 ? (
+                <div className="rounded-xl p-2.5 space-y-1" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+                    <Package className="w-3 h-3" /> Actifs ({roomActifs.length > 6 ? `6/${roomActifs.length}` : roomActifs.length})
+                  </div>
+                  {roomActifs.slice(0, 6).map((a, i) => (
+                    <div key={i} className="text-[11px] text-slate-600 truncate" title={`${a.matricule} — ${a.nom}`}>
+                      <span className="text-slate-400 font-mono">{a.matricule}</span>{" "}
+                      {a.nom}
+                    </div>
+                  ))}
+                  {roomActifs.length > 6 && (
+                    <div className="text-[10px] text-slate-400 italic">… et {roomActifs.length - 6} autres</div>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex gap-2 p-4 pt-0">
