@@ -195,7 +195,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
 
   // Adaptive font size: smaller for longer names
   const len = displayName.length;
-  const nameFontSize = len > 30 ? "3.8vw" : len > 22 ? "4.8vw" : len > 15 ? "6vw" : "7.5vw";
+  const nameFontSize = len > 30 ? "5vw" : len > 22 ? "6.5vw" : len > 15 ? "8vw" : "10vw";
 
   return (
     <>
@@ -237,7 +237,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           alignItems: "center",
           justifyContent: "center",
           color: "white",
-          fontSize: "7vw",
+          fontSize: "10vw",
           fontWeight: 900,
           lineHeight: 1,
         }}>
@@ -268,7 +268,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             </div>
             {local.nomSalle && (
               <div style={{
-                fontSize: "2vw",
+                fontSize: "3vw",
                 fontWeight: 500,
                 color: "#aaa",
                 marginTop: "0.8%",
