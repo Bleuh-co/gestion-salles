@@ -43,8 +43,8 @@ export type FamilleSalle =
   | "SERVICES PRODUCTION"
   | "MAISON D'HERBES"
   | "BLEUH";
-
-export const FAMILLE_COLORS: Record<string, string> = {
+/** Fallback — en production, les couleurs sont lues depuis le Google Sheet. */
+export const FAMILLE_COLORS_FALLBACK: Record<string, string> = {
   CANNABIS: "#22c55e",
   PSN: "#8b5cf6",
   ALI: "#f59e0b",
@@ -56,6 +56,13 @@ export const FAMILLE_COLORS: Record<string, string> = {
   "MAISON D'HERBES": "#84cc16",
   BLEUH: "#3b82f6",
 };
+
+/**
+ * @deprecated Utiliser `familleColors` passé en props (depuis le sheet).
+ * Conservé pour compatibilité — les composants qui n'ont pas encore été
+ * migrés utilisent ce fallback.
+ */
+export const FAMILLE_COLORS: Record<string, string> = FAMILLE_COLORS_FALLBACK;
 
 export const FAMILLE_SHORT: Record<string, string> = {
   CANNABIS: "CAN",

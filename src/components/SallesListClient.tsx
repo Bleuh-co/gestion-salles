@@ -11,9 +11,10 @@ interface SallesListClientProps {
   locaux: Local[];
   familles: string[];
   etages: string[];
+  familleColors: Record<string, string>;
 }
 
-export function SallesListClient({ locaux, familles, etages }: SallesListClientProps) {
+export function SallesListClient({ locaux, familles, etages, familleColors }: SallesListClientProps) {
   const [selectedFamille, setSelectedFamille] = useState<string | null>(null);
   const [selectedEtage, setSelectedEtage] = useState<string | null>(null);
   const [selectedStatut, setSelectedStatut] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export function SallesListClient({ locaux, familles, etages }: SallesListClientP
       </div>
 
       {/* Famille filter */}
-      <FamilleFilter familles={familles} selected={selectedFamille} onSelect={setSelectedFamille} />
+      <FamilleFilter familles={familles} selected={selectedFamille} onSelect={setSelectedFamille} familleColors={familleColors} />
 
       {/* Advanced filters */}
       {showFilters && (
@@ -112,7 +113,7 @@ export function SallesListClient({ locaux, familles, etages }: SallesListClientP
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((local) => (
-            <LocalCard key={local.id} local={local} />
+            <LocalCard key={local.id} local={local} familleColors={familleColors} />
           ))}
         </div>
       )}

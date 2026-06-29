@@ -1,14 +1,14 @@
 "use client";
 
-import { FAMILLE_COLORS } from "@/lib/types";
 
 interface FamilleFilterProps {
   familles: string[];
   selected: string | null;
   onSelect: (famille: string | null) => void;
+  familleColors: Record<string, string>;
 }
 
-export function FamilleFilter({ familles, selected, onSelect }: FamilleFilterProps) {
+export function FamilleFilter({ familles, selected, onSelect, familleColors }: FamilleFilterProps) {
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -22,7 +22,7 @@ export function FamilleFilter({ familles, selected, onSelect }: FamilleFilterPro
         Tous
       </button>
       {familles.map((f) => {
-        const color = FAMILLE_COLORS[f] || "#94a3b8";
+        const color = familleColors[f] || "#94a3b8";
         const isActive = selected === f;
         return (
           <button

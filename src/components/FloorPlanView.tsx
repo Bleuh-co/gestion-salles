@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Local } from "@/lib/types";
-import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
+import { FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
@@ -48,6 +48,7 @@ interface Snapshot {
 interface FloorPlanViewProps {
   locaux: Local[];
   isAdmin?: boolean;
+  familleColors: Record<string, string>;
 }
 
 // No auto-layout — only placed rooms appear on the plan.
@@ -116,7 +117,7 @@ function clientMatchSensors(
   return result;
 }
 
-export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
+export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorPlanViewProps) {
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -499,6 +500,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
             trayCollapsed={trayCollapsed}
             setTrayCollapsed={setTrayCollapsed}
             onAdd={addRoomToPlan}
+            familleColors={familleColors}
           />
         )}
 
@@ -565,7 +567,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
             {Object.entries(roomPositions).map(([roomId, pos]) => {
               const local = locauxMap.get(roomId);
               if (!local) return null;
-              const color = FAMILLE_COLORS[local.famille] || "#94a3b8";
+              const color = familleColors[local.famille] || "#94a3b8";
               const short = FAMILLE_SHORT[local.famille] || "?";
               const isSelected = selectedRoom === roomId;
 
@@ -697,7 +699,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
             <div className="flex items-center gap-3 p-4 border-b border-chanv-fibre">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-                style={{ backgroundColor: FAMILLE_COLORS[selectedLocal.famille] || "#94a3b8" }}
+                style={{ backgroundColor: familleColors[selectedLocal.famille] || "#94a3b8" }}
               >
                 {FAMILLE_SHORT[selectedLocal.famille] || "?"}
               </div>
@@ -816,7 +818,7 @@ export function FloorPlanView({ locaux, isAdmin = false }: FloorPlanViewProps) {
       {/* Legend */}
       <div className="flex items-center gap-3 px-4 py-3 border-t border-chanv-fibre bg-chanv-fibre/10 overflow-x-auto">
         <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider shrink-0">Légende</span>
-        {Object.entries(FAMILLE_COLORS).map(([fam, color]) => (
+        {Object.entries(familleColors).map(([fam, color]) => (
           <div key={fam} className="flex items-center gap-1.5 shrink-0">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
             <span className="text-[10px] text-slate-500 font-medium">{fam}</span>
@@ -838,6 +840,7 @@ function RoomTray({
   trayCollapsed,
   setTrayCollapsed,
   onAdd,
+  familleColors,
 }: {
   unplacedRooms: Local[];
   traySearch: string;
@@ -845,6 +848,7 @@ function RoomTray({
   trayCollapsed: Record<string, boolean>;
   setTrayCollapsed: (c: Record<string, boolean>) => void;
   onAdd: (roomId: string) => void;
+  familleColors: Record<string, string>;
 }) {
   // Filter by search
   const search = traySearch.toLowerCase().trim();
@@ -902,7 +906,7 @@ function RoomTray({
         {families.map((fam) => {
           const rooms = grouped.get(fam)!;
           const isCollapsed = trayCollapsed[fam] ?? false;
-          const color = FAMILLE_COLORS[fam] || "#94a3b8";
+          const color = familleColors[fam] || "#94a3b8";
 
           return (
             <div key={fam}>

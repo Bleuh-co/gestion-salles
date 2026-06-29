@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import type { Local } from "@/lib/types";
-import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
+import { FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "./LocalStatusBadge";
 import { DoorOpen, Thermometer, Shield, Users } from "lucide-react";
 
 interface LocalCardProps {
   local: Local;
   assignedCount?: number;
+  familleColors: Record<string, string>;
 }
 
-export function LocalCard({ local, assignedCount }: LocalCardProps) {
-  const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
+export function LocalCard({ local, assignedCount, familleColors }: LocalCardProps) {
+  const familleColor = familleColors[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence;
 
   return (

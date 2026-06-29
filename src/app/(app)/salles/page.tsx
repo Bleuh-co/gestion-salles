@@ -2,6 +2,8 @@ import { getLocaux, getUniqueFamilles, getUniqueEtages, getStats } from "@/lib/d
 import { getSession } from "@/lib/auth-server";
 import { SallesPageClient } from "@/components/SallesPageClient";
 import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
+import { readFamilleColors } from "@/lib/sheets-sync";
+import { FAMILLE_COLORS_FALLBACK } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,15 @@ export default async function SallesPage() {
   const session = await getSession();
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
+  // Charger les couleurs depuis le Google Sheet, fallback sur les constantes
+  let sheetColors: Record<string, string> = {};
+  try {
+    sheetColors = await readFamilleColors();
+  } catch (e) {
+    console.warn("[SallesPage] readFamilleColors failed, using fallback", e);
+  }
+  const familleColors = { ...FAMILLE_COLORS_FALLBACK, ...sheetColors };
+
   return (
     <SallesPageClient
       locaux={locaux}
@@ -27,6 +38,7 @@ export default async function SallesPage() {
       etages={etages}
       stats={stats}
       isAdmin={isAdmin}
+      familleColors={familleColors}
     />
   );
 }
