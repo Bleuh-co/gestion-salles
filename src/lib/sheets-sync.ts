@@ -77,63 +77,46 @@ export async function readSheetRows(sheetName: string, range = "A1:Z1000"): Prom
 }
 
 // ============================================================
-// Famille colors — lues depuis les couleurs de fond du sheet
+// Famille colors — lues depuis la colonne "Couleur" (I) de Listes_choix
 // ============================================================
 
+const LISTES_CHOIX_SHEET = "Listes_choix";
 let _familleColorsCache: { colors: Record<string, string>; expiresAt: number } | null = null;
 const FAMILLE_COLORS_TTL = 10 * 60_000; // 10 minutes
 
 /**
- * Lit les couleurs de fond de la colonne "ID_licence" (G) dans le
- * Google Sheet, associées à la famille de la colonne C.
+ * Lit les couleurs hex de la colonne I de la feuille Listes_choix,
+ * associées aux noms de famille de la colonne C.
  * Retourne un mapping { famille: "#rrggbb" }.
- * Le résultat est caché en mémoire pendant 10 minutes.
+ * Cache en mémoire pendant 10 minutes.
  */
 export async function readFamilleColors(): Promise<Record<string, string>> {
-  // Retourne le cache s'il est encore valide
   if (_familleColorsCache && Date.now() < _familleColorsCache.expiresAt) {
     return _familleColorsCache.colors;
   }
 
   const token = await getAccessToken();
 
-  // 1. Lire les valeurs de la colonne C (Famille de salle) pour les noms
-  const valuesUrl = `${SHEETS_API}/${SHEET_ID}/values/${encodeURIComponent(LOCAUX_SHEET)}!C:C?valueRenderOption=UNFORMATTED_VALUE`;
-  const valuesRes = await fetch(valuesUrl, {
+  // Lire colonnes C (Famille de salle) et I (Couleur) de Listes_choix
+  const url = `${SHEETS_API}/${SHEET_ID}/values/${encodeURIComponent(LISTES_CHOIX_SHEET)}!C1:I30?valueRenderOption=UNFORMATTED_VALUE`;
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!valuesRes.ok) throw new Error(`Sheets values error ${valuesRes.status}`);
-  const valuesData = (await valuesRes.json()) as { values?: string[][] };
-  const values = valuesData.values || [];
+  if (!res.ok) throw new Error(`Sheets error ${res.status}`);
+  const data = (await res.json()) as { values?: string[][] };
+  const rows = data.values || [];
 
-  // 2. Lire les couleurs de fond de la colonne G (ID_licence) — c'est là que les couleurs sont
-  const formatUrl = `${SHEETS_API}/${SHEET_ID}?ranges=${encodeURIComponent(LOCAUX_SHEET)}!G:G&fields=sheets.data.rowData.values.effectiveFormat.backgroundColor`;
-  const formatRes = await fetch(formatUrl, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!formatRes.ok) throw new Error(`Sheets format error ${formatRes.status}`);
-  const formatData = await formatRes.json();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rowData: any[] =
-    (formatData as any)?.sheets?.[0]?.data?.[0]?.rowData || [];
-
-  // 3. Construire le mapping famille → couleur hex
+  // Construire le mapping famille → couleur hex
+  // Colonne C = index 0, colonne I = index 6 (I - C = 6)
   const colors: Record<string, string> = {};
-
-  for (let i = 1; i < Math.min(values.length, rowData.length); i++) {
-    const famille = values[i]?.[0];
-    if (!famille || colors[famille]) continue; // skip header & déjà vu
-
-    const bg = rowData[i]?.values?.[0]?.effectiveFormat?.backgroundColor;
-    if (!bg) continue;
-
-    // Ignorer les fonds blancs/par défaut (tous les composants ≥ 0.95)
-    const r = Math.round((bg.red ?? 1) * 255);
-    const g = Math.round((bg.green ?? 1) * 255);
-    const b = Math.round((bg.blue ?? 1) * 255);
-    if (r >= 245 && g >= 245 && b >= 245) continue; // blanc, pas de couleur
-
-    colors[famille] = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  for (let i = 1; i < rows.length; i++) {
+    const famille = rows[i]?.[0]; // colonne C
+    const couleur = rows[i]?.[6]; // colonne I
+    if (!famille || !couleur) continue;
+    // Valider que c'est un hex color
+    if (/^#[0-9a-fA-F]{6}$/.test(couleur.trim())) {
+      colors[famille] = couleur.trim();
+    }
   }
 
   _familleColorsCache = { colors, expiresAt: Date.now() + FAMILLE_COLORS_TTL };
