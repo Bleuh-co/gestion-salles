@@ -21,70 +21,26 @@ async function getToken(): Promise<string> {
 const SHEET_ID = "1059QWs8VKKyF4jW0ThebEnM-qn2hMB-gpbq5gTB0Elk";
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
 
-/**
- * GET ?sheet=Plan_ChanvHQ&range=A1:Z5 — read any sheet/range
- * GET without params — read Listes_choix C+I
- * POST — seed colors to column I
- */
 export async function GET(req: Request) {
   try {
     const token = await getToken();
     const url = new URL(req.url);
-    const sheet = url.searchParams.get("sheet") || "Listes_choix";
-    const range = url.searchParams.get("range") || "A1:Z20";
-    const fmt = url.searchParams.get("fmt"); // "1" to include formatting
+    const sheet = url.searchParams.get("sheet") || "Locaux_ChanvHQ";
+    const range = url.searchParams.get("range") || "G2:G12";
 
-    // Values
-    const valRes = await fetch(
-      `${API}/${SHEET_ID}/values/${encodeURIComponent(sheet)}!${range}?valueRenderOption=UNFORMATTED_VALUE`,
+    // Read ALL cell data including dataValidation chip colors
+    const res = await fetch(
+      `${API}/${SHEET_ID}?ranges=${encodeURIComponent(sheet)}!${range}&includeGridData=true`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    const valData = await valRes.json();
+    const data = await res.json();
 
-    let fmtData = null;
-    if (fmt) {
-      const fmtRes = await fetch(
-        `${API}/${SHEET_ID}?ranges=${encodeURIComponent(sheet)}!${range}&fields=sheets.data.rowData.values(effectiveFormat.backgroundColor,userEnteredFormat.backgroundColor)`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fmtData = await fmtRes.json();
-    }
-
-    return NextResponse.json({ status: "ok", values: valData, formatting: fmtData });
+    return NextResponse.json(data);
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
 
-const INITIAL_COLORS: [string, string][] = [
-  ["Couleur", ""],
-  ["#22c55e", "CANNABIS"],
-  ["#8b5cf6", "PSN"],
-  ["#f59e0b", "ALI"],
-  ["#06b6d4", "CANNABIS_R&D"],
-  ["#6366f1", "BUREAUX"],
-  ["#94a3b8", "ZONES COMMUNES"],
-  ["#ef4444", "SERVICES TECHNIQUES"],
-  ["#f97316", "SERVICES PRODUCTION"],
-  ["#84cc16", "MAISON D'HERBES"],
-  ["#3b82f6", "BLEUH"],
-];
-
 export async function POST() {
-  try {
-    const token = await getToken();
-    const values = INITIAL_COLORS.map(([color]) => [color]);
-    const res = await fetch(
-      `${API}/${SHEET_ID}/values/${encodeURIComponent("Listes_choix")}!I1:I11?valueInputOption=USER_ENTERED`,
-      {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ values }),
-      }
-    );
-    if (!res.ok) return NextResponse.json({ error: await res.text() }, { status: 500 });
-    return NextResponse.json({ status: "ok", result: await res.json() });
-  } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
-  }
+  return NextResponse.json({ status: "disabled" });
 }
