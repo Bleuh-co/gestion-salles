@@ -84,8 +84,9 @@ let _familleColorsCache: { colors: Record<string, string>; expiresAt: number } |
 const FAMILLE_COLORS_TTL = 10 * 60_000; // 10 minutes
 
 /**
- * Lit les couleurs de fond de la colonne "Famille de salle" (C) dans le
- * Google Sheet et retourne un mapping { famille: "#rrggbb" }.
+ * Lit les couleurs de fond de la colonne "ID_licence" (G) dans le
+ * Google Sheet, associées à la famille de la colonne C.
+ * Retourne un mapping { famille: "#rrggbb" }.
  * Le résultat est caché en mémoire pendant 10 minutes.
  */
 export async function readFamilleColors(): Promise<Record<string, string>> {
@@ -96,7 +97,7 @@ export async function readFamilleColors(): Promise<Record<string, string>> {
 
   const token = await getAccessToken();
 
-  // 1. Lire les valeurs de la colonne C (Famille de salle)
+  // 1. Lire les valeurs de la colonne C (Famille de salle) pour les noms
   const valuesUrl = `${SHEETS_API}/${SHEET_ID}/values/${encodeURIComponent(LOCAUX_SHEET)}!C:C?valueRenderOption=UNFORMATTED_VALUE`;
   const valuesRes = await fetch(valuesUrl, {
     headers: { Authorization: `Bearer ${token}` },
@@ -105,8 +106,8 @@ export async function readFamilleColors(): Promise<Record<string, string>> {
   const valuesData = (await valuesRes.json()) as { values?: string[][] };
   const values = valuesData.values || [];
 
-  // 2. Lire les couleurs de fond des cellules
-  const formatUrl = `${SHEETS_API}/${SHEET_ID}?ranges=${encodeURIComponent(LOCAUX_SHEET)}!C:C&fields=sheets.data.rowData.values.effectiveFormat.backgroundColor`;
+  // 2. Lire les couleurs de fond de la colonne G (ID_licence) — c'est là que les couleurs sont
+  const formatUrl = `${SHEETS_API}/${SHEET_ID}?ranges=${encodeURIComponent(LOCAUX_SHEET)}!G:G&fields=sheets.data.rowData.values.effectiveFormat.backgroundColor`;
   const formatRes = await fetch(formatUrl, {
     headers: { Authorization: `Bearer ${token}` },
   });
