@@ -43,18 +43,18 @@ export type FamilleSalle =
   | "SERVICES PRODUCTION"
   | "MAISON D'HERBES"
   | "BLEUH";
-/** Fallback — en production, les couleurs sont lues depuis le Google Sheet. */
+/** Fallback — en production, les couleurs sont lues depuis le Google Sheet (Listes_choix col I). */
 export const FAMILLE_COLORS_FALLBACK: Record<string, string> = {
-  CANNABIS: "#22c55e",
-  PSN: "#8b5cf6",
-  ALI: "#f59e0b",
-  "CANNABIS_R&D": "#06b6d4",
-  BUREAUX: "#6366f1",
-  "ZONES COMMUNES": "#94a3b8",
-  "SERVICES TECHNIQUES": "#ef4444",
-  "SERVICES PRODUCTION": "#f97316",
-  "MAISON D'HERBES": "#84cc16",
-  BLEUH: "#3b82f6",
+  CANNABIS: "#185abc",          // bleu foncé
+  PSN: "#e37400",               // ambre/or foncé
+  ALI: "#d81b60",               // magenta/rose
+  "CANNABIS_R&D": "#1e8e3e",    // vert
+  BUREAUX: "#f9ab00",           // jaune vif
+  "ZONES COMMUNES": "#9aa0a6",  // gris
+  "SERVICES TECHNIQUES": "#9aa0a6", // gris
+  "SERVICES PRODUCTION": "#9aa0a6", // gris
+  "MAISON D'HERBES": "#e8d5b7", // beige/tan
+  BLEUH: "#4285f4",             // bleu (branding Bleuh)
 };
 
 /**

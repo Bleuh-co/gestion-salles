@@ -2,13 +2,13 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import type { Local, Actif, AuditLogEntry, LocalStatut, SensorMapping } from "@/lib/types";
-import { LOCAL_STATUT_LABELS, FAMILLE_COLORS } from "@/lib/types";
+import { LOCAL_STATUT_LABELS, FAMILLE_COLORS, FAMILLE_COLORS_FALLBACK } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import {
   Building, Wrench, ClipboardList, Search, Plus, Pencil, Trash2, RotateCcw,
   ChevronDown, ChevronUp, X, Save, Clock, User, Thermometer, Wifi, WifiOff,
-  Link2, Unlink, RefreshCw, Loader2
+  Link2, Unlink, RefreshCw, Loader2, Palette, Check
 } from "lucide-react";
 
 // ============================================================
@@ -25,6 +25,7 @@ const ADMIN_TABS = [
   { key: "locaux", label: "Locaux", icon: Building },
   { key: "actifs", label: "Actifs", icon: Wrench },
   { key: "capteurs", label: "Capteurs", icon: Thermometer },
+  { key: "couleurs", label: "Couleurs", icon: Palette },
   { key: "logs", label: "Audit Logs", icon: ClipboardList },
 ] as const;
 
@@ -138,6 +139,9 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
       )}
       {activeTab === "capteurs" && (
         <AdminSensorsTab locaux={initialLocaux} search={searchQuery} />
+      )}
+      {activeTab === "couleurs" && (
+        <AdminColorsTab />
       )}
       {activeTab === "logs" && (
         <AdminAuditLog logs={auditLogs} search={searchQuery} />
@@ -665,6 +669,191 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
         </div>
         <div className="px-3 py-2 text-xs text-slate-400 border-t border-chanv-fibre">
           {filtered.length} capteur{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Colors Tab (Couleurs)
+// ============================================================
+
+function AdminColorsTab() {
+  const [colors, setColors] = useState<Record<string, string>>({});
+  const [original, setOriginal] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchColors = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/famille-colors");
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      const data = await res.json();
+      setColors(data.colors || FAMILLE_COLORS_FALLBACK);
+      setOriginal(data.colors || FAMILLE_COLORS_FALLBACK);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setColors(FAMILLE_COLORS_FALLBACK);
+      setOriginal(FAMILLE_COLORS_FALLBACK);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchColors();
+  }, [fetchColors]);
+
+  const hasChanges = useMemo(() => {
+    return Object.keys(colors).some((k) => colors[k] !== original[k]);
+  }, [colors, original]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/famille-colors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ colors }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Erreur ${res.status}`);
+      }
+      setOriginal({ ...colors });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erreur sauvegarde");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setColors({ ...original });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 animate-spin text-chanv-terre" />
+      </div>
+    );
+  }
+
+  const familles = Object.keys(colors);
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs text-slate-500">
+            Modifiez les couleurs des familles de salle. Les changements sont sauvegardés dans le Google Sheet.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Annuler
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || saving}
+            className={`flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-all ${
+              saved
+                ? "bg-green-500 text-white"
+                : hasChanges
+                ? "bg-chanv-terre text-white hover:bg-chanv-terre/90 shadow-sm"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed"
+            }`}
+          >
+            {saving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : saved ? (
+              <Check className="w-3.5 h-3.5" />
+            ) : (
+              <Save className="w-3.5 h-3.5" />
+            )}
+            {saving ? "Sauvegarde…" : saved ? "Sauvegardé !" : "Sauvegarder"}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      {/* Color Grid */}
+      <div className="section-card overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+          {familles.map((famille, i) => {
+            const color = colors[famille];
+            const changed = color !== original[famille];
+            return (
+              <div
+                key={famille}
+                className={`flex items-center gap-3 px-4 py-3 border-b border-chanv-fibre/50 ${
+                  i % 3 < 2 ? "sm:border-r" : ""
+                } ${changed ? "bg-amber-50/50" : "hover:bg-chanv-fibre/20"} transition-colors`}
+              >
+                {/* Color swatch + picker */}
+                <label className="relative cursor-pointer group">
+                  <div
+                    className="w-8 h-8 rounded-lg border-2 border-white shadow-md transition-transform group-hover:scale-110"
+                    style={{ backgroundColor: color }}
+                  />
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) =>
+                      setColors((prev) => ({ ...prev, [famille]: e.target.value }))
+                    }
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    title={`Changer la couleur de ${famille}`}
+                  />
+                </label>
+
+                {/* Label */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-chanv-terre truncate">
+                    {famille}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {color}
+                    {changed && (
+                      <span className="ml-1.5 text-amber-600 font-sans font-medium">
+                        (modifié)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Preview badge */}
+                <div
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shrink-0"
+                  style={{ backgroundColor: color }}
+                >
+                  {famille.length > 8 ? famille.slice(0, 8) + "…" : famille}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

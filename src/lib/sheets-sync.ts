@@ -123,6 +123,55 @@ export async function readFamilleColors(): Promise<Record<string, string>> {
   return colors;
 }
 
+/**
+ * Écrit les couleurs hex dans la colonne I de Listes_choix.
+ * Accepte un mapping { famille: "#rrggbb" }.
+ * Met à jour seulement les lignes correspondantes.
+ */
+export async function writeFamilleColors(
+  colorMap: Record<string, string>
+): Promise<void> {
+  const token = await getAccessToken();
+
+  // 1. Lire la structure actuelle (colonnes C et I)
+  const url = `${SHEETS_API}/${SHEET_ID}/values/${encodeURIComponent(LISTES_CHOIX_SHEET)}!C1:I30?valueRenderOption=UNFORMATTED_VALUE`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Sheets read error ${res.status}`);
+  const data = (await res.json()) as { values?: string[][] };
+  const rows = data.values || [];
+
+  // 2. Construire les valeurs pour la colonne I
+  const colIValues: string[][] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const famille = rows[i]?.[0]; // colonne C
+    if (i === 0) {
+      colIValues.push(["Couleur"]); // header
+    } else if (famille && colorMap[famille]) {
+      colIValues.push([colorMap[famille]]);
+    } else {
+      const existing = rows[i]?.[6] || ""; // keep existing
+      colIValues.push([existing]);
+    }
+  }
+
+  // 3. Écrire colonne I
+  const writeUrl = `${SHEETS_API}/${SHEET_ID}/values/${encodeURIComponent(LISTES_CHOIX_SHEET)}!I1:I${colIValues.length}?valueInputOption=USER_ENTERED`;
+  const writeRes = await fetch(writeUrl, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ values: colIValues }),
+  });
+  if (!writeRes.ok) throw new Error(`Sheets write error ${writeRes.status}`);
+
+  // 4. Invalider le cache
+  _familleColorsCache = null;
+}
+
 // ============================================================
 // Locaux CRUD
 // ============================================================
