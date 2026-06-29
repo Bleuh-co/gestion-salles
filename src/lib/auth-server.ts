@@ -86,8 +86,11 @@ async function resolveGestiSalleAppId(
   const appsSnap = await db.collection("apps").get();
   const match = appsSnap.docs.find((d) => {
     const name = (d.data().name || "").toLowerCase().replace(/\s+/g, "");
-    return name.includes("gestionsalles") || (name.includes("duplication") && name.includes("taches"));
+    return name.includes("gestionsalles") || (name.includes("gestion") && name.includes("salles"));
   });
+  if (!match) {
+    console.warn("[auth] resolveGestiSalleAppId: aucune app 'Gestion Salles' trouvée dans Firestore. Définir GESTISALLE_APP_ID est recommandé.");
+  }
   return { appId: match?.id || "", appName: (match?.data().name as string) || null };
 }
 
