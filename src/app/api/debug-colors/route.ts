@@ -4,7 +4,8 @@ import { getServiceAccountForGoogle } from "@/lib/firebase-admin";
 export const runtime = "nodejs";
 
 /**
- * Debug endpoint — reads data validation chip colors from column G
+ * Debug v4 — read the Listes_choix sheet column D (source of the dropdown)
+ * to find where the chip colors are actually defined.
  */
 export async function GET() {
   try {
@@ -22,35 +23,42 @@ export async function GET() {
     if (!token) return NextResponse.json({ error: "No token" }, { status: 500 });
 
     const SHEET_ID = "1059QWs8VKKyF4jW0ThebEnM-qn2hMB-gpbq5gTB0Elk";
-    const SHEET_NAME = "Locaux_ChanvHQ";
     const API = "https://sheets.googleapis.com/v4/spreadsheets";
 
-    // Read EVERYTHING: effectiveFormat, dataValidation, userEnteredFormat
-    const fullRes = await fetch(
-      `${API}/${SHEET_ID}?ranges=${encodeURIComponent(SHEET_NAME)}!G1:G10&fields=sheets.data.rowData.values(effectiveFormat,dataValidation,userEnteredFormat)`,
+    // 1. Read Listes_choix column D values
+    const valRes = await fetch(
+      `${API}/${SHEET_ID}/values/${encodeURIComponent("Listes_choix")}!D1:D30?valueRenderOption=UNFORMATTED_VALUE`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    const fullData = await fullRes.json();
+    const valData = await valRes.json();
 
-    // Also try reading the data validation rules for the whole column
-    const dvRes = await fetch(
-      `${API}/${SHEET_ID}?ranges=${encodeURIComponent(SHEET_NAME)}!G1:G10&fields=sheets.data.rowData.values.dataValidation`,
+    // 2. Read Listes_choix column D formatting (backgrounds)
+    const fmtRes = await fetch(
+      `${API}/${SHEET_ID}?ranges=${encodeURIComponent("Listes_choix")}!D1:D30&fields=sheets.data.rowData.values(effectiveFormat.backgroundColor,effectiveFormat.backgroundColorStyle,userEnteredFormat.backgroundColor)`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    const dvData = await dvRes.json();
+    const fmtData = await fmtRes.json();
 
-    // Also read the entire sheet metadata for conditionalFormats and basicFilter
-    const metaRes = await fetch(
-      `${API}/${SHEET_ID}?fields=sheets(conditionalFormats,basicFilter,properties,bandedRanges)`,
+    // 3. Read ALL of Listes_choix first few rows to see full structure
+    const allRes = await fetch(
+      `${API}/${SHEET_ID}/values/${encodeURIComponent("Listes_choix")}!A1:H20?valueRenderOption=UNFORMATTED_VALUE`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    const metaData = await metaRes.json();
+    const allData = await allRes.json();
+
+    // 4. Read Listes_choix full formatting for columns A-H rows 1-20
+    const fullFmtRes = await fetch(
+      `${API}/${SHEET_ID}?ranges=${encodeURIComponent("Listes_choix")}!A1:H20&fields=sheets.data.rowData.values(effectiveFormat.backgroundColor,effectiveFormat.textFormat.foregroundColor,userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.foregroundColor)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const fullFmtData = await fullFmtRes.json();
 
     return NextResponse.json({
       status: "ok",
-      columnG_full_formatting: fullData,
-      columnG_dataValidation: dvData,
-      sheet_metadata: metaData,
+      listes_choix_colD_values: valData,
+      listes_choix_colD_formatting: fmtData,
+      listes_choix_all_values: allData,
+      listes_choix_all_formatting: fullFmtData,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
