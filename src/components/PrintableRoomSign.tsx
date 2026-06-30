@@ -145,15 +145,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           }
         }
 
-        // Straight border
-        const borderWidth = m * 0.8;
-        ctx.strokeStyle = "#242424";
-        ctx.lineWidth = borderWidth;
-        ctx.lineJoin = "miter";
-        ctx.lineCap = "butt";
-        const bx = qrOx - m * 0.5, by = qrOy - m * 0.5;
-        const bw = qrSide + m, bh = qrSide + m;
-        ctx.strokeRect(bx, by, bw, bh);
+        // No border — clean QR code
 
         // Chanv icon in center
         const icon = new Image();
