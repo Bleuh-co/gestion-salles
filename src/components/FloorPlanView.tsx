@@ -401,17 +401,16 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
   }, []);
 
   const removeRoomFromPlan = useCallback((roomId: string) => {
-    setRoomPositions((prev) => {
-      const next = { ...prev };
-      delete next[roomId];
-      // Auto-save the removal so it persists on refresh
-      if (currentPlanId) {
-        // Fire-and-forget save with the new positions
-        savePositions(next);
-      }
-      return next;
-    });
-  }, [currentPlanId, savePositions]);
+    // Compute new positions from ref (always current)
+    const newPositions = { ...roomPositionsRef.current };
+    delete newPositions[roomId];
+
+    // Update local state
+    setRoomPositions(newPositions);
+
+    // Auto-save immediately (outside setState)
+    savePositions(newPositions);
+  }, [savePositions]);
 
   // ---- Tray state ----
   const [traySearch, setTraySearch] = useState("");
