@@ -398,5 +398,15 @@ h4 {
   .print\\:hidden {
     display: none !important;
   }
+  /* Hide Hub widgets (Feedback, Gandalf, Chatbot) */
+  [data-feedback], [class*="feedback"],
+  [data-gandalf], [class*="gandalf"],
+  [id^="chanv-chatbot"], [id^="chanv-feedback"],
+  .chanv-chatbot-container, .chanv-chatbot-bubble,
+  .chanv-feedback-widget,
+  div[style*="z-index: 2147"], div[style*="z-index: 9999"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
 }
 

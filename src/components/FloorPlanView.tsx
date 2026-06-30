@@ -343,24 +343,34 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
   }, []);
 
   // ---- Save positions ----
-  const savePositions = useCallback(async () => {
+  // Keep a ref to always get the latest roomPositions in save callbacks
+  const roomPositionsRef = useRef(roomPositions);
+  roomPositionsRef.current = roomPositions;
+
+  const savePositions = useCallback(async (positionsOverride?: Record<string, { x: number; y: number }>) => {
     if (!currentPlanId) return;
+    const positionsToSave = positionsOverride ?? roomPositionsRef.current;
     setSaving(true);
     try {
       const res = await fetch(`/api/plan/${encodeURIComponent(currentPlanId)}/room-positions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ room_positions: roomPositions }),
+        body: JSON.stringify({ room_positions: positionsToSave }),
       });
       if (!res.ok) throw new Error("Échec sauvegarde");
       setDirty(false);
-      setEditMode(false);
     } catch (err) {
       console.error("Save failed", err);
     } finally {
       setSaving(false);
     }
-  }, [currentPlanId, roomPositions]);
+  }, [currentPlanId]);
+
+  // Wrapper that also exits edit mode (for the toolbar button)
+  const saveAndExitEdit = useCallback(async () => {
+    await savePositions();
+    setEditMode(false);
+  }, [savePositions]);
 
   // ---- Room helpers ----
   const locauxMap = new Map(locaux.map((l) => [l.id, l]));
@@ -394,10 +404,14 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
     setRoomPositions((prev) => {
       const next = { ...prev };
       delete next[roomId];
+      // Auto-save the removal so it persists on refresh
+      if (currentPlanId) {
+        // Fire-and-forget save with the new positions
+        savePositions(next);
+      }
       return next;
     });
-    setDirty(true);
-  }, []);
+  }, [currentPlanId, savePositions]);
 
   // ---- Tray state ----
   const [traySearch, setTraySearch] = useState("");
@@ -462,7 +476,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
           {editMode && (
             <>
               <button
-                onClick={savePositions}
+                onClick={saveAndExitEdit}
                 disabled={saving || !dirty}
                 className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs !bg-chanv-terre !text-white !border-chanv-terre disabled:opacity-50"
               >
