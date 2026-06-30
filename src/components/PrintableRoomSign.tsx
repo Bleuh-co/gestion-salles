@@ -145,23 +145,15 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           }
         }
 
-        // Wavy border
+        // Straight border
         const borderWidth = m * 0.8;
-        const waveAmp = m * 1.2;
-        const steps = 200;
         ctx.strokeStyle = "#242424";
         ctx.lineWidth = borderWidth;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
+        ctx.lineJoin = "miter";
+        ctx.lineCap = "butt";
         const bx = qrOx - m * 0.5, by = qrOy - m * 0.5;
         const bw = qrSide + m, bh = qrSide + m;
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) { const t = i / steps; const x = bx + t * bw; const y = by + Math.sin(t * Math.PI * 6 + 0.5) * waveAmp; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-        for (let i = 0; i <= steps; i++) { const t = i / steps; ctx.lineTo(bx + bw + Math.sin(t * Math.PI * 6 + 1.5) * waveAmp, by + t * bh); }
-        for (let i = 0; i <= steps; i++) { const t = i / steps; ctx.lineTo(bx + bw - t * bw, by + bh + Math.sin(t * Math.PI * 6 + 2.5) * waveAmp); }
-        for (let i = 0; i <= steps; i++) { const t = i / steps; ctx.lineTo(bx + Math.sin(t * Math.PI * 6 + 3.5) * waveAmp, by + bh - t * bh); }
-        ctx.closePath();
-        ctx.stroke();
+        ctx.strokeRect(bx, by, bw, bh);
 
         // Chanv icon in center
         const icon = new Image();
