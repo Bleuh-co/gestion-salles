@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster richColors position="top-right" />
         </AuthProvider>
-        {/* Hub Widgets */}
+        {/* Auth bridge for Hub widgets (loaded in app layout) */}
         <Script id="chanv-auth-bridge" strategy="beforeInteractive">{`
           window.getAuthToken = async function() {
             try {
@@ -51,9 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             return null;
           };
         `}</Script>
-        <Script src={`${HUB_URL}/widgets/chatbot.js`} data-hub={HUB_URL} strategy="lazyOnload" />
-        <Script src={`${HUB_URL}/widgets/feedback.js`} data-hub={HUB_URL} strategy="lazyOnload" />
-        <Script src={`${HUB_URL}/js/gandalf-widget.js`} data-hub={HUB_URL} strategy="lazyOnload" />
         {/* Service worker — rend la PWA installable */}
         <Script id="register-sw" strategy="afterInteractive">{`
           if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
