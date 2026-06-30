@@ -40,14 +40,14 @@ export async function POST(req: NextRequest, { params }: Props) {
     }
 
     const db = adminDb();
-    await db.collection(PLANS_COLLECTION).doc(planId).set(
-      {
-        room_positions: sanitized,
-        room_positions_updated_at: FieldValue.serverTimestamp(),
-        room_positions_updated_by: session.email,
-      },
-      { merge: true }
-    );
+    // IMPORTANT: use update() instead of set({merge:true}).
+    // merge:true deep-merges nested objects, so deleted room keys
+    // are never removed. update() replaces the entire field value.
+    await db.collection(PLANS_COLLECTION).doc(planId).update({
+      room_positions: sanitized,
+      room_positions_updated_at: FieldValue.serverTimestamp(),
+      room_positions_updated_by: session.email,
+    });
 
     return NextResponse.json({
       status: "success",
