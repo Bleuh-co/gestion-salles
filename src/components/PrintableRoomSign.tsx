@@ -2,88 +2,45 @@
 
 import { useEffect, useState, useRef } from "react";
 import QRCode from "qrcode";
-import { Printer, Loader2, ArrowLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { Local } from "@/lib/types";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 
 // ============================================================
-// Safety pictograms per famille
+// Portrait room sign — half of a US-Letter landscape sheet.
+// Two panels print side-by-side on one landscape page.
+//
+// Each panel is divided into 3 equal rows:
+//
+//  ┌──────────────────────────┐
+//  │          BADGE           │  ← Row 1: the letter
+//  │        (letter)          │
+//  ├────────────┬─────────────┤
+//  │            │             │
+//  │   QR code  │  Room name   │  ← Row 2: QR + name
+//  │            │             │
+//  ├────────────┴─────────────┤
+//  │       Chanv logo         │  ← Row 3: logo
+//  └──────────────────────────┘
 // ============================================================
 
-interface SafetyItem {
-  icon: string;
-  label: string;
-}
-
-const SAFETY_ITEMS: Record<string, SafetyItem[]> = {
-  CANNABIS: [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
-    { icon: "🥼", label: "Porter un sarot" },
-    { icon: "❌", label: "Aucun bijoux" },
-  ],
-  PSN: [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
-    { icon: "🥼", label: "Porter un sarot" },
-    { icon: "❌", label: "Aucun bijoux" },
-  ],
-  ALI: [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🧢", label: "Porter un filet à cheveux / filet à barbe si nécessaire" },
-    { icon: "🥼", label: "Porter un sarot" },
-    { icon: "❌", label: "Aucun bijoux" },
-  ],
-  "CANNABIS_R&D": [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🧢", label: "Porter un filet à cheveux" },
-    { icon: "🥼", label: "Porter un sarot" },
-    { icon: "🧤", label: "Porter des gants" },
-  ],
-  "SERVICES PRODUCTION": [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🧢", label: "Porter un filet à cheveux" },
-    { icon: "🥼", label: "Porter un sarot" },
-  ],
-  "SERVICES TECHNIQUES": [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🦺", label: "Vêtements de sécurité" },
-  ],
-  "MAISON D'HERBES": [
-    { icon: "🥾", label: "Porter des bottes de sécurité" },
-    { icon: "🧢", label: "Porter un filet à cheveux" },
-    { icon: "🥼", label: "Porter un sarot" },
-    { icon: "❌", label: "Aucun bijoux" },
-  ],
-};
-
-// ============================================================
-// Props
-// ============================================================
-
-interface RoomSignProps {
+interface PanelSource {
   local: Local;
   targetUrl: string;
 }
 
+interface RoomSignProps {
+  /** Left panel (always present). */
+  left: PanelSource;
+  /** Right panel — null renders a blank half (single sign). */
+  right: PanelSource | null;
+}
+
 // ============================================================
-// Component — US Letter landscape sign
-// Layout matches the reference: 3 rows × 2 cols
-//
-//  ┌──────────┬──────────────────────────────┐
-//  │  Badge   │                              │
-//  │  (CAN)   │         Room Name            │
-//  ├──────────┤      (spans 2 rows)          │
-//  │          │                              │
-//  │  QR Code │                              │
-//  │          │                              │
-//  ├──────────┼──────────────────────────────┤
-//  │  Logo    │    Safety Requirements       │
-//  │  Chanv   │    (pictograms)              │
-//  └──────────┴──────────────────────────────┘
+// Single portrait panel (handles its own QR generation)
 // ============================================================
 
-export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
+function RoomPanel({ local, targetUrl }: PanelSource) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const sourceRef = useRef<HTMLCanvasElement>(null);
   const drawRef = useRef<HTMLCanvasElement>(null);
@@ -91,10 +48,10 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence || "?";
   const displayName = local.nomSalle || local.id;
-  const safetyItems = SAFETY_ITEMS[local.famille] || [];
   const isProd = local.prod;
+  const badgeLetter = isProd ? "P" : familleShort.charAt(0);
 
-  // Generate QR code
+  // Generate QR code (matrix redraw + centered Chanv icon)
   useEffect(() => {
     async function generate() {
       try {
@@ -128,7 +85,6 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
         const center = canvasSize / 2;
         const qrOx = quietZone * m;
         const qrOy = quietZone * m;
-        const qrSide = mc * m;
 
         draw.width = canvasSize;
         draw.height = canvasSize;
@@ -144,8 +100,6 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             ctx.fillRect(qrOx + col * m, qrOy + row * m, m, m);
           }
         }
-
-        // No border — clean QR code
 
         // Chanv icon in center
         const icon = new Image();
@@ -164,98 +118,101 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
     generate();
   }, [targetUrl]);
 
-  if (!qrDataUrl) {
-    return (
-      <>
-        <canvas ref={sourceRef} style={{ display: "none" }} />
-        <canvas ref={drawRef} style={{ display: "none" }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: 8, color: "#94a3b8", fontFamily: "Inter, sans-serif" }}>
-          <Loader2 style={{ width: 24, height: 24, animation: "spin 1s linear infinite" }} />
-          <span>Génération du panneau…</span>
-        </div>
-      </>
-    );
-  }
-
-  // Adaptive font size: smaller for longer names
+  // Adaptive name font size (fixed inch units so screen == print)
   const len = displayName.length;
-  const nameFontSize = len > 30 ? "5vw" : len > 22 ? "6.5vw" : len > 15 ? "8vw" : "10vw";
+  const nameFontSize = len > 30 ? "0.42in" : len > 22 ? "0.55in" : len > 15 ? "0.72in" : "0.95in";
 
   return (
-    <>
+    <div
+      className="room-panel"
+      style={{
+        flex: 1,
+        minWidth: 0,
+        height: "100%",
+        background: "#4a4a4a",
+        borderRadius: 10,
+        boxSizing: "border-box",
+        padding: "0.18in",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.16in",
+        fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+        overflow: "hidden",
+      }}
+    >
       <canvas ref={sourceRef} style={{ display: "none" }} />
       <canvas ref={drawRef} style={{ display: "none" }} />
 
+      {/* ── Row 1: Famille badge (the letter) ── */}
+      <div style={{
+        flex: 1,
+        backgroundColor: familleColor,
+        borderRadius: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontSize: "1.7in",
+        fontWeight: 900,
+        lineHeight: 1,
+      }}>
+        {badgeLetter}
+      </div>
 
-
-      {/* ============================================================ */}
-      {/* THE SIGN                                                      */}
-      {/* Uses percentage-based sizing for correct print proportions    */}
-      {/* ============================================================ */}
-      <div
-        className="room-sign-page"
-        style={{
-          /* Aspect ratio = US Letter landscape (11:8.5 ≈ 1.294) */
-          width: "11in",
-          height: "8.5in",
-          background: "#4a4a4a",
-          margin: "60px auto 40px",
-          padding: "1.5%",
-          display: "grid",
-          gridTemplateColumns: "22% 1fr",
-          gridTemplateRows: "35% 1fr 28%",
-          gap: "1.2%",
-          fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-          boxSizing: "border-box",
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
-        {/* ── Row 1, Col 1: Famille badge ── */}
+      {/* ── Row 2: QR code (left) + room name (right) ── */}
+      <div style={{ flex: 1, display: "flex", gap: "0.16in", minHeight: 0 }}>
+        {/* QR code */}
         <div style={{
-          gridRow: 1,
-          gridColumn: 1,
-          backgroundColor: familleColor,
-          borderRadius: 10,
+          flex: "0 0 44%",
+          background: "#fff",
+          borderRadius: 8,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "white",
-          fontSize: "10vw",
-          fontWeight: 900,
-          lineHeight: 1,
+          padding: "0.12in",
+          overflow: "hidden",
         }}>
-          {isProd ? "P" : familleShort.charAt(0)}
+          {qrDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={qrDataUrl}
+              alt="QR Code"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          ) : (
+            <Loader2 style={{ width: 24, height: 24, color: "#94a3b8", animation: "spin 1s linear infinite" }} />
+          )}
         </div>
 
-        {/* ── Row 1+2, Col 2: Room name (spans 2 rows) ── */}
+        {/* Room name */}
         <div style={{
-          gridRow: "1 / 3",
-          gridColumn: 2,
+          flex: 1,
+          minWidth: 0,
           background: "#fff",
-          borderRadius: 10,
+          borderRadius: 8,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "4% 5%",
+          padding: "0.1in 0.14in",
           textAlign: "center",
         }}>
-          <div>
+          <div style={{ width: "100%" }}>
             <div style={{
               fontSize: nameFontSize,
               fontWeight: 800,
               color: "#1a1a1a",
-              lineHeight: 1.15,
+              lineHeight: 1.12,
               letterSpacing: "-0.02em",
+              wordBreak: "break-word",
             }}>
               {displayName}
             </div>
             {local.nomSalle && (
               <div style={{
-                fontSize: "3vw",
+                fontSize: "0.16in",
                 fontWeight: 500,
                 color: "#aaa",
-                marginTop: "0.8%",
+                marginTop: "0.06in",
                 letterSpacing: "0.02em",
               }}>
                 {local.id}
@@ -263,59 +220,66 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             )}
           </div>
         </div>
+      </div>
 
-        {/* ── Row 2, Col 1: QR Code ── */}
-        <div style={{
-          gridRow: 2,
-          gridColumn: 1,
-          background: "#fff",
-          borderRadius: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "6%",
-          overflow: "hidden",
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={qrDataUrl}
-            alt="QR Code"
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
-          />
-        </div>
+      {/* ── Row 3: Chanv logo ── */}
+      <div style={{
+        flex: 1,
+        background: "#fff",
+        borderRadius: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0.2in 0.3in",
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-groupe-chanv.png"
+          alt="Groupe Chanv"
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      </div>
+    </div>
+  );
+}
 
-        {/* ── Row 3, Col 1: Chanv logo ── */}
-        <div style={{
-          gridRow: 3,
-          gridColumn: 1,
-          background: "#fff",
-          borderRadius: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "8% 10%",
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-groupe-chanv.png"
-            alt="Groupe Chanv"
-            style={{ width: "100%", height: "auto", maxHeight: "100%", objectFit: "contain" }}
-          />
-        </div>
+// ============================================================
+// The sheet — US Letter landscape, two portrait panels
+// ============================================================
 
-        {/* ── Row 3, Col 2: Safety requirements ── */}
-        <div style={{
-          gridRow: 3,
-          gridColumn: 2,
-          background: "#fff",
-          borderRadius: 10,
+export function PrintableRoomSign({ left, right }: RoomSignProps) {
+  return (
+    <>
+      <div
+        className="sign-sheet"
+        style={{
+          /* US Letter landscape */
+          width: "11in",
+          height: "8.5in",
+          background: "#ffffff",
+          margin: "40px auto",
+          padding: "0.2in",
           display: "flex",
-          flexDirection: "column" as const,
-          padding: "1.5% 3%",
-          justifyContent: "center",
-        }}>
-          {/* Empty for now */}
-        </div>
+          alignItems: "stretch",
+          gap: "0.2in",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Left panel */}
+        <RoomPanel local={left.local} targetUrl={left.targetUrl} />
+
+        {/* Cut guide */}
+        <div
+          className="cut-line"
+          style={{ flex: "0 0 0", alignSelf: "stretch", borderLeft: "1px dashed #cbcbcb" }}
+        />
+
+        {/* Right panel (or blank half) */}
+        {right ? (
+          <RoomPanel local={right.local} targetUrl={right.targetUrl} />
+        ) : (
+          <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
+        )}
       </div>
 
       {/* ── Print styles ── */}
@@ -333,15 +297,18 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .room-sign-page {
+          .sign-sheet {
             margin: 0 !important;
-            border-radius: 0 !important;
+            padding: 0 !important;
             width: 10.6in !important;
             height: 8.1in !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
             overflow: hidden !important;
             page-break-inside: avoid;
             break-inside: avoid;
           }
+          .sign-toolbar { display: none !important; }
           /* Hide ALL external widgets */
           [data-feedback], [class*="feedback"],
           [data-gandalf], [class*="gandalf"],
@@ -353,9 +320,9 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           }
         }
         @media screen {
-          .room-sign-page {
+          .sign-sheet {
             box-shadow: 0 8px 40px rgba(0,0,0,0.3);
-            border-radius: 12px;
+            border-radius: 6px;
           }
         }
       `}</style>
