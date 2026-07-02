@@ -297,9 +297,9 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo-groupe-chanv.svg"
+            src="/logo-groupe-chanv.png"
             alt="Groupe Chanv"
-            style={{ width: "100%", height: "auto", maxHeight: "100%", objectFit: "contain", filter: "brightness(0)" }}
+            style={{ width: "100%", height: "auto", maxHeight: "100%", objectFit: "contain" }}
           />
         </div>
 
