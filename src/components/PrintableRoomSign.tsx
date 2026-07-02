@@ -118,9 +118,10 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
     generate();
   }, [targetUrl]);
 
-  // Adaptive name font size (fixed inch units so screen == print)
+  // Adaptive name font size (fixed inch units so screen == print).
+  // Capped so that even a 2-line name fits the fixed name slot below.
   const len = displayName.length;
-  const nameFontSize = len > 30 ? "0.4in" : len > 20 ? "0.55in" : len > 12 ? "0.72in" : "0.9in";
+  const nameFontSize = len > 30 ? "0.4in" : len > 20 ? "0.52in" : len > 12 ? "0.66in" : "0.85in";
 
   return (
     <div
@@ -161,7 +162,8 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         {badgeLetter}
       </div>
 
-      {/* ── Row 2 (50%): QR code, then room name, then id (stacked) ── */}
+      {/* ── Row 2 (50%): QR, name, id — fixed-height slots so the ── */}
+      {/* ── layout never shifts with content length             ── */}
       <div style={{
         flex: 2,
         minHeight: 0,
@@ -171,14 +173,14 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "0.18in",
-        gap: "0.14in",
+        padding: "0.14in",
         overflow: "hidden",
         textAlign: "center",
       }}>
-        {/* QR code (fixed size — independent of room-name length) */}
+        {/* QR code — fixed size */}
         <div style={{
           flexShrink: 0,
+          height: "1.45in",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -188,36 +190,55 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
             <img
               src={qrDataUrl}
               alt="QR Code"
-              style={{ width: "1.6in", height: "1.6in", objectFit: "contain" }}
+              style={{ width: "1.45in", height: "1.45in", objectFit: "contain" }}
             />
           ) : (
             <Loader2 style={{ width: 24, height: 24, color: "#94a3b8", animation: "spin 1s linear infinite" }} />
           )}
         </div>
 
-        {/* Room name */}
+        {/* Room name — fixed-height slot, text vertically centered */}
         <div style={{
-          fontSize: nameFontSize,
-          fontWeight: 800,
-          color: "#1a1a1a",
-          lineHeight: 1.1,
-          letterSpacing: "-0.02em",
-          wordBreak: "break-word",
+          flexShrink: 0,
+          height: "1.5in",
+          marginTop: "0.1in",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
         }}>
-          {displayName}
+          <div style={{
+            fontSize: nameFontSize,
+            fontWeight: 800,
+            color: "#1a1a1a",
+            lineHeight: 1.08,
+            letterSpacing: "-0.02em",
+            wordBreak: "break-word",
+          }}>
+            {displayName}
+          </div>
         </div>
 
-        {/* Room id (smaller) */}
-        {local.nomSalle && (
-          <div style={{
-            fontSize: "0.2in",
-            fontWeight: 500,
-            color: "#888",
-            letterSpacing: "0.02em",
-          }}>
-            {local.id}
-          </div>
-        )}
+        {/* Room id — fixed-height slot, always reserved (empty if none) */}
+        <div style={{
+          flexShrink: 0,
+          height: "0.3in",
+          marginTop: "0.04in",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          {local.nomSalle && (
+            <div style={{
+              fontSize: "0.2in",
+              fontWeight: 500,
+              color: "#888",
+              letterSpacing: "0.02em",
+            }}>
+              {local.id}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Row 3 (25%): Groupe Chanv logo (horizontal) ── */}
