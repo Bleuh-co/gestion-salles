@@ -176,11 +176,9 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         overflow: "hidden",
         textAlign: "center",
       }}>
-        {/* QR code (fills remaining vertical space) */}
+        {/* QR code (fixed size — independent of room-name length) */}
         <div style={{
-          flex: "1 1 0",
-          minHeight: 0,
-          width: "100%",
+          flexShrink: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -190,7 +188,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
             <img
               src={qrDataUrl}
               alt="QR Code"
-              style={{ height: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
+              style={{ width: "1.6in", height: "1.6in", objectFit: "contain" }}
             />
           ) : (
             <Loader2 style={{ width: 24, height: 24, color: "#94a3b8", animation: "spin 1s linear infinite" }} />
@@ -231,7 +229,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "0.16in 0.3in",
+        padding: "0.26in 0.55in",
         overflow: "hidden",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
