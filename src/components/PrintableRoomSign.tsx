@@ -120,7 +120,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
 
   // Adaptive name font size (fixed inch units so screen == print)
   const len = displayName.length;
-  const nameFontSize = len > 30 ? "0.42in" : len > 22 ? "0.55in" : len > 15 ? "0.72in" : "0.95in";
+  const nameFontSize = len > 30 ? "0.4in" : len > 20 ? "0.55in" : len > 12 ? "0.72in" : "0.9in";
 
   return (
     <div
@@ -143,41 +143,54 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
       <canvas ref={sourceRef} style={{ display: "none" }} />
       <canvas ref={drawRef} style={{ display: "none" }} />
 
-      {/* ── Row 1: Famille badge (the letter) ── */}
+      {/* ── Row 1 (25%): Famille badge (the letter) ── */}
       <div style={{
         flex: 1,
+        minHeight: 0,
         backgroundColor: familleColor,
         borderRadius: 8,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         color: "white",
-        fontSize: "1.7in",
+        fontSize: "1.5in",
         fontWeight: 900,
         lineHeight: 1,
+        overflow: "hidden",
       }}>
         {badgeLetter}
       </div>
 
-      {/* ── Row 2: QR code (left) + room name (right) ── */}
-      <div style={{ flex: 1, display: "flex", gap: "0.16in", minHeight: 0 }}>
-        {/* QR code */}
+      {/* ── Row 2 (50%): QR code, then room name, then id (stacked) ── */}
+      <div style={{
+        flex: 2,
+        minHeight: 0,
+        background: "#fff",
+        borderRadius: 8,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0.18in",
+        gap: "0.14in",
+        overflow: "hidden",
+        textAlign: "center",
+      }}>
+        {/* QR code (fills remaining vertical space) */}
         <div style={{
-          flex: "0 0 44%",
-          background: "#fff",
-          borderRadius: 8,
+          flex: "1 1 0",
+          minHeight: 0,
+          width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "0.12in",
-          overflow: "hidden",
         }}>
           {qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={qrDataUrl}
               alt="QR Code"
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              style={{ height: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
             />
           ) : (
             <Loader2 style={{ width: 24, height: 24, color: "#94a3b8", animation: "spin 1s linear infinite" }} />
@@ -186,55 +199,44 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
 
         {/* Room name */}
         <div style={{
-          flex: 1,
-          minWidth: 0,
-          background: "#fff",
-          borderRadius: 8,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0.1in 0.14in",
-          textAlign: "center",
+          fontSize: nameFontSize,
+          fontWeight: 800,
+          color: "#1a1a1a",
+          lineHeight: 1.1,
+          letterSpacing: "-0.02em",
+          wordBreak: "break-word",
         }}>
-          <div style={{ width: "100%" }}>
-            <div style={{
-              fontSize: nameFontSize,
-              fontWeight: 800,
-              color: "#1a1a1a",
-              lineHeight: 1.12,
-              letterSpacing: "-0.02em",
-              wordBreak: "break-word",
-            }}>
-              {displayName}
-            </div>
-            {local.nomSalle && (
-              <div style={{
-                fontSize: "0.16in",
-                fontWeight: 500,
-                color: "#aaa",
-                marginTop: "0.06in",
-                letterSpacing: "0.02em",
-              }}>
-                {local.id}
-              </div>
-            )}
-          </div>
+          {displayName}
         </div>
+
+        {/* Room id (smaller) */}
+        {local.nomSalle && (
+          <div style={{
+            fontSize: "0.2in",
+            fontWeight: 500,
+            color: "#888",
+            letterSpacing: "0.02em",
+          }}>
+            {local.id}
+          </div>
+        )}
       </div>
 
-      {/* ── Row 3: Chanv logo ── */}
+      {/* ── Row 3 (25%): Groupe Chanv logo (horizontal) ── */}
       <div style={{
         flex: 1,
+        minHeight: 0,
         background: "#fff",
         borderRadius: 8,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "0.2in 0.3in",
+        padding: "0.16in 0.3in",
+        overflow: "hidden",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/logo-groupe-chanv.png"
+          src="/logo-groupe-chanv.svg"
           alt="Groupe Chanv"
           style={{ width: "100%", height: "100%", objectFit: "contain" }}
         />
