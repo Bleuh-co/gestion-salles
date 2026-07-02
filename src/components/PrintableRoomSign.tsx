@@ -336,8 +336,8 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
           .room-sign-page {
             margin: 0 !important;
             border-radius: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: 10.6in !important;
+            height: 8.1in !important;
             overflow: hidden !important;
             page-break-inside: avoid;
             break-inside: avoid;
