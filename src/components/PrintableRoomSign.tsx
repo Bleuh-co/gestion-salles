@@ -323,7 +323,7 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
         @media print {
           @page {
             size: 11in 8.5in;
-            margin: 0;
+            margin: 0.2in;
           }
           html, body {
             margin: 0 !important;
@@ -334,10 +334,10 @@ export function PrintableRoomSign({ local, targetUrl }: RoomSignProps) {
             print-color-adjust: exact !important;
           }
           .room-sign-page {
-            margin: auto !important;
+            margin: 0 !important;
             border-radius: 0 !important;
-            width: 10.6in !important;
-            height: 8.1in !important;
+            width: 100% !important;
+            height: 100% !important;
             overflow: hidden !important;
             page-break-inside: avoid;
             break-inside: avoid;
