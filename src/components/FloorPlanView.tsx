@@ -8,7 +8,7 @@ import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
   Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save,
-  Package,
+  Package, Printer,
   Plus, EyeOff, ChevronDown, ChevronRight, Search, Droplets, Battery
 } from "lucide-react";
 
@@ -464,13 +464,23 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
           </span>
 
           {isAdmin && !editMode && (
-            <button
-              onClick={() => setEditMode(true)}
-              className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs"
-              title="Repositionner les salles"
-            >
-              <GripVertical className="w-3.5 h-3.5" /> Éditer
-            </button>
+            <>
+              <Link
+                href="/sign/batch"
+                target="_blank"
+                className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs"
+                title="Imprimer les affiches de salles (batch)"
+              >
+                <Printer className="w-3.5 h-3.5" /> Imprimer affiches
+              </Link>
+              <button
+                onClick={() => setEditMode(true)}
+                className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs"
+                title="Repositionner les salles"
+              >
+                <GripVertical className="w-3.5 h-3.5" /> Éditer
+              </button>
+            </>
           )}
           {editMode && (
             <>
