@@ -126,8 +126,9 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
   const nameFontSize = (() => {
     const words = displayName.split(/\s+/);
     const longestWordLen = words.reduce((m, w) => Math.max(m, w.length), 0);
-    // Panel text area width ≈ 4.4in, avg char width ≈ 0.55 × fontSize
-    const AW = 4.4, CW = 0.55, SH = 1.5, LH = 1.12;
+    // Panel text area width ≈ 4.4in, avg char width ≈ 0.65 × fontSize
+    // (conservative to handle uppercase-heavy names like TERRAIN_HQ)
+    const AW = 4.4, CW = 0.65, SH = 1.5, LH = 1.12;
     for (let f = 0.85; f >= 0.28; f -= 0.01) {
       const cpl = Math.floor(AW / (CW * f));
       if (longestWordLen > cpl) continue; // word too wide
