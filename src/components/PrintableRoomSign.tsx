@@ -118,19 +118,30 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
     generate();
   }, [targetUrl]);
 
-  // Adaptive name font size (fixed inch units so screen == print).
-  // Consider BOTH total length and longest single word to avoid
-  // mid-word breaks on names like "Congélateur" or "Kombuchanv".
-  const len = displayName.length;
-  const longestWord = displayName.split(/[\s\-–—/]+/).reduce(
-    (max, w) => Math.max(max, w.length), 0
-  );
-  // Base size from total length (multi-word names)
-  const sizeFromTotal = len > 30 ? 0.4 : len > 20 ? 0.52 : len > 12 ? 0.66 : 0.85;
-  // Size cap from longest single word (prevents mid-word breaks)
-  // Panel content width is ~4.5in; approximate chars-per-inch at 800 weight
-  const sizeFromWord = longestWord > 12 ? 0.4 : longestWord > 9 ? 0.52 : longestWord > 7 ? 0.66 : 0.85;
-  const nameFontSize = `${Math.min(sizeFromTotal, sizeFromWord)}in`;
+  // Adaptive name font size — proportional word-wrap simulation.
+  // CSS only breaks on whitespace, so "/" doesn't cause a line break.
+  // We simulate word-wrap to find the largest font that fits both
+  // horizontally (longest word on one line) and vertically (all lines
+  // in the 1.5in slot).
+  const nameFontSize = (() => {
+    const words = displayName.split(/\s+/);
+    const longestWordLen = words.reduce((m, w) => Math.max(m, w.length), 0);
+    // Panel text area width ≈ 4.4in, avg char width ≈ 0.55 × fontSize
+    const AW = 4.4, CW = 0.55, SH = 1.5, LH = 1.12;
+    for (let f = 0.85; f >= 0.28; f -= 0.01) {
+      const cpl = Math.floor(AW / (CW * f));
+      if (longestWordLen > cpl) continue; // word too wide
+      // Simulate word wrap
+      let lines = 1, ll = 0;
+      for (const w of words) {
+        if (ll === 0) { ll = w.length; }
+        else if (ll + 1 + w.length <= cpl) { ll += 1 + w.length; }
+        else { lines++; ll = w.length; }
+      }
+      if (lines * f * LH <= SH) return `${f.toFixed(2)}in`;
+    }
+    return "0.28in";
+  })();
 
   return (
     <div
@@ -214,7 +225,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          overflow: "hidden",
+          overflow: "visible",
           position: "relative",
           zIndex: 2,
         }}>
