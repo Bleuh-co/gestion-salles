@@ -119,20 +119,22 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
   }, [targetUrl]);
 
   // Adaptive name font size — proportional word-wrap simulation.
-  // Split on whitespace AND "/" so compound names like
-  // "Réception/Expédition" are treated as separate segments.
-  // A <wbr> is inserted after "/" in the rendered output so CSS
-  // can break there too.
+  // We simulate word-wrap to find the largest font that fits both
+  // horizontally (longest word on one line) and vertically (all lines
+  // in the 1.5in slot).
   const nameFontSize = (() => {
-    const words = displayName.split(/[\s/]+/);
-    const longestWordLen = words.reduce((m, w) => Math.max(m, w.length), 0);
-    // Panel text area width ≈ 4.4in, avg char width ≈ 0.65 × fontSize
-    // (conservative to handle uppercase-heavy names like TERRAIN_HQ)
-    const AW = 4.4, CW = 0.65, SH = 1.5, LH = 1.12;
+    const words = displayName.split(/\s+/);
+    // Per-word char width: uppercase-heavy words (TERRAIN_HQ) are wider
+    const wCW = (w: string) => {
+      const upper = w.split("").filter(c => c >= "A" && c <= "Z").length;
+      return upper / w.length > 0.5 ? 0.70 : 0.58;
+    };
+    const AW = 4.4, SH = 1.5, LH = 1.12;
     for (let f = 0.85; f >= 0.28; f -= 0.01) {
-      const cpl = Math.floor(AW / (CW * f));
-      if (longestWordLen > cpl) continue; // word too wide
-      // Simulate word wrap
+      // Check: does every word fit on one line?
+      if (words.some(w => w.length * wCW(w) * f > AW)) continue;
+      // Simulate word wrap using the most conservative CW (0.65)
+      const cpl = Math.floor(AW / (0.65 * f));
       let lines = 1, ll = 0;
       for (const w of words) {
         if (ll === 0) { ll = w.length; }
@@ -143,15 +145,6 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
     }
     return "0.28in";
   })();
-
-  // Render name with <wbr> after "/" so the browser can line-break there
-  const renderedName = displayName.includes("/")
-    ? displayName.split("/").map((part, i, arr) => (
-        <span key={i}>
-          {part}{i < arr.length - 1 && <>/<wbr /></>}
-        </span>
-      ))
-    : displayName;
 
   return (
     <div
@@ -247,7 +240,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
             letterSpacing: "-0.02em",
             overflowWrap: "break-word",
           }}>
-            {renderedName}
+            {displayName}
           </div>
         </div>
 
