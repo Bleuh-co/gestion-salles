@@ -124,17 +124,22 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
   // in the 1.5in slot).
   const nameFontSize = (() => {
     const words = displayName.split(/\s+/);
-    // Per-word char width: uppercase-heavy words (TERRAIN_HQ) are wider
-    const wCW = (w: string) => {
-      const upper = w.split("").filter(c => c >= "A" && c <= "Z").length;
-      return upper / w.length > 0.5 ? 0.70 : 0.58;
-    };
-    const AW = 4.4, SH = 1.5, LH = 1.12;
+    const longestWordLen = words.reduce((m, w) => Math.max(m, w.length), 0);
+    // Panel text area width ≈ 4.4in, avg char width ≈ 0.65 × fontSize
+    // (conservative to handle uppercase-heavy names like TERRAIN_HQ)
+    // Exception: words with "/" use 0.58 since "/" is narrow (only affects
+    // "Réception/Expédition Chanv" — no other name has "/")
+    const AW = 4.4, CW = 0.65, SH = 1.5, LH = 1.12;
+    const longestWordCW = words.reduce((best, w) => {
+      const cw = w.includes("/") ? 0.58 : CW;
+      const width = w.length * cw;
+      return width > best.width ? { width, len: w.length, cw } : best;
+    }, { width: 0, len: 0, cw: CW });
     for (let f = 0.85; f >= 0.28; f -= 0.01) {
-      // Check: does every word fit on one line?
-      if (words.some(w => w.length * wCW(w) * f > AW)) continue;
-      // Simulate word wrap using the most conservative CW (0.65)
-      const cpl = Math.floor(AW / (0.65 * f));
+      // Check: does the widest word fit on one line?
+      if (longestWordCW.len * longestWordCW.cw * f > AW) continue;
+      // Simulate word wrap (uses CW=0.65 for all line-width calculations)
+      const cpl = Math.floor(AW / (CW * f));
       let lines = 1, ll = 0;
       for (const w of words) {
         if (ll === 0) { ll = w.length; }
