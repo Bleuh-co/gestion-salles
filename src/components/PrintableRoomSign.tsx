@@ -161,7 +161,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         background: "#1c1917",
         borderRadius: 10,
         boxSizing: "border-box",
-        padding: "0.18in",
+        padding: "0.08in",
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
@@ -289,7 +289,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
       <div style={{
         flex: 1,
         minHeight: 0,
-        marginTop: "0.16in",
+        marginTop: "0.08in",
         background: "#f5f0e8",
         borderRadius: 8,
         display: "flex",
