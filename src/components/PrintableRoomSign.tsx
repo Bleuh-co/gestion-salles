@@ -61,7 +61,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
 
         await QRCode.toCanvas(source, targetUrl, {
           scale: 1, margin: 0,
-          color: { dark: "#000000", light: "#FFFFFF" },
+          color: { dark: "#1c1917", light: "#f5f0e8" },
           errorCorrectionLevel: "H",
         });
 
@@ -91,9 +91,9 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         const ctx = draw.getContext("2d");
         if (!ctx) return;
 
-        ctx.fillStyle = "#FFFFFF";
+        ctx.fillStyle = "#f5f0e8";
         ctx.fillRect(0, 0, canvasSize, canvasSize);
-        ctx.fillStyle = "#242424";
+        ctx.fillStyle = "#1c1917";
         for (let row = 0; row < mc; row++) {
           for (let col = 0; col < mc; col++) {
             if (!matrix[row][col]) continue;
@@ -107,7 +107,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         icon.src = "/favicon.svg";
         icon.onload = () => {
           const logoR = canvasSize * 0.138;
-          ctx.beginPath(); ctx.arc(center, center, logoR, 0, Math.PI * 2); ctx.fillStyle = "#FFFFFF"; ctx.fill();
+          ctx.beginPath(); ctx.arc(center, center, logoR, 0, Math.PI * 2); ctx.fillStyle = "#f5f0e8"; ctx.fill();
           const iconSize = logoR * 1.8;
           ctx.drawImage(icon, center - iconSize / 2, center - iconSize / 2, iconSize, iconSize);
           setQrDataUrl(draw.toDataURL("image/png"));
@@ -158,7 +158,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         flex: 1,
         minWidth: 0,
         height: "100%",
-        background: "#4a4a4a",
+        background: "#1c1917",
         borderRadius: 10,
         boxSizing: "border-box",
         padding: "0.18in",
@@ -195,7 +195,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
       <div style={{
         flex: 2,
         minHeight: 0,
-        background: "#fff",
+        background: "#f5f0e8",
         borderRadius: 8,
         display: "flex",
         flexDirection: "column",
@@ -240,7 +240,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
           <div style={{
             fontSize: nameFontSize,
             fontWeight: 800,
-            color: "#1a1a1a",
+            color: "#1c1917",
             lineHeight: 1.08,
             letterSpacing: "-0.02em",
             overflowWrap: "break-word",
@@ -262,7 +262,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
             <div style={{
               fontSize: "0.2in",
               fontWeight: 500,
-              color: "#888",
+              color: "#8c7e6a",
               letterSpacing: "0.02em",
             }}>
               {local.id}
@@ -275,7 +275,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
       <div style={{
         flex: 1,
         minHeight: 0,
-        background: "#fff",
+        background: "#f5f0e8",
         borderRadius: 8,
         display: "flex",
         alignItems: "center",
