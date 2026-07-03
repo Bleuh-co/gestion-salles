@@ -119,12 +119,12 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
   }, [targetUrl]);
 
   // Adaptive name font size — proportional word-wrap simulation.
-  // CSS only breaks on whitespace, so "/" doesn't cause a line break.
-  // We simulate word-wrap to find the largest font that fits both
-  // horizontally (longest word on one line) and vertically (all lines
-  // in the 1.5in slot).
+  // Split on whitespace AND "/" so compound names like
+  // "Réception/Expédition" are treated as separate segments.
+  // A <wbr> is inserted after "/" in the rendered output so CSS
+  // can break there too.
   const nameFontSize = (() => {
-    const words = displayName.split(/\s+/);
+    const words = displayName.split(/[\s/]+/);
     const longestWordLen = words.reduce((m, w) => Math.max(m, w.length), 0);
     // Panel text area width ≈ 4.4in, avg char width ≈ 0.65 × fontSize
     // (conservative to handle uppercase-heavy names like TERRAIN_HQ)
@@ -143,6 +143,15 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
     }
     return "0.28in";
   })();
+
+  // Render name with <wbr> after "/" so the browser can line-break there
+  const renderedName = displayName.includes("/")
+    ? displayName.split("/").map((part, i, arr) => (
+        <span key={i}>
+          {part}{i < arr.length - 1 && <>/<wbr /></>}
+        </span>
+      ))
+    : displayName;
 
   return (
     <div
@@ -238,7 +247,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
             letterSpacing: "-0.02em",
             overflowWrap: "break-word",
           }}>
-            {displayName}
+            {renderedName}
           </div>
         </div>
 
