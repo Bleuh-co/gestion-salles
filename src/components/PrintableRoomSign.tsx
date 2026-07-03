@@ -119,9 +119,18 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
   }, [targetUrl]);
 
   // Adaptive name font size (fixed inch units so screen == print).
-  // Capped so that even a 2-line name fits the fixed name slot below.
+  // Consider BOTH total length and longest single word to avoid
+  // mid-word breaks on names like "Congélateur" or "Kombuchanv".
   const len = displayName.length;
-  const nameFontSize = len > 30 ? "0.4in" : len > 20 ? "0.52in" : len > 12 ? "0.66in" : "0.85in";
+  const longestWord = displayName.split(/[\s\-–—/]+/).reduce(
+    (max, w) => Math.max(max, w.length), 0
+  );
+  // Base size from total length (multi-word names)
+  const sizeFromTotal = len > 30 ? 0.4 : len > 20 ? 0.52 : len > 12 ? 0.66 : 0.85;
+  // Size cap from longest single word (prevents mid-word breaks)
+  // Panel content width is ~4.5in; approximate chars-per-inch at 800 weight
+  const sizeFromWord = longestWord > 12 ? 0.4 : longestWord > 9 ? 0.52 : longestWord > 7 ? 0.66 : 0.85;
+  const nameFontSize = `${Math.min(sizeFromTotal, sizeFromWord)}in`;
 
   return (
     <div
@@ -206,6 +215,8 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
+          position: "relative",
+          zIndex: 2,
         }}>
           <div style={{
             fontSize: nameFontSize,
@@ -213,7 +224,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
             color: "#1a1a1a",
             lineHeight: 1.08,
             letterSpacing: "-0.02em",
-            wordBreak: "break-word",
+            overflowWrap: "break-word",
           }}>
             {displayName}
           </div>
