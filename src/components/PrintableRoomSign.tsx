@@ -164,7 +164,6 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         padding: "0.18in",
         display: "flex",
         flexDirection: "column",
-        gap: "0.16in",
         fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
         overflow: "hidden",
       }}
@@ -177,7 +176,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         flex: 1,
         minHeight: 0,
         backgroundColor: familleColor,
-        borderRadius: 8,
+        borderRadius: "8px 8px 0 0",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -190,13 +189,28 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
         {badgeLetter}
       </div>
 
+      {/* ── Gandalf diagonal — badge color slants into beige ── */}
+      <svg
+        viewBox="0 0 200 20"
+        preserveAspectRatio="none"
+        style={{
+          width: "100%",
+          height: "0.22in",
+          flexShrink: 0,
+          display: "block",
+        }}
+      >
+        <rect width="200" height="20" fill="#f5f0e8" />
+        <polygon points="0,0 200,0 200,5 0,20" fill={familleColor} />
+      </svg>
+
       {/* ── Row 2 (50%): QR, name, id — fixed-height slots so the ── */}
       {/* ── layout never shifts with content length             ── */}
       <div style={{
         flex: 2,
         minHeight: 0,
         background: "#f5f0e8",
-        borderRadius: 8,
+        borderRadius: "0 0 8px 8px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -275,6 +289,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
       <div style={{
         flex: 1,
         minHeight: 0,
+        marginTop: "0.16in",
         background: "#f5f0e8",
         borderRadius: 8,
         display: "flex",
