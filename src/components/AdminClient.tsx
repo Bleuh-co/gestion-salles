@@ -6,6 +6,7 @@ import { LOCAL_STATUT_LABELS, FAMILLE_COLORS, FAMILLE_COLORS_FALLBACK } from "@/
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { LocalFormModal } from "@/components/LocalFormModal";
+import { ActifFormModal, type ActifFormOptions } from "@/components/ActifFormModal";
 import {
   Building, Wrench, ClipboardList, Search, Plus, Pencil, Trash2, RotateCcw,
   ChevronDown, ChevronUp, X, Save, Clock, User, Thermometer, Wifi, WifiOff,
@@ -46,8 +47,22 @@ export function AdminClient({
   const [activeTab, setActiveTab] = useState<AdminTab>("locaux");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  // Modal salle : undefined = fermé, null = création, Local = édition
+  // Modales : undefined = fermé, null = création, objet = édition
   const [modalLocal, setModalLocal] = useState<Local | null | undefined>(undefined);
+  const [modalActif, setModalActif] = useState<Actif | null | undefined>(undefined);
+
+  // Options des dropdowns actifs, dérivées des valeurs en usage
+  const actifOptions: ActifFormOptions = useMemo(() => {
+    const uniq = (vals: string[]) =>
+      [...new Set(vals.map((v) => v.trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, "fr")
+      );
+    return {
+      categories: uniq(actifs.map((a) => a.categorie)),
+      criticites: uniq([...actifs.map((a) => a.criticite), "Critique", "Majeur", "Mineur"]),
+      statuts: uniq(actifs.map((a) => a.statut)),
+    };
+  }, [actifs]);
 
   return (
     <div className="space-y-6 pt-6">
@@ -122,6 +137,15 @@ export function AdminClient({
             </button>
           </div>
         )}
+        {activeTab === "actifs" && (
+          <button
+            onClick={() => setModalActif(null)}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-chanv-terre rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Nouvel actif
+          </button>
+        )}
       </div>
 
       {/* Modal création / édition salle */}
@@ -131,6 +155,17 @@ export function AdminClient({
           options={formOptions}
           familleColors={familleColors}
           onClose={() => setModalLocal(undefined)}
+          onSaved={() => window.location.reload()}
+        />
+      )}
+
+      {/* Modal création / édition actif */}
+      {modalActif !== undefined && (
+        <ActifFormModal
+          actif={modalActif}
+          salles={initialLocaux.filter((l) => !l.archived)}
+          options={actifOptions}
+          onClose={() => setModalActif(undefined)}
           onSaved={() => window.location.reload()}
         />
       )}
@@ -147,7 +182,12 @@ export function AdminClient({
         />
       )}
       {activeTab === "actifs" && (
-        <AdminActifsTable actifs={actifs} search={searchQuery} />
+        <AdminActifsTable
+          actifs={actifs}
+          locaux={initialLocaux}
+          search={searchQuery}
+          onEdit={(a) => setModalActif(a)}
+        />
       )}
       {activeTab === "capteurs" && (
         <AdminSensorsTab locaux={initialLocaux} search={searchQuery} />
@@ -413,7 +453,36 @@ function AdminLocauxTable({
 // Actifs Table
 // ============================================================
 
-function AdminActifsTable({ actifs, search }: { actifs: Actif[]; search: string }) {
+function AdminActifsTable({
+  actifs,
+  locaux,
+  search,
+  onEdit,
+}: {
+  actifs: Actif[];
+  locaux: Local[];
+  search: string;
+  onEdit: (a: Actif) => void;
+}) {
+  const [actionId, setActionId] = useState<string | null>(null);
+  const localIds = useMemo(() => new Set(locaux.map((l) => l.id)), [locaux]);
+
+  const deleteActif = async (a: Actif) => {
+    if (!confirm(`Supprimer l'actif « ${a.nom || a.id} » ?\n\nCette action est irréversible.`)) return;
+    setActionId(a.id);
+    try {
+      const res = await fetch(`/api/admin/actifs/${encodeURIComponent(a.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      window.location.reload();
+    } catch (e) {
+      alert(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+      setActionId(null);
+    }
+  };
+
   const filtered = useMemo(() => {
     if (!search.trim()) return actifs;
     const q = search.toLowerCase();
@@ -442,6 +511,7 @@ function AdminActifsTable({ actifs, search }: { actifs: Actif[]; search: string 
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Marque</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Criticité</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Statut</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -451,7 +521,22 @@ function AdminActifsTable({ actifs, search }: { actifs: Actif[]; search: string 
                   <div className="font-medium text-chanv-terre text-xs">{a.nom}</div>
                   <div className="text-[10px] text-slate-400 font-mono">{a.matricule}</div>
                 </td>
-                <td className="px-3 py-2.5 text-xs text-slate-600">{a.idSalle || "—"}</td>
+                <td className="px-3 py-2.5 text-xs text-slate-600">
+                  {a.idSalle ? (
+                    localIds.has(a.idSalle) ? (
+                      a.idSalle
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 text-amber-600"
+                        title="Cette salle n'existe pas — corriger via Modifier"
+                      >
+                        ⚠️ {a.idSalle}
+                      </span>
+                    )
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td className="px-3 py-2.5 text-xs text-slate-600">{a.categorie || "—"}</td>
                 <td className="px-3 py-2.5 text-xs text-slate-600">{a.marque || "—"}</td>
                 <td className="px-3 py-2.5 text-xs">
@@ -464,6 +549,30 @@ function AdminActifsTable({ actifs, search }: { actifs: Actif[]; search: string 
                   ) : "—"}
                 </td>
                 <td className="px-3 py-2.5 text-xs text-slate-600">{a.statut || "—"}</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center justify-end gap-1">
+                    {actionId === a.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-chanv-terre" />
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => onEdit(a)}
+                          className="p-1.5 text-slate-400 hover:text-chanv-terre hover:bg-chanv-fibre/50 rounded-lg transition-colors"
+                          title="Modifier l'actif"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteActif(a)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Supprimer l'actif"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -27,8 +27,8 @@ interface LocalFormModalProps {
 
 const CUSTOM = "__custom__";
 
-// ── Dropdown dynamique avec saisie libre ──
-function SelectWithCustom({
+// ── Dropdown dynamique avec saisie libre (réutilisé par ActifFormModal) ──
+export function SelectWithCustom({
   label,
   value,
   onChange,
