@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
+import { listAllSensors, isAnySensorProviderConfigured } from "@/lib/sensors";
 
 const PLANS_COLLECTION = "plans";
 
@@ -21,17 +21,17 @@ export async function GET(_req: NextRequest, { params }: Props) {
 
     const d = doc.data() || {};
 
-    // Temp Stick sensors
+    // Capteurs (tous fournisseurs configurés)
     let sensors: unknown[] = [];
     let sensorsError: string | null = null;
-    if (isTempStickConfigured()) {
+    if (isAnySensorProviderConfigured()) {
       try {
-        sensors = await listTempStickSensors();
+        sensors = await listAllSensors();
       } catch (e: unknown) {
-        sensorsError = e instanceof Error ? e.message : "Erreur Temp Stick";
+        sensorsError = e instanceof Error ? e.message : "Erreur capteurs";
       }
     } else {
-      sensorsError = "TEMPSTICK_API_KEY non configurée";
+      sensorsError = "Aucun fournisseur de capteurs configuré";
     }
 
     // Sensor overrides (admin-assigned sensor→room mappings)

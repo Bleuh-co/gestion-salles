@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLocaux } from "@/lib/repo/locaux";
-import { listTempStickSensors } from "@/lib/tempstick";
+import { listAllSensors } from "@/lib/sensors";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
 
 interface Props {
@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
 
     // Fetch sensors + overrides
     const [sensors, overrides] = await Promise.all([
-      listTempStickSensors(),
+      listAllSensors(),
       loadOverrides(),
     ]);
 
@@ -44,6 +44,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
         offline: s.offline,
         battery: s.battery,
         match_source: s.match_source,
+        provider: s.provider,
       })),
     });
   } catch (e: unknown) {

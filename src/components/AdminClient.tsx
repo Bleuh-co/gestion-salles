@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import type { Local, Actif, AuditLogEntry, LocalStatut, SensorMapping, LocalFormOptions } from "@/lib/types";
-import { LOCAL_STATUT_LABELS, FAMILLE_COLORS, FAMILLE_COLORS_FALLBACK } from "@/lib/types";
+import type { Local, Actif, AuditLogEntry, LocalFormOptions } from "@/lib/types";
+import { FAMILLE_COLORS_FALLBACK } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { LocalFormModal } from "@/components/LocalFormModal";
 import { ActifFormModal, type ActifFormOptions } from "@/components/ActifFormModal";
 import {
   Building, Wrench, ClipboardList, Search, Plus, Pencil, Trash2, RotateCcw,
-  ChevronDown, ChevronUp, X, Save, Clock, User, Thermometer, Wifi, WifiOff,
+  X, Save, Clock, User, Thermometer, Wifi, WifiOff,
   Link2, Unlink, RefreshCw, Loader2, Palette, Check
 } from "lucide-react";
 
@@ -673,6 +673,7 @@ interface MappingEntry {
   last_humidity: number | null;
   battery: number | null;
   last_checkin_utc: string | null;
+  provider?: string;
 }
 
 function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }) {
@@ -768,7 +769,7 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
   }
 
   if (filtered.length === 0) {
-    return <EmptyState icon="🌡️" title="Aucun capteur" description={search ? "Aucun résultat" : "Aucun capteur TempStick détecté."} />;
+    return <EmptyState icon="🌡️" title="Aucun capteur" description={search ? "Aucun résultat" : "Aucun capteur détecté."} />;
   }
 
   const matched = mappings.filter((m) => m.match_source !== "none").length;

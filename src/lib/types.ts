@@ -165,7 +165,8 @@ export interface LocalAssignationSummary {
 }
 
 // ============================================================
-// TempStick — capteurs température / humidité
+// Capteurs température / humidité — multi-fournisseurs
+// (TempStick aujourd'hui ; extensible via src/lib/sensors/)
 // ============================================================
 
 export interface SensorReading {
@@ -177,6 +178,8 @@ export interface SensorReading {
   offline: boolean;
   battery: number | null;
   match_source: "auto" | "override";
+  /** Id du fournisseur (ex. "tempstick"). */
+  provider?: string;
 }
 
 export interface SensorMapping {
@@ -189,4 +192,6 @@ export interface SensorMapping {
   offline: boolean;
   battery: number | null;
   last_checkin_utc: string | null;
+  /** Id du fournisseur (ex. "tempstick"). */
+  provider?: string;
 }

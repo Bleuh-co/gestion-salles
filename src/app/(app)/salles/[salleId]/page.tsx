@@ -5,7 +5,7 @@ import { getActifsBySalle } from "@/lib/repo/actifs";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { SalleTabs } from "@/components/SalleTabs";
-import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
+import { listAllSensors, isAnySensorProviderConfigured } from "@/lib/sensors";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
 import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
@@ -28,12 +28,12 @@ export async function generateMetadata({ params }: Props) {
 }
 
 async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
-  if (!isTempStickConfigured()) return [];
+  if (!isAnySensorProviderConfigured()) return [];
   try {
     const allLocaux = await getLocaux({ includeArchived: true });
     const localIds = allLocaux.map((l) => l.id);
     const [sensors, overrides] = await Promise.all([
-      listTempStickSensors(),
+      listAllSensors(),
       loadOverrides(),
     ]);
     const matched = matchAllSensors(sensors, localIds, overrides);
@@ -46,6 +46,7 @@ async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
       offline: s.offline,
       battery: s.battery,
       match_source: s.match_source as "auto" | "override",
+      provider: s.provider,
     }));
   } catch (e) {
     console.warn("[sensors] Failed to fetch for room", localId, e);

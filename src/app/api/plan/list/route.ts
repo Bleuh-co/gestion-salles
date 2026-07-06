@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
 
 const PLANS_COLLECTION = "plans";
 

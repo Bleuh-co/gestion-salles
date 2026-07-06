@@ -158,6 +158,8 @@ interface RawSensor {
   last_checkin_utc: string | null;
   offline: boolean;
   battery: number | null;
+  /** Id du fournisseur (ex. "tempstick") — voir src/lib/sensors/. */
+  provider?: string;
 }
 
 export interface MatchedSensor extends RawSensor {

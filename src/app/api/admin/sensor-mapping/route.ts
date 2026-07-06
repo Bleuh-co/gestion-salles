@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
 import { getLocaux } from "@/lib/repo/locaux";
-import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
+import { listAllSensors, isAnySensorProviderConfigured } from "@/lib/sensors";
 import { matchAllSensors, loadOverrides } from "@/lib/sensor-match";
 
 /**
@@ -12,9 +12,9 @@ export async function GET() {
   try {
     await requireAdmin();
 
-    if (!isTempStickConfigured()) {
+    if (!isAnySensorProviderConfigured()) {
       return NextResponse.json(
-        { error: "TEMPSTICK_API_KEY non configurée" },
+        { error: "Aucun fournisseur de capteurs configuré (TEMPSTICK_API_KEY…)" },
         { status: 503 }
       );
     }
@@ -23,7 +23,7 @@ export async function GET() {
     const localIds = allLocaux.map((l) => l.id);
 
     const [sensors, overrides] = await Promise.all([
-      listTempStickSensors(),
+      listAllSensors(),
       loadOverrides(),
     ]);
 
@@ -34,6 +34,7 @@ export async function GET() {
       sensor_name: s.sensor_name,
       matched_local_id: s.matched_local_id,
       match_source: s.match_source,
+      provider: s.provider,
       online: !s.offline,
       last_temp_c: s.last_temp_c,
       last_humidity: s.last_humidity,
