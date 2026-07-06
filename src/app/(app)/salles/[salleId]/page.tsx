@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLocal, getActifsBySalle, getLocaux } from "@/lib/data";
+import { getLocal, getLocaux } from "@/lib/repo/locaux";
+import { getActifsBySalle } from "@/lib/repo/actifs";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { SalleTabs } from "@/components/SalleTabs";
 import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
-import { loadLocalOverride } from "@/lib/locaux-overrides";
 import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
 
@@ -19,7 +19,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { salleId } = await params;
-  const local = getLocal(decodeURIComponent(salleId));
+  const local = await getLocal(decodeURIComponent(salleId));
   if (!local) return { title: "Local introuvable" };
   return {
     title: `${local.id} — Gestion Salles`,
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props) {
 async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
   if (!isTempStickConfigured()) return [];
   try {
-    const allLocaux = getLocaux({ includeArchived: true });
+    const allLocaux = await getLocaux({ includeArchived: true });
     const localIds = allLocaux.map((l) => l.id);
     const [sensors, overrides] = await Promise.all([
       listTempStickSensors(),
@@ -55,14 +55,10 @@ async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
 
 export default async function SalleDetailPage({ params }: Props) {
   const { salleId } = await params;
-  const baseLocal = getLocal(decodeURIComponent(salleId));
-  if (!baseLocal) notFound();
+  const local = await getLocal(decodeURIComponent(salleId));
+  if (!local) notFound();
 
-  // Merge Firestore overrides on top of static data
-  const override = await loadLocalOverride(baseLocal.id);
-  const local = override ? { ...baseLocal, ...override } : baseLocal;
-
-  const actifs = getActifsBySalle(local.id);
+  const actifs = await getActifsBySalle(local.id);
   const sensors = await fetchRoomSensors(local.id);
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence;

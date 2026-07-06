@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLocaux } from "@/lib/data";
+import { getLocaux } from "@/lib/repo/locaux";
 import { listTempStickSensors } from "@/lib/tempstick";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
 
@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
   const decodedId = decodeURIComponent(salleId);
 
   try {
-    const allLocaux = getLocaux({ includeArchived: true });
+    const allLocaux = await getLocaux({ includeArchived: true });
     const localIds = allLocaux.map((l) => l.id);
 
     // Validate room exists

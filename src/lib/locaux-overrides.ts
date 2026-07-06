@@ -1,21 +1,19 @@
 import "server-only";
 
 import { adminDb } from "./firebase-admin";
-import type { Local, Actif } from "./types";
+import type { Local } from "./types";
 
 // ============================================================
-// Firestore overrides for local/room data
+// Firestore overrides for local/room data — LEGACY
 //
-// Static data lives in data.ts (imported from Google Sheet).
-// Editable fields are persisted here in Firestore and merged
-// on top of the static data at read time.
+// ⚠️ Remplacé par la collection "locaux" (src/lib/repo/locaux.ts),
+// devenue la source de vérité. Ce module ne sert plus qu'à :
+//   1. la migration (/api/admin/migrate-firestore) qui fusionne
+//      ces overrides dans la collection "locaux"
+//   2. le fallback pré-migration du repo
 //
 // Collection: "locaux_overrides"
 //   doc id = local.id (e.g. "ZONE MULTI 4")
-//   fields = any subset of Local fields (nomSalle, statut, etc.)
-//
-// When the Sheet is retired, these overrides become the primary
-// data source — just swap the base data import.
 // ============================================================
 
 const LOCAUX_OVERRIDES = "locaux_overrides";

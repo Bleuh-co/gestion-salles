@@ -1,6 +1,7 @@
 // ============================================================
 // Types métier — Gestion Salles v2
-// Source de vérité : Google Sheet ChanvHQ
+// Source de vérité : Firestore (collections "locaux", "actifs",
+// "config") — voir src/lib/repo/.
 // ============================================================
 
 export type Role = "superadmin" | "admin" | "membre" | "blocked";
@@ -43,7 +44,7 @@ export type FamilleSalle =
   | "SERVICES PRODUCTION"
   | "MAISON D'HERBES"
   | "BLEUH";
-/** Fallback — en production, les couleurs sont lues depuis le Google Sheet (Listes_choix col I). */
+/** Fallback — en production, les couleurs sont lues depuis Firestore (config/familles). */
 export const FAMILLE_COLORS_FALLBACK: Record<string, string> = {
   CANNABIS: "#185abc",          // bleu foncé
   PSN: "#e37400",               // ambre/or foncé

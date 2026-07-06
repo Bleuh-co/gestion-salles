@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
-import { getLocaux } from "@/lib/data";
+import { getLocaux } from "@/lib/repo/locaux";
 import { listTempStickSensors, isTempStickConfigured } from "@/lib/tempstick";
 import { matchAllSensors, loadOverrides } from "@/lib/sensor-match";
 
@@ -19,7 +19,7 @@ export async function GET() {
       );
     }
 
-    const allLocaux = getLocaux({ includeArchived: true });
+    const allLocaux = await getLocaux({ includeArchived: true });
     const localIds = allLocaux.map((l) => l.id);
 
     const [sensors, overrides] = await Promise.all([

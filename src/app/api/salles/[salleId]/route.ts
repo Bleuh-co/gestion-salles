@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLocal } from "@/lib/data";
+import { getLocal } from "@/lib/repo/locaux";
 
 interface Props {
   params: Promise<{ salleId: string }>;
@@ -7,7 +7,7 @@ interface Props {
 
 export async function GET(_req: NextRequest, { params }: Props) {
   const { salleId } = await params;
-  const local = getLocal(decodeURIComponent(salleId));
+  const local = await getLocal(decodeURIComponent(salleId));
   if (!local) {
     return NextResponse.json({ error: "Local introuvable" }, { status: 404 });
   }

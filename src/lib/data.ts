@@ -1,7 +1,12 @@
 // ============================================================
-// Données réelles — Gestion Salles v2
-// Source : Google Sheet ChanvHQ (1059QWs8VKKyF4jW0ThebEnM-qn2hMB-gpbq5gTB0Elk)
-// Importé le 2026-06-19
+// Données de seed — Gestion Salles v2
+//
+// ⚠️ N'EST PLUS LA SOURCE DE VÉRITÉ. Firestore l'est (voir
+// src/lib/repo/). Ce fichier ne sert plus qu'à :
+//   1. la migration one-shot (/api/admin/migrate-firestore)
+//   2. le fallback du repo tant que la migration n'a pas tourné
+//
+// Snapshot historique du Google Sheet ChanvHQ importé le 2026-06-19.
 // ============================================================
 
 import type { Local, Actif, AuditLogEntry } from "./types";

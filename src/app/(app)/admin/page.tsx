@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-server";
-import { getLocaux, actifs, auditLogs } from "@/lib/data";
+import { getLocaux } from "@/lib/repo/locaux";
+import { getAllActifs } from "@/lib/repo/actifs";
+import { getAuditLogs } from "@/lib/repo/audit";
 import { AdminClient } from "@/components/AdminClient";
-import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +21,11 @@ export default async function AdminPage() {
     redirect("/salles");
   }
 
-  const baseLocaux = getLocaux({ includeArchived: true });
-  const overrides = await loadLocauxOverrides();
-  const mergedLocaux = mergeOverrides(baseLocaux, overrides);
+  const [locaux, actifs, auditLogs] = await Promise.all([
+    getLocaux({ includeArchived: true }),
+    getAllActifs(),
+    getAuditLogs().catch(() => []),
+  ]);
 
-  return <AdminClient locaux={mergedLocaux} actifs={actifs} auditLogs={auditLogs} />;
+  return <AdminClient locaux={locaux} actifs={actifs} auditLogs={auditLogs} />;
 }

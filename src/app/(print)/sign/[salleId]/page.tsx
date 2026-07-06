@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { getLocal, getLocaux } from "@/lib/data";
-import { loadLocalOverride, loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
+import { getLocal, getLocaux } from "@/lib/repo/locaux";
 import { SignPageClient } from "./SignClient";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +10,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { salleId } = await params;
-  const local = getLocal(decodeURIComponent(salleId));
+  const local = await getLocal(decodeURIComponent(salleId));
   if (!local) return { title: "Local introuvable" };
   return {
     title: `Panneau — ${local.nomSalle || local.id}`,
@@ -21,15 +20,11 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function SignPage({ params }: Props) {
   const { salleId } = await params;
-  const baseLocal = getLocal(decodeURIComponent(salleId));
-  if (!baseLocal) notFound();
+  const local = await getLocal(decodeURIComponent(salleId));
+  if (!local) notFound();
 
-  const override = await loadLocalOverride(baseLocal.id);
-  const local = override ? { ...baseLocal, ...override } : baseLocal;
-
-  // Full list (overrides merged) for the second-panel picker.
-  const overrides = await loadLocauxOverrides();
-  const allLocaux = mergeOverrides(getLocaux(), overrides);
+  // Full list for the second-panel picker.
+  const allLocaux = await getLocaux();
 
   return <SignPageClient local={local} allLocaux={allLocaux} />;
 }

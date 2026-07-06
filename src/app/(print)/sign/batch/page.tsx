@@ -1,7 +1,5 @@
-import { getLocaux } from "@/lib/data";
-import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
-import { readFamilleColors } from "@/lib/sheets-sync";
-import { FAMILLE_COLORS_FALLBACK } from "@/lib/types";
+import { getLocaux } from "@/lib/repo/locaux";
+import { getFamilleColors } from "@/lib/repo/config";
 import { BatchSignClient } from "./BatchSignClient";
 
 export const dynamic = "force-dynamic";
@@ -12,18 +10,10 @@ export const metadata = {
 };
 
 export default async function BatchSignPage() {
-  const baseLocaux = getLocaux();
-  const overrides = await loadLocauxOverrides();
-  const allLocaux = mergeOverrides(baseLocaux, overrides);
-
-  // Load famille colors from Sheet (with fallback)
-  let sheetColors: Record<string, string> = {};
-  try {
-    sheetColors = await readFamilleColors();
-  } catch {
-    // Fallback to constants
-  }
-  const familleColors = { ...FAMILLE_COLORS_FALLBACK, ...sheetColors };
+  const [allLocaux, familleColors] = await Promise.all([
+    getLocaux(),
+    getFamilleColors(),
+  ]);
 
   return <BatchSignClient allLocaux={allLocaux} familleColors={familleColors} />;
 }

@@ -1,9 +1,8 @@
-import { getLocaux, getUniqueFamilles, getUniqueEtages, getStats } from "@/lib/data";
+import { getLocaux, getUniqueFamilles, getUniqueEtages, getLocauxStats } from "@/lib/repo/locaux";
+import { getAllActifs } from "@/lib/repo/actifs";
+import { getFamilleColors } from "@/lib/repo/config";
 import { getSession } from "@/lib/auth-server";
 import { SallesPageClient } from "@/components/SallesPageClient";
-import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
-import { readFamilleColors } from "@/lib/sheets-sync";
-import { FAMILLE_COLORS_FALLBACK } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,23 +12,19 @@ export const metadata = {
 };
 
 export default async function SallesPage() {
-  const baseLocaux = getLocaux();
-  const overrides = await loadLocauxOverrides();
-  const locaux = mergeOverrides(baseLocaux, overrides);
-  const familles = getUniqueFamilles();
-  const etages = getUniqueEtages();
-  const stats = getStats();
-  const session = await getSession();
-  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
+  const [locaux, familles, etages, locauxStats, actifs, familleColors, session] =
+    await Promise.all([
+      getLocaux(),
+      getUniqueFamilles(),
+      getUniqueEtages(),
+      getLocauxStats(),
+      getAllActifs(),
+      getFamilleColors(),
+      getSession(),
+    ]);
 
-  // Charger les couleurs depuis le Google Sheet, fallback sur les constantes
-  let sheetColors: Record<string, string> = {};
-  try {
-    sheetColors = await readFamilleColors();
-  } catch (e) {
-    console.warn("[SallesPage] readFamilleColors failed, using fallback", e);
-  }
-  const familleColors = { ...FAMILLE_COLORS_FALLBACK, ...sheetColors };
+  const stats = { ...locauxStats, totalActifs: actifs.length };
+  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   return (
     <SallesPageClient

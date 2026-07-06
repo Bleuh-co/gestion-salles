@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLocaux } from "@/lib/data";
+import { getLocaux } from "@/lib/repo/locaux";
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl;
@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const statut = url.searchParams.get("statut") || undefined;
   const q = url.searchParams.get("q") || undefined;
 
-  const locaux = getLocaux({ famille, etage, statut, q });
+  const locaux = await getLocaux({ famille, etage, statut, q });
 
   return NextResponse.json(locaux);
 }

@@ -1,36 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
-import { saveLocalOverride, loadLocauxOverrides } from "@/lib/locaux-overrides";
-import { getLocal } from "@/lib/data";
+import { getLocal, updateLocal, LOCAL_EDITABLE_FIELDS } from "@/lib/repo/locaux";
+import { logAudit, computeChanges } from "@/lib/repo/audit";
 
-/**
- * GET /api/admin/locaux-overrides
- * List all Firestore overrides for locaux (admin only).
- */
-export async function GET() {
-  try {
-    await requireAdmin();
-    const overrides = await loadLocauxOverrides();
-    const list = Array.from(overrides.entries()).map(([localId, fields]) => ({
-      local_id: localId,
-      ...fields,
-    }));
-    return NextResponse.json({ overrides: list, count: list.length });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    if (message === "UNAUTHORIZED" || message === "FORBIDDEN") {
-      return NextResponse.json({ error: message }, { status: 403 });
-    }
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+// ============================================================
+// Compat : ancienne API "overrides" — écrit désormais
+// directement dans la collection Firestore "locaux" (source de
+// vérité depuis la migration). Conservée pour l'édition inline
+// de l'admin ({ local_id, field, value }).
+// ============================================================
 
-// Allowed fields that can be overridden
-const ALLOWED_FIELDS = new Set(["nomSalle", "statut", "conditions", "niveauAcces", "vocation", "prod"]);
+const ALLOWED_FIELDS = new Set<string>(LOCAL_EDITABLE_FIELDS);
 
 /**
  * POST /api/admin/locaux-overrides
- * Save an override: { local_id, field, value }
+ * Save a single-field edit: { local_id, field, value }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -47,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate the room exists
-    const local = getLocal(local_id);
+    const local = await getLocal(local_id);
     if (!local) {
       return NextResponse.json({ error: "Local introuvable" }, { status: 404 });
     }
@@ -65,7 +49,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Valeur trop longue (max 500)" }, { status: 400 });
     }
 
-    await saveLocalOverride(local_id, { [field]: value }, session.email);
+    await updateLocal(local_id, { [field]: value }, session.email);
+
+    const changes = computeChanges(
+      local as unknown as Record<string, unknown>,
+      { [field]: value }
+    );
+    if (Object.keys(changes).length > 0) {
+      await logAudit({
+        action: "update",
+        target: "local",
+        targetId: local_id,
+        targetName: local.nomSalle || local.id,
+        changes,
+        user: session.email,
+      });
+    }
 
     return NextResponse.json({
       status: "success",
