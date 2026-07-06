@@ -26,13 +26,6 @@ export const LOCAL_STATUT_LABELS: Record<LocalStatut, string> = {
   en_qualification: "En Qualification",
 };
 
-export const LOCAL_STATUT_FROM_SHEET: Record<string, LocalStatut> = {
-  "Validé / En Service": "en_service",
-  "En Construction": "en_construction",
-  "Hors Service": "hors_service",
-  "En Qualification": "en_qualification",
-};
-
 export type FamilleSalle =
   | "CANNABIS"
   | "PSN"

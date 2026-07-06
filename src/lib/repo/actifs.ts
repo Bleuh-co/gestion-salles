@@ -2,15 +2,12 @@ import "server-only";
 
 import { adminDb } from "@/lib/firebase-admin";
 import type { Actif } from "@/lib/types";
-import { actifs as staticActifs } from "@/lib/data";
 import { cached, invalidate } from "./cache";
 
 // ============================================================
-// Repo Actifs (équipements) — Firestore est la source de vérité.
-//
-// Collection : "actifs", doc id = actif.id.
-// Fallback : tant que la collection est vide (migration pas
-// exécutée), on sert les données statiques de data.ts.
+// Repo Actifs (équipements) — Firestore est la source de vérité
+// unique. Collection : "actifs", doc id = actif.id.
+// Données initiales importées via la migration du 2026-07-06.
 // ============================================================
 
 const COLLECTION = "actifs";
@@ -61,32 +58,11 @@ function docToActif(id: string, data: FirebaseFirestore.DocumentData): Actif {
   };
 }
 
-/** La migration one-shot a-t-elle été exécutée ? (drapeau config/migration) */
-async function isMigrationDone(): Promise<boolean> {
-  const doc = await adminDb().collection("config").doc("migration").get();
-  return doc.exists && doc.data()?.done === true;
-}
-
 async function loadAll(): Promise<Actif[]> {
-  const db = adminDb();
-  const [snap, migrated] = await Promise.all([
-    db.collection(COLLECTION).get(),
-    isMigrationDone(),
-  ]);
-
-  const fromFirestore = snap.docs
+  const snap = await adminDb().collection(COLLECTION).get();
+  return snap.docs
     .map((d) => docToActif(d.id, d.data()))
     .sort((a, b) => a.id.localeCompare(b.id, "fr", { numeric: true }));
-
-  if (migrated) return fromFirestore;
-
-  // Pré-migration : source statique en base + documents Firestore
-  // déjà créés (éditions) qui priment par id — voir repo/locaux.ts.
-  const byId = new Map(staticActifs.map((a) => [a.id, a]));
-  for (const a of fromFirestore) byId.set(a.id, a);
-  return [...byId.values()].sort((a, b) =>
-    a.id.localeCompare(b.id, "fr", { numeric: true })
-  );
 }
 
 export async function getAllActifs(): Promise<Actif[]> {
@@ -148,15 +124,8 @@ export async function updateActif(
 
   const ref = adminDb().collection(COLLECTION).doc(id);
   const doc = await ref.get();
-  if (!doc.exists) {
-    // Compat pré-migration : matérialiser l'actif statique d'abord.
-    const current = await getActif(id);
-    if (!current) throw new Error(`Actif "${id}" introuvable`);
-    const { id: _id, ...base } = current;
-    await ref.set({ ...base, ...clean, ...metaFields(updatedBy) });
-  } else {
-    await ref.set({ ...clean, ...metaFields(updatedBy) }, { merge: true });
-  }
+  if (!doc.exists) throw new Error(`Actif "${id}" introuvable`);
+  await ref.set({ ...clean, ...metaFields(updatedBy) }, { merge: true });
   invalidateActifsCache();
 }
 

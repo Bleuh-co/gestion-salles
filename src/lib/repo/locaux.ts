@@ -2,21 +2,17 @@ import "server-only";
 
 import { adminDb } from "@/lib/firebase-admin";
 import type { Local } from "@/lib/types";
-import { locaux as staticLocaux } from "@/lib/data";
-import { loadLocauxOverrides, mergeOverrides } from "@/lib/locaux-overrides";
 import { cached, invalidate } from "./cache";
 
 // ============================================================
-// Repo Locaux — Firestore est la source de vérité.
+// Repo Locaux — Firestore est la source de vérité unique.
 //
 // Collection : "locaux", doc id = code de salle (local.id).
 // Le code de salle est IMMUABLE après création (les QR codes
 // imprimés, plans, capteurs et actifs pointent dessus).
 //
-// Fallback : tant que la collection est vide (migration pas
-// encore exécutée via /api/admin/migrate-firestore), on sert
-// l'ancienne source statique (data.ts ⊕ locaux_overrides) pour
-// que le déploiement soit sans coupure.
+// Données initiales importées du Google Sheet via la migration
+// one-shot du 2026-07-06 (drapeau config/migration).
 // ============================================================
 
 const COLLECTION = "locaux";
@@ -55,34 +51,11 @@ function docToLocal(id: string, data: FirebaseFirestore.DocumentData): Local {
   };
 }
 
-/** La migration one-shot a-t-elle été exécutée ? (drapeau config/migration) */
-async function isMigrationDone(): Promise<boolean> {
-  const doc = await adminDb().collection("config").doc("migration").get();
-  return doc.exists && doc.data()?.done === true;
-}
-
 async function loadAll(): Promise<Local[]> {
-  const db = adminDb();
-  const [snap, migrated] = await Promise.all([
-    db.collection(COLLECTION).get(),
-    isMigrationDone(),
-  ]);
-
-  const fromFirestore = snap.docs
+  const snap = await adminDb().collection(COLLECTION).get();
+  return snap.docs
     .map((d) => docToLocal(d.id, d.data()))
     .sort((a, b) => a.id.localeCompare(b.id, "fr"));
-
-  if (migrated) return fromFirestore;
-
-  // Pré-migration : la source statique reste la base, et les documents
-  // Firestore déjà créés (éditions, nouvelles salles) priment par id.
-  // Sans ce merge, la première écriture ferait "disparaître" les autres
-  // salles en désactivant le fallback.
-  const overrides = await loadLocauxOverrides();
-  const base = mergeOverrides(staticLocaux, overrides);
-  const byId = new Map(base.map((l) => [l.id, l]));
-  for (const l of fromFirestore) byId.set(l.id, l);
-  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id, "fr"));
 }
 
 /** Tous les locaux (avec cache TTL court). */
@@ -215,16 +188,8 @@ export async function updateLocal(
 
   const ref = adminDb().collection(COLLECTION).doc(id);
   const doc = await ref.get();
-  if (!doc.exists) {
-    // Compat pré-migration : si la collection n'est pas encore peuplée,
-    // matérialiser le local statique avant d'appliquer la modification.
-    const current = await getLocal(id);
-    if (!current) throw new Error(`Local "${id}" introuvable`);
-    const { id: _id, ...base } = current;
-    await ref.set({ ...base, ...clean, ...metaFields(updatedBy) });
-  } else {
-    await ref.set({ ...clean, ...metaFields(updatedBy) }, { merge: true });
-  }
+  if (!doc.exists) throw new Error(`Local "${id}" introuvable`);
+  await ref.set({ ...clean, ...metaFields(updatedBy) }, { merge: true });
   invalidateLocauxCache();
 }
 
@@ -236,14 +201,8 @@ export async function setLocalArchived(
 ): Promise<void> {
   const ref = adminDb().collection(COLLECTION).doc(id);
   const doc = await ref.get();
-  if (!doc.exists) {
-    const current = await getLocal(id);
-    if (!current) throw new Error(`Local "${id}" introuvable`);
-    const { id: _id, ...base } = current;
-    await ref.set({ ...base, archived, ...metaFields(updatedBy) });
-  } else {
-    await ref.set({ archived, ...metaFields(updatedBy) }, { merge: true });
-  }
+  if (!doc.exists) throw new Error(`Local "${id}" introuvable`);
+  await ref.set({ archived, ...metaFields(updatedBy) }, { merge: true });
   invalidateLocauxCache();
 }
 
