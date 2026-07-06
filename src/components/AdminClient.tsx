@@ -67,11 +67,14 @@ export function AdminClient({
   return (
     <div className="space-y-6 pt-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-chanv-terre">Administration</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Gestion des locaux, actifs et audit
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-chanv-terre">Administration</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Gestion des locaux, actifs et audit
+          </p>
+        </div>
+        {isSuperadmin && <MigrationButton />}
       </div>
 
       {/* Tabs */}
@@ -199,6 +202,101 @@ export function AdminClient({
         <AdminAuditLog logs={auditLogs} search={searchQuery} />
       )}
     </div>
+  );
+}
+
+// ============================================================
+// Bouton de migration Firestore (superadmin)
+//
+// Dry-run d'abord (prévisualisation des compteurs), puis
+// confirmation avant la migration réelle. Idempotent côté
+// serveur : les documents déjà migrés ne sont jamais écrasés.
+// ============================================================
+
+interface MigrationReport {
+  locaux: { total_source: number; deja_migres: number; a_creer: number };
+  actifs: {
+    total_source: number;
+    deja_migres: number;
+    a_creer: number;
+    orphelins: { id: string; nom: string; idSalle: string }[];
+  };
+  config: { couleurs_sheet_importees: number; listes: Record<string, number> };
+}
+
+function MigrationButton() {
+  const [running, setRunning] = useState(false);
+
+  const runMigration = async () => {
+    setRunning(true);
+    try {
+      // 1. Dry-run : prévisualisation
+      const dryRes = await fetch("/api/admin/migrate-firestore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dry_run: true }),
+      });
+      const dryData = await dryRes.json().catch(() => ({}));
+      if (!dryRes.ok) throw new Error(dryData.error || `Erreur ${dryRes.status}`);
+      const r: MigrationReport = dryData.report;
+
+      if (r.locaux.a_creer === 0 && r.actifs.a_creer === 0) {
+        alert(
+          `✅ Migration déjà effectuée.\n\n` +
+            `Locaux dans Firestore : ${r.locaux.deja_migres}\n` +
+            `Actifs dans Firestore : ${r.actifs.deja_migres}`
+        );
+        return;
+      }
+
+      // 2. Confirmation avec le rapport
+      const ok = confirm(
+        `Migration vers Firestore — prévisualisation :\n\n` +
+          `• Locaux à créer : ${r.locaux.a_creer} (déjà migrés : ${r.locaux.deja_migres})\n` +
+          `• Actifs à créer : ${r.actifs.a_creer} (déjà migrés : ${r.actifs.deja_migres})\n` +
+          `• Actifs orphelins (salle inexistante) : ${r.actifs.orphelins.length}\n\n` +
+          `Lancer la migration réelle ?`
+      );
+      if (!ok) return;
+
+      // 3. Migration réelle
+      const res = await fetch("/api/admin/migrate-firestore", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      const rr: MigrationReport = data.report;
+
+      alert(
+        `✅ Migration terminée !\n\n` +
+          `• Locaux créés : ${rr.locaux.a_creer}\n` +
+          `• Actifs créés : ${rr.actifs.a_creer}\n` +
+          `• Couleurs importées du Sheet : ${rr.config.couleurs_sheet_importees}\n` +
+          (rr.actifs.orphelins.length > 0
+            ? `\n⚠️ ${rr.actifs.orphelins.length} actifs pointent vers des salles inexistantes — ` +
+              `ils sont signalés ⚠️ dans l'onglet Actifs.`
+            : "")
+      );
+      window.location.reload();
+    } catch (e) {
+      alert(`❌ ${e instanceof Error ? e.message : "Erreur inconnue"}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={runMigration}
+      disabled={running}
+      className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-chanv-terre border border-chanv-terre/30 rounded-xl hover:bg-chanv-fibre/50 transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
+      title="Migrer les données statiques vers Firestore (une seule fois, sans risque de re-run)"
+    >
+      {running ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <RefreshCw className="w-4 h-4" />
+      )}
+      Migration Firestore
+    </button>
   );
 }
 
