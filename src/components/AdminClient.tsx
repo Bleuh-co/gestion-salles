@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import type { Local, Actif, AuditLogEntry, LocalStatut, SensorMapping } from "@/lib/types";
+import type { Local, Actif, AuditLogEntry, LocalStatut, SensorMapping, LocalFormOptions } from "@/lib/types";
 import { LOCAL_STATUT_LABELS, FAMILLE_COLORS, FAMILLE_COLORS_FALLBACK } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { LocalFormModal } from "@/components/LocalFormModal";
 import {
   Building, Wrench, ClipboardList, Search, Plus, Pencil, Trash2, RotateCcw,
   ChevronDown, ChevronUp, X, Save, Clock, User, Thermometer, Wifi, WifiOff,
@@ -19,6 +20,9 @@ interface AdminClientProps {
   locaux: Local[];
   actifs: Actif[];
   auditLogs: AuditLogEntry[];
+  isSuperadmin: boolean;
+  familleColors: Record<string, string>;
+  formOptions: LocalFormOptions;
 }
 
 const ADMIN_TABS = [
@@ -31,10 +35,19 @@ const ADMIN_TABS = [
 
 type AdminTab = (typeof ADMIN_TABS)[number]["key"];
 
-export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminClientProps) {
+export function AdminClient({
+  locaux: initialLocaux,
+  actifs,
+  auditLogs,
+  isSuperadmin,
+  familleColors,
+  formOptions,
+}: AdminClientProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("locaux");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  // Modal salle : undefined = fermé, null = création, Local = édition
+  const [modalLocal, setModalLocal] = useState<Local | null | undefined>(undefined);
 
   return (
     <div className="space-y-6 pt-6">
@@ -100,13 +113,38 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
               />
               Archivés
             </label>
+            <button
+              onClick={() => setModalLocal(null)}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-chanv-terre rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              Nouvelle salle
+            </button>
           </div>
         )}
       </div>
 
+      {/* Modal création / édition salle */}
+      {modalLocal !== undefined && (
+        <LocalFormModal
+          local={modalLocal}
+          options={formOptions}
+          familleColors={familleColors}
+          onClose={() => setModalLocal(undefined)}
+          onSaved={() => window.location.reload()}
+        />
+      )}
+
       {/* Content */}
       {activeTab === "locaux" && (
-        <AdminLocauxTable locaux={initialLocaux} search={searchQuery} showArchived={showArchived} />
+        <AdminLocauxTable
+          locaux={initialLocaux}
+          search={searchQuery}
+          showArchived={showArchived}
+          isSuperadmin={isSuperadmin}
+          familleColors={familleColors}
+          onEdit={(l) => setModalLocal(l)}
+        />
       )}
       {activeTab === "actifs" && (
         <AdminActifsTable actifs={actifs} search={searchQuery} />
@@ -128,11 +166,62 @@ export function AdminClient({ locaux: initialLocaux, actifs, auditLogs }: AdminC
 // Locaux Table
 // ============================================================
 
-function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; search: string; showArchived: boolean }) {
+function AdminLocauxTable({
+  locaux,
+  search,
+  showArchived,
+  isSuperadmin,
+  familleColors,
+  onEdit,
+}: {
+  locaux: Local[];
+  search: string;
+  showArchived: boolean;
+  isSuperadmin: boolean;
+  familleColors: Record<string, string>;
+  onEdit: (l: Local) => void;
+}) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [localOverrides, setLocalOverrides] = useState<Record<string, string>>({});
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const archiveLocal = async (l: Local, archive: boolean) => {
+    const verb = archive ? "archiver" : "restaurer";
+    if (!confirm(`Voulez-vous ${verb} « ${l.nomSalle || l.id} » ?`)) return;
+    setActionId(l.id);
+    try {
+      const res = await fetch(`/api/admin/locaux/${encodeURIComponent(l.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      window.location.reload();
+    } catch (e) {
+      alert(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+      setActionId(null);
+    }
+  };
+
+  const hardDelete = async (l: Local) => {
+    if (!confirm(`⚠️ SUPPRESSION DÉFINITIVE de « ${l.nomSalle || l.id} ».\n\nCette action est irréversible. Continuer ?`)) return;
+    if (!confirm(`Dernière confirmation : supprimer définitivement « ${l.id} » ?`)) return;
+    setActionId(l.id);
+    try {
+      const res = await fetch(`/api/admin/locaux/${encodeURIComponent(l.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      window.location.reload();
+    } catch (e) {
+      alert(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+      setActionId(null);
+    }
+  };
 
   const saveNomSalle = async (localId: string, value: string) => {
     setSavingId(localId);
@@ -192,6 +281,7 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Vocation</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Statut</th>
               <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Accès</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -255,7 +345,7 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                 <td className="px-3 py-2.5">
                   <span
                     className="inline-block w-2 h-2 rounded-full mr-1.5"
-                    style={{ backgroundColor: FAMILLE_COLORS[l.famille] || "#94a3b8" }}
+                    style={{ backgroundColor: familleColors[l.famille] || "#94a3b8" }}
                   />
                   <span className="text-xs">{l.famille}</span>
                 </td>
@@ -263,6 +353,49 @@ function AdminLocauxTable({ locaux, search, showArchived }: { locaux: Local[]; s
                 <td className="px-3 py-2.5 text-slate-600 text-xs truncate max-w-[200px]">{l.vocation}</td>
                 <td className="px-3 py-2.5"><LocalStatusBadge status={l.statut} size="sm" /></td>
                 <td className="px-3 py-2.5 text-xs text-slate-600">{l.niveauAcces}</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center justify-end gap-1">
+                    {actionId === l.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-chanv-terre" />
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => onEdit(l)}
+                          className="p-1.5 text-slate-400 hover:text-chanv-terre hover:bg-chanv-fibre/50 rounded-lg transition-colors"
+                          title="Modifier la salle"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        {l.archived ? (
+                          <button
+                            onClick={() => archiveLocal(l, false)}
+                            className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Restaurer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => archiveLocal(l, true)}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            title="Archiver"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {isSuperadmin && l.archived && (
+                          <button
+                            onClick={() => hardDelete(l)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Supprimer définitivement (superadmin)"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
               );
             })}

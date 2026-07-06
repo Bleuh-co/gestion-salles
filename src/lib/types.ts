@@ -118,6 +118,16 @@ export interface Actif {
   statut: string;
 }
 
+/** Options des dropdowns du formulaire salle (générées dynamiquement). */
+export interface LocalFormOptions {
+  familles: string[];
+  batiments: string[];
+  etages: string[];
+  vocations: string[];
+  conditions: string[];
+  niveauxAcces: string[];
+}
+
 // ============================================================
 // Audit logs
 // ============================================================

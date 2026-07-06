@@ -2,6 +2,7 @@ import "server-only";
 
 import { adminDb } from "@/lib/firebase-admin";
 import { FAMILLE_COLORS_FALLBACK, FAMILLE_SHORT } from "@/lib/types";
+import type { LocalFormOptions } from "@/lib/types";
 import { cached, invalidate } from "./cache";
 
 // ============================================================
@@ -86,6 +87,38 @@ export async function getConfigListes(): Promise<ConfigListes> {
       return { ...EMPTY_LISTES };
     }
   });
+}
+
+// ── Options de formulaire (dropdowns dynamiques) ──
+//
+// Combine les listes configurées (config/listes) avec les valeurs
+// réellement en usage dans les locaux : les menus proposent donc
+// toujours l'existant, et restent administrables.
+
+export async function getLocalFormOptions(): Promise<LocalFormOptions> {
+  // Import local pour éviter un cycle de modules au chargement.
+  const { getLocaux } = await import("./locaux");
+  const [listes, locaux] = await Promise.all([
+    getConfigListes(),
+    getLocaux({ includeArchived: true }),
+  ]);
+
+  const merge = (configured: string[], inUse: (string | undefined)[]) =>
+    [...new Set([...configured, ...inUse.map((v) => (v || "").trim()).filter(Boolean)])].sort(
+      (a, b) => a.localeCompare(b, "fr")
+    );
+  // Vocations/conditions peuvent être multi-valuées ("A, B") → split.
+  const splitValues = (values: (string | undefined)[]) =>
+    values.flatMap((v) => (v || "").split(",").map((s) => s.trim()));
+
+  return {
+    familles: merge(Object.keys(FAMILLE_SHORT), locaux.map((l) => l.famille)),
+    batiments: merge([], locaux.map((l) => l.batiment)),
+    etages: merge([], locaux.map((l) => l.etage)),
+    vocations: merge(listes.vocations, splitValues(locaux.map((l) => l.vocation))),
+    conditions: merge(listes.conditions, splitValues(locaux.map((l) => l.conditions))),
+    niveauxAcces: merge(listes.niveauxAcces, locaux.map((l) => l.niveauAcces)),
+  };
 }
 
 export async function saveConfigListes(
