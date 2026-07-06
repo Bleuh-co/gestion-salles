@@ -188,6 +188,19 @@ export async function POST(req: NextRequest) {
       await saveConfigListes(listes, `migration:${session.email}`);
     }
 
+    // Drapeau de fin de migration : Firestore devient la source unique,
+    // le merge de compatibilité avec data.ts est désactivé.
+    await db.collection("config").doc("migration").set(
+      {
+        done: true,
+        at: now,
+        by: session.email,
+        locaux_importes: locauxToCreate.length,
+        actifs_importes: actifsToCreate.length,
+      },
+      { merge: true }
+    );
+
     invalidateLocauxCache();
     invalidateActifsCache();
 

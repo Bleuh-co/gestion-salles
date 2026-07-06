@@ -61,15 +61,32 @@ function docToActif(id: string, data: FirebaseFirestore.DocumentData): Actif {
   };
 }
 
+/** La migration one-shot a-t-elle été exécutée ? (drapeau config/migration) */
+async function isMigrationDone(): Promise<boolean> {
+  const doc = await adminDb().collection("config").doc("migration").get();
+  return doc.exists && doc.data()?.done === true;
+}
+
 async function loadAll(): Promise<Actif[]> {
-  const snap = await adminDb().collection(COLLECTION).get();
-  if (snap.empty) {
-    // Migration pas encore exécutée — fallback statique.
-    return staticActifs;
-  }
-  return snap.docs
+  const db = adminDb();
+  const [snap, migrated] = await Promise.all([
+    db.collection(COLLECTION).get(),
+    isMigrationDone(),
+  ]);
+
+  const fromFirestore = snap.docs
     .map((d) => docToActif(d.id, d.data()))
     .sort((a, b) => a.id.localeCompare(b.id, "fr", { numeric: true }));
+
+  if (migrated) return fromFirestore;
+
+  // Pré-migration : source statique en base + documents Firestore
+  // déjà créés (éditions) qui priment par id — voir repo/locaux.ts.
+  const byId = new Map(staticActifs.map((a) => [a.id, a]));
+  for (const a of fromFirestore) byId.set(a.id, a);
+  return [...byId.values()].sort((a, b) =>
+    a.id.localeCompare(b.id, "fr", { numeric: true })
+  );
 }
 
 export async function getAllActifs(): Promise<Actif[]> {

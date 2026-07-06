@@ -55,16 +55,34 @@ function docToLocal(id: string, data: FirebaseFirestore.DocumentData): Local {
   };
 }
 
+/** La migration one-shot a-t-elle été exécutée ? (drapeau config/migration) */
+async function isMigrationDone(): Promise<boolean> {
+  const doc = await adminDb().collection("config").doc("migration").get();
+  return doc.exists && doc.data()?.done === true;
+}
+
 async function loadAll(): Promise<Local[]> {
-  const snap = await adminDb().collection(COLLECTION).get();
-  if (snap.empty) {
-    // Migration pas encore exécutée — fallback sur la source statique.
-    const overrides = await loadLocauxOverrides();
-    return mergeOverrides(staticLocaux, overrides);
-  }
-  return snap.docs
+  const db = adminDb();
+  const [snap, migrated] = await Promise.all([
+    db.collection(COLLECTION).get(),
+    isMigrationDone(),
+  ]);
+
+  const fromFirestore = snap.docs
     .map((d) => docToLocal(d.id, d.data()))
     .sort((a, b) => a.id.localeCompare(b.id, "fr"));
+
+  if (migrated) return fromFirestore;
+
+  // Pré-migration : la source statique reste la base, et les documents
+  // Firestore déjà créés (éditions, nouvelles salles) priment par id.
+  // Sans ce merge, la première écriture ferait "disparaître" les autres
+  // salles en désactivant le fallback.
+  const overrides = await loadLocauxOverrides();
+  const base = mergeOverrides(staticLocaux, overrides);
+  const byId = new Map(base.map((l) => [l.id, l]));
+  for (const l of fromFirestore) byId.set(l.id, l);
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id, "fr"));
 }
 
 /** Tous les locaux (avec cache TTL court). */
