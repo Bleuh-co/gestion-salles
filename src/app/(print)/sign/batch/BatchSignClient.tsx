@@ -31,7 +31,9 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
   const [planRoomIds, setPlanRoomIds] = useState<string[] | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
   const urlFor = (id: string) => `${origin}/salles/${encodeURIComponent(id)}`;
 
   // ── Fetch plan room IDs on mount ──

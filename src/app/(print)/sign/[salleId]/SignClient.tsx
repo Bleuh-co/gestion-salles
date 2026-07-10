@@ -10,7 +10,9 @@ const BLANK = "__blank__";
 
 export function SignPageClient({ local, allLocaux }: { local: Local; allLocaux: Local[] }) {
   const t = useT();
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
   const urlFor = (id: string) => `${origin}/salles/${encodeURIComponent(id)}`;
 
   // Right panel: defaults to a duplicate of the current room.

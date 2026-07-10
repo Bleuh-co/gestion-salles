@@ -10,7 +10,9 @@ export default function QRPage() {
   const params = useParams<{ salleId: string }>();
   const router = useRouter();
   const salleId = decodeURIComponent(params.salleId);
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
   const targetUrl = `${origin}/salles/${encodeURIComponent(salleId)}`;
 
   return (

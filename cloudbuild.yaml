@@ -33,6 +33,7 @@ steps:
           --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=1:271227085398:web:default \
           --build-arg NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com \
           --build-arg NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com \
+          --build-arg NEXT_PUBLIC_APP_URL=https://gestion-salles-271227085398.us-east1.run.app \
           -t "${_IMAGE}:${_TAG}" .
         rm -f /workspace/gh_token
 
