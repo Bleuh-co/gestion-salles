@@ -375,9 +375,9 @@ export function PrintableRoomSign({ left, right }: RoomSignProps) {
           }
           .sign-toolbar { display: none !important; }
           /* Hide ALL external widgets */
-          [data-feedback], [class*="feedback"],
-          [data-gandalf], [class*="gandalf"],
-          iframe, .intercom-lightweight-app,
+          body [data-feedback], body [class*="feedback"],
+          body [data-gandalf], body [class*="gandalf"],
+          body iframe, .intercom-lightweight-app,
           .crisp-client, #hubspot-messages-iframe-container,
           div[style*="z-index: 2147"], div[style*="z-index: 9999"] {
             display: none !important;
