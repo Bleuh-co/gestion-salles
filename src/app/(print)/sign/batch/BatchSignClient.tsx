@@ -8,6 +8,7 @@ import {
 import { PrintableRoomSign } from "@/components/PrintableRoomSign";
 import type { Local } from "@/lib/types";
 import { FAMILLE_SHORT } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 // ============================================================
 // Batch Sign Client
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function BatchSignClient({ allLocaux, familleColors }: Props) {
+  const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -149,6 +151,12 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
 
   const sheetCount = sheets.length;
 
+  // Pluralized labels (rooms / sheets)
+  const roomsLabel = (n: number) =>
+    n === 1 ? t("sign.roomsOne", { n }) : t("sign.roomsMany", { n });
+  const sheetsLabel = (n: number) =>
+    n === 1 ? t("sign.sheetsOne", { n }) : t("sign.sheetsMany", { n });
+
   // ============================================================
   // STEP 1 — Selection
   // ============================================================
@@ -172,10 +180,10 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
               margin: 0,
             }}
           >
-            🖨️ Impression batch — Affiches de salles
+            {t("sign.batchTitle")}
           </h1>
           <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-            Sélectionnez les salles à imprimer. Chaque feuille contient 2 panneaux.
+            {t("sign.batchSubtitle")}
           </p>
         </div>
 
@@ -200,12 +208,14 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
               color: "#3d2e1c",
             }}
           >
-            {selected.size} salle{selected.size !== 1 ? "s" : ""} sélectionnée{selected.size !== 1 ? "s" : ""}
+            {selected.size === 1
+              ? t("sign.selectedOne", { n: selected.size })
+              : t("sign.selectedMany", { n: selected.size })}
           </span>
           <span style={{ fontSize: 11, color: "#94a3b8" }}>→</span>
           <span style={{ fontSize: 13, color: "#64748b" }}>
             <FileText style={{ width: 14, height: 14, display: "inline", verticalAlign: "-2px", marginRight: 4 }} />
-            {sheetCount} feuille{sheetCount !== 1 ? "s" : ""}
+            {sheetsLabel(sheetCount)}
           </span>
 
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -232,7 +242,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
                 ) : (
                   <MapPin style={{ width: 12, height: 12 }} />
                 )}
-                Salles du plan ({planRoomIds.length})
+                {t("sign.planRooms", { n: planRoomIds.length })}
               </button>
             )}
             <button
@@ -247,7 +257,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
                 padding: "5px 8px",
               }}
             >
-              Tout sélectionner
+              {t("sign.selectAll")}
             </button>
             <button
               onClick={selectNone}
@@ -261,7 +271,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
                 padding: "5px 8px",
               }}
             >
-              Tout désélectionner
+              {t("sign.selectNone")}
             </button>
           </div>
         </div>
@@ -283,7 +293,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher une salle…"
+            placeholder={t("sign.searchPlaceholder")}
             style={{
               width: "100%",
               padding: "10px 14px 10px 36px",
@@ -314,7 +324,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
                 color: "#94a3b8",
               }}
             >
-              {search ? "Aucun résultat" : "Aucune salle disponible"}
+              {search ? t("sign.noResults") : t("sign.noRooms")}
             </div>
           )}
 
@@ -516,7 +526,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
           }}
         >
           <Printer style={{ width: 18, height: 18 }} />
-          Générer les affiches ({selected.size} salle{selected.size !== 1 ? "s" : ""} → {sheetCount} feuille{sheetCount !== 1 ? "s" : ""})
+          {t("sign.generate", { rooms: roomsLabel(selected.size), sheets: sheetsLabel(sheetCount) })}
         </button>
       </div>
     );
@@ -563,7 +573,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
           }}
         >
           <ArrowLeft style={{ width: 16, height: 16 }} />
-          Modifier la sélection
+          {t("sign.editSelection")}
         </button>
 
         <span
@@ -573,7 +583,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
             flex: 1,
           }}
         >
-          {selectedLocaux.length} salle{selectedLocaux.length !== 1 ? "s" : ""} · {sheetCount} feuille{sheetCount !== 1 ? "s" : ""}
+          {roomsLabel(selectedLocaux.length)} · {sheetsLabel(sheetCount)}
         </span>
 
         <button
@@ -594,7 +604,7 @@ export function BatchSignClient({ allLocaux, familleColors }: Props) {
           }}
         >
           <Printer style={{ width: 16, height: 16 }} />
-          Imprimer tout
+          {t("sign.printAll")}
         </button>
       </div>
 

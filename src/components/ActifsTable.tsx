@@ -2,6 +2,7 @@
 
 import type { Actif } from "@/lib/types";
 import { EmptyState } from "./EmptyState";
+import { useT } from "@/lib/i18n";
 import { Wrench, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface ActifsTableProps {
@@ -15,12 +16,13 @@ const CRITICITE_STYLES: Record<string, { badge: string; icon: typeof CheckCircle
 };
 
 export function ActifsTable({ actifs }: ActifsTableProps) {
+  const t = useT();
   if (actifs.length === 0) {
     return (
       <EmptyState
         icon="🔧"
-        title="Aucun actif"
-        description="Aucun équipement enregistré dans ce local."
+        title={t("actifs.emptyTitle")}
+        description={t("actifs.emptyDescription")}
       />
     );
   }
@@ -31,11 +33,11 @@ export function ActifsTable({ actifs }: ActifsTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-chanv-fibre text-left">
-              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Actif</th>
-              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Catégorie</th>
-              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Marque / Modèle</th>
-              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Criticité</th>
-              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Statut</th>
+              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("actifs.colAsset")}</th>
+              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("actifs.colCategory")}</th>
+              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("actifs.colBrandModel")}</th>
+              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("actifs.colCriticality")}</th>
+              <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("actifs.colStatus")}</th>
             </tr>
           </thead>
           <tbody>

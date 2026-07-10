@@ -9,6 +9,7 @@ import { listAllSensors, isAnySensorProviderConfigured } from "@/lib/sensors";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
 import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
+import { getServerT } from "@/lib/i18n-server";
 
 // Force dynamic rendering — Firestore overrides + TempStick API
 export const dynamic = "force-dynamic";
@@ -19,11 +20,14 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { salleId } = await params;
-  const local = await getLocal(decodeURIComponent(salleId));
-  if (!local) return { title: "Local introuvable" };
+  const [local, t] = await Promise.all([
+    getLocal(decodeURIComponent(salleId)),
+    getServerT(),
+  ]);
+  if (!local) return { title: t("salles.metaNotFound") };
   return {
-    title: `${local.id} — Gestion Salles`,
-    description: `Fiche du local ${local.id} — ${local.vocation}`,
+    title: t("salles.metaDetailTitle", { id: local.id }),
+    description: t("salles.metaDetailDescription", { id: local.id, vocation: local.vocation }),
   };
 }
 
@@ -56,6 +60,7 @@ async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
 
 export default async function SalleDetailPage({ params }: Props) {
   const { salleId } = await params;
+  const t = await getServerT();
   const local = await getLocal(decodeURIComponent(salleId));
   if (!local) notFound();
 
@@ -73,7 +78,7 @@ export default async function SalleDetailPage({ params }: Props) {
       <div className="flex items-center gap-2 text-sm text-slate-400">
         <Link href="/salles" className="flex items-center gap-1 hover:text-chanv-terre transition-colors">
           <ArrowLeft className="w-3 h-3" />
-          Locaux
+          {t("nav.rooms")}
         </Link>
         <span>/</span>
         <span className="text-chanv-terre font-medium">{local.id}</span>
@@ -113,7 +118,7 @@ export default async function SalleDetailPage({ params }: Props) {
                 {liveSensor.last_humidity != null && (
                   <span className="text-blue-500">{Math.round(liveSensor.last_humidity)}%</span>
                 )}
-                {liveSensor.offline && <span>Hors ligne</span>}
+                {liveSensor.offline && <span>{t("salles.sensorOffline")}</span>}
               </div>
             )}
           </div>
@@ -136,13 +141,13 @@ export default async function SalleDetailPage({ params }: Props) {
       <SalleTabs actifs={actifs} sensors={sensors}>
         {/* This is the infos panel content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InfoCard icon={<Building className="w-4 h-4" />} label="Bâtiment" value={local.batiment} />
-          <InfoCard icon={<Layers className="w-4 h-4" />} label="Étage" value={local.etage} />
-          <InfoCard icon={<Tag className="w-4 h-4" />} label="Famille" value={local.famille} />
-          <InfoCard icon={<DoorOpen className="w-4 h-4" />} label="ID Licence" value={local.idLicence} />
-          <InfoCard icon={<Thermometer className="w-4 h-4" />} label="Conditions" value={local.conditions || "—"} />
-          <InfoCard icon={<Shield className="w-4 h-4" />} label="Niveau d'accès" value={local.niveauAcces || "—"} />
-          <InfoCard icon={<Factory className="w-4 h-4" />} label="Production" value={local.prod ? "Oui" : "Non"} />
+          <InfoCard icon={<Building className="w-4 h-4" />} label={t("salles.infoBuilding")} value={local.batiment} />
+          <InfoCard icon={<Layers className="w-4 h-4" />} label={t("salles.infoFloor")} value={local.etage} />
+          <InfoCard icon={<Tag className="w-4 h-4" />} label={t("salles.infoFamily")} value={local.famille} />
+          <InfoCard icon={<DoorOpen className="w-4 h-4" />} label={t("salles.infoLicenceId")} value={local.idLicence} />
+          <InfoCard icon={<Thermometer className="w-4 h-4" />} label={t("salles.infoConditions")} value={local.conditions || "—"} />
+          <InfoCard icon={<Shield className="w-4 h-4" />} label={t("salles.infoAccessLevel")} value={local.niveauAcces || "—"} />
+          <InfoCard icon={<Factory className="w-4 h-4" />} label={t("salles.infoProduction")} value={local.prod ? t("salles.yes") : t("salles.no")} />
         </div>
       </SalleTabs>
     </div>

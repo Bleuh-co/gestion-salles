@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 
 interface FamilleFilterProps {
   familles: string[];
@@ -9,6 +10,7 @@ interface FamilleFilterProps {
 }
 
 export function FamilleFilter({ familles, selected, onSelect, familleColors }: FamilleFilterProps) {
+  const t = useT();
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -19,7 +21,7 @@ export function FamilleFilter({ familles, selected, onSelect, familleColors }: F
             : "bg-chanv-fibre text-slate-600 hover:bg-chanv-beige/30"
         }`}
       >
-        Tous
+        {t("famille.all")}
       </button>
       {familles.map((f) => {
         const color = familleColors[f] || "#94a3b8";

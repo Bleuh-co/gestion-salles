@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useT, useLocale } from "@/lib/i18n";
 import type { Local, Actif, AuditLogEntry, LocalFormOptions } from "@/lib/types";
 import { FAMILLE_COLORS_FALLBACK } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
@@ -27,11 +28,11 @@ interface AdminClientProps {
 }
 
 const ADMIN_TABS = [
-  { key: "locaux", label: "Locaux", icon: Building },
-  { key: "actifs", label: "Actifs", icon: Wrench },
-  { key: "capteurs", label: "Capteurs", icon: Thermometer },
-  { key: "couleurs", label: "Couleurs", icon: Palette },
-  { key: "logs", label: "Audit Logs", icon: ClipboardList },
+  { key: "locaux", labelKey: "admin.tabLocaux", icon: Building },
+  { key: "actifs", labelKey: "admin.tabActifs", icon: Wrench },
+  { key: "capteurs", labelKey: "admin.tabCapteurs", icon: Thermometer },
+  { key: "couleurs", labelKey: "admin.tabCouleurs", icon: Palette },
+  { key: "logs", labelKey: "admin.tabLogs", icon: ClipboardList },
 ] as const;
 
 type AdminTab = (typeof ADMIN_TABS)[number]["key"];
@@ -44,6 +45,7 @@ export function AdminClient({
   familleColors,
   formOptions,
 }: AdminClientProps) {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<AdminTab>("locaux");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -68,9 +70,9 @@ export function AdminClient({
     <div className="space-y-6 pt-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-chanv-terre">Administration</h1>
+        <h1 className="text-2xl font-bold text-chanv-terre">{t("admin.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Gestion des locaux, actifs et audit
+          {t("admin.subtitle")}
         </p>
       </div>
 
@@ -96,7 +98,7 @@ export function AdminClient({
               }`}
             >
               <Icon className="w-4 h-4" />
-              {tab.label}
+              {t(tab.labelKey)}
               <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-chanv-terre/10 text-chanv-terre font-bold">
                 {count}
               </span>
@@ -111,7 +113,7 @@ export function AdminClient({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Rechercher…"
+            placeholder={t("admin.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-chanv-fibre bg-white text-sm focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
@@ -126,14 +128,14 @@ export function AdminClient({
                 onChange={(e) => setShowArchived(e.target.checked)}
                 className="rounded"
               />
-              Archivés
+              {t("admin.archived")}
             </label>
             <button
               onClick={() => setModalLocal(null)}
               className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-chanv-terre rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              Nouvelle salle
+              {t("admin.newRoom")}
             </button>
           </div>
         )}
@@ -143,7 +145,7 @@ export function AdminClient({
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-chanv-terre rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            Nouvel actif
+            {t("admin.newAsset")}
           </button>
         )}
       </div>
@@ -221,6 +223,7 @@ function AdminLocauxTable({
   familleColors: Record<string, string>;
   onEdit: (l: Local) => void;
 }) {
+  const t = useT();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -228,8 +231,8 @@ function AdminLocauxTable({
   const [actionId, setActionId] = useState<string | null>(null);
 
   const archiveLocal = async (l: Local, archive: boolean) => {
-    const verb = archive ? "archiver" : "restaurer";
-    if (!confirm(`Voulez-vous ${verb} « ${l.nomSalle || l.id} » ?`)) return;
+    const name = l.nomSalle || l.id;
+    if (!confirm(archive ? t("admin.confirmArchive", { name }) : t("admin.confirmRestore", { name }))) return;
     setActionId(l.id);
     try {
       const res = await fetch(`/api/admin/locaux/${encodeURIComponent(l.id)}`, {
@@ -238,27 +241,27 @@ function AdminLocauxTable({
         body: JSON.stringify({ archive }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      if (!res.ok) throw new Error(data.error || t("admin.errorStatus", { status: res.status }));
       window.location.reload();
     } catch (e) {
-      alert(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+      alert(`❌ ${e instanceof Error ? e.message : t("admin.error")}`);
       setActionId(null);
     }
   };
 
   const hardDelete = async (l: Local) => {
-    if (!confirm(`⚠️ SUPPRESSION DÉFINITIVE de « ${l.nomSalle || l.id} ».\n\nCette action est irréversible. Continuer ?`)) return;
-    if (!confirm(`Dernière confirmation : supprimer définitivement « ${l.id} » ?`)) return;
+    if (!confirm(t("admin.confirmHardDelete", { name: l.nomSalle || l.id }))) return;
+    if (!confirm(t("admin.confirmHardDeleteFinal", { id: l.id }))) return;
     setActionId(l.id);
     try {
       const res = await fetch(`/api/admin/locaux/${encodeURIComponent(l.id)}`, {
         method: "DELETE",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      if (!res.ok) throw new Error(data.error || t("admin.errorStatus", { status: res.status }));
       window.location.reload();
     } catch (e) {
-      alert(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+      alert(`❌ ${e instanceof Error ? e.message : t("admin.error")}`);
       setActionId(null);
     }
   };
@@ -305,7 +308,7 @@ function AdminLocauxTable({
   }, [locaux, search, showArchived, localOverrides]);
 
   if (filtered.length === 0) {
-    return <EmptyState icon="🏢" title="Aucun local" description="Aucun local ne correspond aux critères." />;
+    return <EmptyState icon="🏢" title={t("admin.emptyLocauxTitle")} description={t("admin.emptyLocauxDesc")} />;
   }
 
   return (
@@ -314,14 +317,14 @@ function AdminLocauxTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-chanv-fibre text-left">
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">ID</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Nom Salle</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Famille</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Étage</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Vocation</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Statut</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Accès</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colId")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colNomSalle")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colFamille")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colEtage")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colVocation")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colStatut")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colAcces")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">{t("admin.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -350,19 +353,19 @@ function AdminLocauxTable({
                         }}
                         className="text-xs border border-chanv-terre/30 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-chanv-terre/30"
                         autoFocus
-                        placeholder="Nom de la salle…"
+                        placeholder={t("admin.roomNamePlaceholder")}
                       />
                       <button
                         onClick={() => saveNomSalle(l.id, editValue)}
                         className="p-1 text-green-600 hover:bg-green-50 rounded"
-                        title="Sauvegarder"
+                        title={t("admin.save")}
                       >
                         <Save className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => setEditingId(null)}
                         className="p-1 text-slate-400 hover:bg-slate-100 rounded"
-                        title="Annuler"
+                        title={t("admin.cancel")}
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -402,7 +405,7 @@ function AdminLocauxTable({
                         <button
                           onClick={() => onEdit(l)}
                           className="p-1.5 text-slate-400 hover:text-chanv-terre hover:bg-chanv-fibre/50 rounded-lg transition-colors"
-                          title="Modifier la salle"
+                          title={t("admin.editRoom")}
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -410,7 +413,7 @@ function AdminLocauxTable({
                           <button
                             onClick={() => archiveLocal(l, false)}
                             className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Restaurer"
+                            title={t("admin.restore")}
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                           </button>
@@ -418,7 +421,7 @@ function AdminLocauxTable({
                           <button
                             onClick={() => archiveLocal(l, true)}
                             className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="Archiver"
+                            title={t("admin.archive")}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -427,7 +430,7 @@ function AdminLocauxTable({
                           <button
                             onClick={() => hardDelete(l)}
                             className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Supprimer définitivement (superadmin)"
+                            title={t("admin.hardDeleteTitle")}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -443,7 +446,9 @@ function AdminLocauxTable({
         </table>
       </div>
       <div className="px-3 py-2 text-xs text-slate-400 border-t border-chanv-fibre">
-        {filtered.length} local{filtered.length > 1 ? "aux" : ""} affiché{filtered.length > 1 ? "s" : ""}
+        {filtered.length > 1
+          ? t("admin.locauxShownPlural", { count: filtered.length })
+          : t("admin.locauxShown", { count: filtered.length })}
       </div>
     </div>
   );
@@ -464,21 +469,22 @@ function AdminActifsTable({
   search: string;
   onEdit: (a: Actif) => void;
 }) {
+  const t = useT();
   const [actionId, setActionId] = useState<string | null>(null);
   const localIds = useMemo(() => new Set(locaux.map((l) => l.id)), [locaux]);
 
   const deleteActif = async (a: Actif) => {
-    if (!confirm(`Supprimer l'actif « ${a.nom || a.id} » ?\n\nCette action est irréversible.`)) return;
+    if (!confirm(t("admin.confirmDeleteActif", { name: a.nom || a.id }))) return;
     setActionId(a.id);
     try {
       const res = await fetch(`/api/admin/actifs/${encodeURIComponent(a.id)}`, {
         method: "DELETE",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      if (!res.ok) throw new Error(data.error || t("admin.errorStatus", { status: res.status }));
       window.location.reload();
     } catch (e) {
-      alert(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+      alert(`❌ ${e instanceof Error ? e.message : t("admin.error")}`);
       setActionId(null);
     }
   };
@@ -496,7 +502,7 @@ function AdminActifsTable({
   }, [actifs, search]);
 
   if (filtered.length === 0) {
-    return <EmptyState icon="🔧" title="Aucun actif" description="Aucun actif ne correspond aux critères." />;
+    return <EmptyState icon="🔧" title={t("admin.emptyActifsTitle")} description={t("admin.emptyActifsDesc")} />;
   }
 
   return (
@@ -505,13 +511,13 @@ function AdminActifsTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-chanv-fibre text-left">
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Actif</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Local</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Catégorie</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Marque</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Criticité</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Statut</th>
-              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colActif")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colLocal")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colCategorie")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colMarque")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colCriticite")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colStatut")}</th>
+              <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">{t("admin.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -528,7 +534,7 @@ function AdminActifsTable({
                     ) : (
                       <span
                         className="inline-flex items-center gap-1 text-amber-600"
-                        title="Cette salle n'existe pas — corriger via Modifier"
+                        title={t("admin.unknownRoomWarning")}
                       >
                         ⚠️ {a.idSalle}
                       </span>
@@ -558,14 +564,14 @@ function AdminActifsTable({
                         <button
                           onClick={() => onEdit(a)}
                           className="p-1.5 text-slate-400 hover:text-chanv-terre hover:bg-chanv-fibre/50 rounded-lg transition-colors"
-                          title="Modifier l'actif"
+                          title={t("admin.editActif")}
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => deleteActif(a)}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Supprimer l'actif"
+                          title={t("admin.deleteActif")}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -579,7 +585,9 @@ function AdminActifsTable({
         </table>
       </div>
       <div className="px-3 py-2 text-xs text-slate-400 border-t border-chanv-fibre">
-        {filtered.length} actif{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}
+        {filtered.length > 1
+          ? t("admin.actifsShownPlural", { count: filtered.length })
+          : t("admin.actifsShown", { count: filtered.length })}
       </div>
     </div>
   );
@@ -589,14 +597,16 @@ function AdminActifsTable({
 // Audit Log
 // ============================================================
 
-const ACTION_LABELS: Record<string, { label: string; color: string }> = {
-  create: { label: "Création", color: "text-green-600 bg-green-100" },
-  update: { label: "Modification", color: "text-blue-600 bg-blue-100" },
-  delete: { label: "Suppression", color: "text-red-600 bg-red-100" },
-  restore: { label: "Restauration", color: "text-purple-600 bg-purple-100" },
+const ACTION_LABELS: Record<string, { labelKey: string; color: string }> = {
+  create: { labelKey: "admin.actionCreate", color: "text-green-600 bg-green-100" },
+  update: { labelKey: "admin.actionUpdate", color: "text-blue-600 bg-blue-100" },
+  delete: { labelKey: "admin.actionDelete", color: "text-red-600 bg-red-100" },
+  restore: { labelKey: "admin.actionRestore", color: "text-purple-600 bg-purple-100" },
 };
 
 function AdminAuditLog({ logs, search }: { logs: AuditLogEntry[]; search: string }) {
+  const t = useT();
+  const locale = useLocale();
   const filtered = useMemo(() => {
     if (!search.trim()) return logs;
     const q = search.toLowerCase();
@@ -612,8 +622,8 @@ function AdminAuditLog({ logs, search }: { logs: AuditLogEntry[]; search: string
     return (
       <EmptyState
         icon="📋"
-        title="Aucun log"
-        description="Aucune action enregistrée pour le moment."
+        title={t("admin.emptyLogsTitle")}
+        description={t("admin.emptyLogsDesc")}
       />
     );
   }
@@ -621,11 +631,11 @@ function AdminAuditLog({ logs, search }: { logs: AuditLogEntry[]; search: string
   return (
     <div className="space-y-2">
       {filtered.map((log) => {
-        const actionInfo = ACTION_LABELS[log.action] || { label: log.action, color: "text-slate-600 bg-slate-100" };
+        const actionInfo = ACTION_LABELS[log.action];
         return (
           <div key={log.id} className="section-card p-3 flex items-start gap-3">
-            <div className={`badge text-[10px] ${actionInfo.color} shrink-0 mt-0.5`}>
-              {actionInfo.label}
+            <div className={`badge text-[10px] ${actionInfo?.color || "text-slate-600 bg-slate-100"} shrink-0 mt-0.5`}>
+              {actionInfo ? t(actionInfo.labelKey) : log.action}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm text-chanv-terre">
@@ -649,7 +659,7 @@ function AdminAuditLog({ logs, search }: { logs: AuditLogEntry[]; search: string
               </div>
               <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1">
                 <Clock className="w-3 h-3" />
-                {new Date(log.timestamp).toLocaleString("fr-CA")}
+                {new Date(log.timestamp).toLocaleString(locale)}
               </div>
             </div>
           </div>
@@ -677,6 +687,7 @@ interface MappingEntry {
 }
 
 function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }) {
+  const t = useT();
   const [mappings, setMappings] = useState<MappingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -689,16 +700,16 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
       const res = await fetch("/api/admin/sensor-mapping");
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Erreur ${res.status}`);
+        throw new Error(data.error || t("admin.errorStatus", { status: res.status }));
       }
       const data = await res.json();
       setMappings(data.mappings || []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setError(e instanceof Error ? e.message : t("admin.errorUnknown"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchMappings();
@@ -762,14 +773,14 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
       <div className="section-card p-6 text-center space-y-3">
         <p className="text-sm text-red-600">{error}</p>
         <button onClick={fetchMappings} className="btn-ghost text-xs flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> Réessayer
+          <RefreshCw className="w-3 h-3" /> {t("admin.retry")}
         </button>
       </div>
     );
   }
 
   if (filtered.length === 0) {
-    return <EmptyState icon="🌡️" title="Aucun capteur" description={search ? "Aucun résultat" : "Aucun capteur détecté."} />;
+    return <EmptyState icon="🌡️" title={t("admin.emptySensorsTitle")} description={search ? t("admin.noResults") : t("admin.emptySensorsDesc")} />;
   }
 
   const matched = mappings.filter((m) => m.match_source !== "none").length;
@@ -782,21 +793,21 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
       <div className="flex gap-3 flex-wrap">
         <div className="flex items-center gap-1.5 text-xs">
           <Link2 className="w-3.5 h-3.5 text-green-500" />
-          <span className="text-slate-600">{matched} matché{matched > 1 ? "s" : ""}</span>
+          <span className="text-slate-600">{matched > 1 ? t("admin.matchedCountPlural", { count: matched }) : t("admin.matchedCount", { count: matched })}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <Pencil className="w-3.5 h-3.5 text-blue-500" />
-          <span className="text-slate-600">{overrides} override{overrides > 1 ? "s" : ""}</span>
+          <span className="text-slate-600">{overrides > 1 ? t("admin.overrideCountPlural", { count: overrides }) : t("admin.overrideCount", { count: overrides })}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <Unlink className="w-3.5 h-3.5 text-red-400" />
-          <span className="text-slate-600">{unmatched} non matché{unmatched > 1 ? "s" : ""}</span>
+          <span className="text-slate-600">{unmatched > 1 ? t("admin.unmatchedCountPlural", { count: unmatched }) : t("admin.unmatchedCount", { count: unmatched })}</span>
         </div>
         <button
           onClick={fetchMappings}
           className="ml-auto text-xs text-slate-400 hover:text-chanv-terre flex items-center gap-1"
         >
-          <RefreshCw className="w-3 h-3" /> Rafraîchir
+          <RefreshCw className="w-3 h-3" /> {t("admin.refresh")}
         </button>
       </div>
 
@@ -806,20 +817,20 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-chanv-fibre text-left">
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Capteur</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Salle associée</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Temp</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Humid.</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Statut</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Actions</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colCapteur")}</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colSalleAssociee")}</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colSource")}</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colTemp")}</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colHumid")}</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colStatut")}</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((m) => (
                 <tr key={m.sensor_id} className="border-b border-chanv-fibre/50 hover:bg-chanv-fibre/20 transition-colors">
                   <td className="px-3 py-2.5">
-                    <div className="font-medium text-chanv-terre text-xs">{m.sensor_name || "Sans nom"}</div>
+                    <div className="font-medium text-chanv-terre text-xs">{m.sensor_name || t("admin.unnamedSensor")}</div>
                     <div className="text-[10px] text-slate-400 font-mono truncate max-w-[120px]">{m.sensor_id}</div>
                   </td>
                   <td className="px-3 py-2.5">
@@ -838,7 +849,7 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
                         }}
                         className="text-xs border border-chanv-fibre rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-chanv-terre/30 max-w-[180px]"
                       >
-                        <option value="">— Non associé —</option>
+                        <option value="">{t("admin.notAssociated")}</option>
                         {locaux.map((l) => (
                           <option key={l.id} value={l.id}>{l.nomSalle || l.id}{l.nomSalle ? ` (${l.id})` : ""}</option>
                         ))}
@@ -851,7 +862,7 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
                       m.match_source === "auto" ? "bg-green-100 text-green-700" :
                       "bg-red-100 text-red-600"
                     }`}>
-                      {m.match_source === "override" ? "Override" : m.match_source === "auto" ? "Auto" : "Aucun"}
+                      {m.match_source === "override" ? t("admin.sourceOverride") : m.match_source === "auto" ? t("admin.sourceAuto") : t("admin.sourceNone")}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-xs font-semibold text-rose-600">
@@ -865,7 +876,7 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
                       m.online ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
                     }`}>
                       {m.online ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
-                      {m.online ? "En ligne" : "Hors ligne"}
+                      {m.online ? t("admin.online") : t("admin.offline")}
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
@@ -873,9 +884,9 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
                       <button
                         onClick={() => handleRemoveOverride(m.sensor_id)}
                         className="text-[10px] text-red-500 hover:text-red-700 flex items-center gap-1"
-                        title="Supprimer l'override"
+                        title={t("admin.removeOverrideTitle")}
                       >
-                        <Trash2 className="w-3 h-3" /> Retirer
+                        <Trash2 className="w-3 h-3" /> {t("admin.remove")}
                       </button>
                     )}
                   </td>
@@ -885,7 +896,9 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
           </table>
         </div>
         <div className="px-3 py-2 text-xs text-slate-400 border-t border-chanv-fibre">
-          {filtered.length} capteur{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}
+          {filtered.length > 1
+            ? t("admin.sensorsShownPlural", { count: filtered.length })
+            : t("admin.sensorsShown", { count: filtered.length })}
         </div>
       </div>
     </div>
@@ -897,6 +910,7 @@ function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }
 // ============================================================
 
 function AdminColorsTab() {
+  const t = useT();
   const [colors, setColors] = useState<Record<string, string>>({});
   const [original, setOriginal] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -909,18 +923,18 @@ function AdminColorsTab() {
     setError(null);
     try {
       const res = await fetch("/api/admin/famille-colors");
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      if (!res.ok) throw new Error(t("admin.errorStatus", { status: res.status }));
       const data = await res.json();
       setColors(data.colors || FAMILLE_COLORS_FALLBACK);
       setOriginal(data.colors || FAMILLE_COLORS_FALLBACK);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setError(e instanceof Error ? e.message : t("admin.errorUnknown"));
       setColors(FAMILLE_COLORS_FALLBACK);
       setOriginal(FAMILLE_COLORS_FALLBACK);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchColors();
@@ -942,13 +956,13 @@ function AdminColorsTab() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Erreur ${res.status}`);
+        throw new Error(data.error || t("admin.errorStatus", { status: res.status }));
       }
       setOriginal({ ...colors });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur sauvegarde");
+      setError(e instanceof Error ? e.message : t("admin.errorSave"));
     } finally {
       setSaving(false);
     }
@@ -974,7 +988,7 @@ function AdminColorsTab() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-slate-500">
-            Modifiez les couleurs des familles de salle. Les changements sont sauvegardés dans le Google Sheet.
+            {t("admin.colorsHelp")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -984,7 +998,7 @@ function AdminColorsTab() {
               className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
-              Annuler
+              {t("admin.cancel")}
             </button>
           )}
           <button
@@ -1005,7 +1019,7 @@ function AdminColorsTab() {
             ) : (
               <Save className="w-3.5 h-3.5" />
             )}
-            {saving ? "Sauvegarde…" : saved ? "Sauvegardé !" : "Sauvegarder"}
+            {saving ? t("admin.saving") : saved ? t("admin.savedSuccess") : t("admin.save")}
           </button>
         </div>
       </div>
@@ -1042,7 +1056,7 @@ function AdminColorsTab() {
                       setColors((prev) => ({ ...prev, [famille]: e.target.value }))
                     }
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    title={`Changer la couleur de ${famille}`}
+                    title={t("admin.changeColorOf", { famille })}
                   />
                 </label>
 
@@ -1055,7 +1069,7 @@ function AdminColorsTab() {
                     {color}
                     {changed && (
                       <span className="ml-1.5 text-amber-600 font-sans font-medium">
-                        (modifié)
+                        {t("admin.modified")}
                       </span>
                     )}
                   </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Local, LocalStatut, LocalFormOptions } from "@/lib/types";
 import { LOCAL_STATUT_LABELS, FAMILLE_SHORT } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 import { X, Loader2, Save, Lock, Plus } from "lucide-react";
 
 // ============================================================
@@ -43,6 +44,7 @@ export function SelectWithCustom({
   required?: boolean;
   placeholder?: string;
 }) {
+  const t = useT();
   // Mode saisie libre si la valeur courante n'est pas dans la liste
   const [customMode, setCustomMode] = useState(() => value !== "" && !options.includes(value));
 
@@ -57,7 +59,7 @@ export function SelectWithCustom({
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder || "Nouvelle valeur…"}
+            placeholder={placeholder || t("localForm.customValuePlaceholder")}
             className="flex-1 text-sm border border-chanv-fibre rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
             autoFocus
           />
@@ -68,7 +70,7 @@ export function SelectWithCustom({
               if (!options.includes(value)) onChange("");
             }}
             className="p-2 text-slate-400 hover:text-chanv-terre rounded-lg hover:bg-chanv-fibre/50"
-            title="Revenir à la liste"
+            title={t("localForm.backToList")}
           >
             <X className="w-4 h-4" />
           </button>
@@ -92,7 +94,7 @@ export function SelectWithCustom({
               {o}
             </option>
           ))}
-          <option value={CUSTOM}>➕ Autre valeur…</option>
+          <option value={CUSTOM}>{t("localForm.otherValueOption")}</option>
         </select>
       )}
     </div>
@@ -117,6 +119,7 @@ export function LocalFormModal({
   onClose,
   onSaved,
 }: LocalFormModalProps) {
+  const t = useT();
   const isEdit = local !== null;
 
   const [id, setId] = useState(local?.id ?? "");
@@ -186,10 +189,10 @@ export function LocalFormModal({
             body: JSON.stringify({ id: id.trim(), ...fields }),
           });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      if (!res.ok) throw new Error(data.error || t("localForm.errorStatus", { status: res.status }));
       onSaved();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setError(e instanceof Error ? e.message : t("localForm.unknownError"));
       setSaving(false);
     }
   };
@@ -216,7 +219,9 @@ export function LocalFormModal({
             </span>
             <div>
               <h2 className="text-base font-bold text-chanv-terre">
-                {isEdit ? `Modifier ${local!.nomSalle || local!.id}` : "Nouvelle salle"}
+                {isEdit
+                  ? t("localForm.editTitle", { name: local!.nomSalle || local!.id })
+                  : t("localForm.createTitle")}
               </h2>
               {isEdit && (
                 <p className="text-[11px] text-slate-400 font-mono">{local!.id}</p>
@@ -234,10 +239,10 @@ export function LocalFormModal({
         {/* Body */}
         <div className="px-6 py-5 space-y-6">
           {/* ── Identité ── */}
-          <Section title="Identité">
+          <Section title={t("localForm.sectionIdentity")}>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                Code de salle <span className="text-red-400">*</span>
+                {t("localForm.roomCode")} <span className="text-red-400">*</span>
                 {isEdit && <Lock className="inline w-3 h-3 ml-1 text-slate-300" />}
               </label>
               <input
@@ -245,56 +250,56 @@ export function LocalFormModal({
                 value={id}
                 onChange={(e) => setId(e.target.value.toUpperCase())}
                 disabled={isEdit}
-                placeholder="ex. ZONE MULTI 18"
+                placeholder={t("localForm.roomCodePlaceholder")}
                 className={`w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-chanv-beige/50 ${
                   isEdit ? "bg-slate-50 text-slate-400 cursor-not-allowed" : ""
                 }`}
               />
               {isEdit ? (
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Immuable — les QR imprimés et les plans pointent sur ce code.
+                  {t("localForm.codeImmutableHint")}
                 </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Définitif après création (QR codes, plans, capteurs).
+                  {t("localForm.codeFinalHint")}
                 </p>
               )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                Nom commun
+                {t("localForm.commonName")}
               </label>
               <input
                 type="text"
                 value={nomSalle}
                 onChange={(e) => setNomSalle(e.target.value)}
-                placeholder="ex. KOMBUCHANV (optionnel)"
+                placeholder={t("localForm.commonNamePlaceholder")}
                 className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
               />
             </div>
             <SelectWithCustom
-              label="Bâtiment"
+              label={t("localForm.building")}
               required
               value={batiment}
               onChange={setBatiment}
               options={options.batiments}
-              placeholder="ex. BAT2"
+              placeholder={t("localForm.buildingPlaceholder")}
             />
             <SelectWithCustom
-              label="Étage"
+              label={t("localForm.floor")}
               required
               value={etage}
               onChange={setEtage}
               options={options.etages}
-              placeholder="ex. RDC"
+              placeholder={t("localForm.floorPlaceholder")}
             />
           </Section>
 
           {/* ── Classification ── */}
-          <Section title="Classification">
+          <Section title={t("localForm.sectionClassification")}>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                Famille <span className="text-red-400">*</span>
+                {t("localForm.family")} <span className="text-red-400">*</span>
               </label>
               <div className="flex items-center gap-2">
                 <span
@@ -317,7 +322,7 @@ export function LocalFormModal({
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                ID Licence
+                {t("localForm.licenceId")}
               </label>
               <input
                 type="text"
@@ -326,12 +331,12 @@ export function LocalFormModal({
                   setLicenceTouched(true);
                   setIdLicence(e.target.value.toUpperCase());
                 }}
-                placeholder="ex. CAN"
+                placeholder={t("localForm.licenceIdPlaceholder")}
                 className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
               />
             </div>
             <SelectWithCustom
-              label="Vocation"
+              label={t("localForm.vocation")}
               value={vocation}
               onChange={setVocation}
               options={options.vocations}
@@ -345,17 +350,17 @@ export function LocalFormModal({
                   className="w-4 h-4 rounded"
                 />
                 <span className="text-sm text-chanv-terre font-medium">
-                  Salle de production
+                  {t("localForm.productionRoom")}
                 </span>
               </label>
             </div>
           </Section>
 
           {/* ── État ── */}
-          <Section title="État">
+          <Section title={t("localForm.sectionState")}>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                Statut <span className="text-red-400">*</span>
+                {t("localForm.status")} <span className="text-red-400">*</span>
               </label>
               <select
                 value={statut}
@@ -370,13 +375,13 @@ export function LocalFormModal({
               </select>
             </div>
             <SelectWithCustom
-              label="Niveau d'accès"
+              label={t("localForm.accessLevel")}
               value={niveauAcces}
               onChange={setNiveauAcces}
               options={options.niveauxAcces}
             />
             <SelectWithCustom
-              label="Conditions ambiantes"
+              label={t("localForm.ambientConditions")}
               value={conditions}
               onChange={setConditions}
               options={options.conditions}
@@ -396,7 +401,7 @@ export function LocalFormModal({
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-chanv-terre rounded-xl hover:bg-chanv-fibre/50 transition-colors"
           >
-            Annuler
+            {t("localForm.cancel")}
           </button>
           <button
             onClick={submit}
@@ -410,7 +415,7 @@ export function LocalFormModal({
             ) : (
               <Plus className="w-4 h-4" />
             )}
-            {isEdit ? "Enregistrer" : "Créer la salle"}
+            {isEdit ? t("localForm.save") : t("localForm.create")}
           </button>
         </div>
       </div>

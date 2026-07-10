@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import QRCode from "qrcode";
 import { Printer, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface PrintableQRCodeProps {
   localId: string;
@@ -11,8 +12,9 @@ interface PrintableQRCodeProps {
 }
 
 export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCodeProps) {
+  const t = useT();
   const [finalDataUrl, setFinalDataUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<boolean>(false);
   const sourceRef = useRef<HTMLCanvasElement>(null);
   const drawRef = useRef<HTMLCanvasElement>(null);
 
@@ -155,7 +157,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         };
       } catch (err) {
         console.error("QR generation error:", err);
-        setError("Erreur de génération du QR code");
+        setError(true);
       }
     }
 
@@ -163,7 +165,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
   }, [targetUrl]);
 
   if (error) {
-    return <div className="text-center py-12 text-red-500 text-sm">{error}</div>;
+    return <div className="text-center py-12 text-red-500 text-sm">{t("qr.error")}</div>;
   }
 
   if (!finalDataUrl) {
@@ -173,7 +175,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         <canvas ref={drawRef} style={{ display: "none" }} />
         <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Génération du QR…</span>
+          <span>{t("qr.generating")}</span>
         </div>
       </>
     );
@@ -192,7 +194,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={finalDataUrl}
-        alt={`QR code pour ${localId}`}
+        alt={t("qr.alt", { id: localId })}
         className="w-64 h-64"
       />
 
@@ -203,7 +205,7 @@ export function PrintableQRCode({ localId, localNom, targetUrl }: PrintableQRCod
         className="btn-primary flex items-center gap-2 print:hidden"
       >
         <Printer className="w-4 h-4" />
-        Imprimer
+        {t("qr.print")}
       </button>
     </div>
   );

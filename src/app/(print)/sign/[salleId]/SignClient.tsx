@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import { Printer } from "lucide-react";
 import { PrintableRoomSign } from "@/components/PrintableRoomSign";
 import type { Local } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 const BLANK = "__blank__";
 
 export function SignPageClient({ local, allLocaux }: { local: Local; allLocaux: Local[] }) {
+  const t = useT();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const urlFor = (id: string) => `${origin}/salles/${encodeURIComponent(id)}`;
 
@@ -51,7 +53,7 @@ export function SignPageClient({ local, allLocaux }: { local: Local; allLocaux: 
         }}
       >
         <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
-          Panneau gauche&nbsp;:
+          {t("sign.leftPanel")}
         </span>
         <span style={{ fontSize: 14, color: "#475569" }}>
           {local.nomSalle || local.id}
@@ -60,7 +62,7 @@ export function SignPageClient({ local, allLocaux }: { local: Local; allLocaux: 
         <span style={{ width: 1, height: 22, background: "#e5e7eb", margin: "0 4px" }} />
 
         <label htmlFor="right-panel" style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
-          Panneau droit&nbsp;:
+          {t("sign.rightPanel")}
         </label>
         <select
           id="right-panel"
@@ -77,10 +79,10 @@ export function SignPageClient({ local, allLocaux }: { local: Local; allLocaux: 
           }}
         >
           <option value={local.id}>
-            {(local.nomSalle || local.id)} (même salle)
+            {t("sign.sameRoom", { name: local.nomSalle || local.id })}
           </option>
-          <option value={BLANK}>— Panneau vide —</option>
-          <optgroup label="Autre salle">
+          <option value={BLANK}>{t("sign.blankPanel")}</option>
+          <optgroup label={t("sign.otherRoom")}>
             {options
               .filter((l) => l.id !== local.id)
               .map((l) => (
@@ -110,7 +112,7 @@ export function SignPageClient({ local, allLocaux }: { local: Local; allLocaux: 
           }}
         >
           <Printer style={{ width: 16, height: 16 }} />
-          Imprimer
+          {t("sign.print")}
         </button>
       </div>
 

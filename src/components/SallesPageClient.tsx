@@ -8,6 +8,7 @@ import {
   Building, CheckCircle, HardHat, XCircle, ClipboardCheck,
   Map, List
 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   locaux: Local[];
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function SallesPageClient({ locaux, familles, etages, stats, isAdmin, familleColors }: Props) {
+  const t = useT();
   const [view, setView] = useState<"plan" | "list">("plan");
 
   return (
@@ -32,9 +34,9 @@ export function SallesPageClient({ locaux, familles, etages, stats, isAdmin, fam
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-chanv-terre">Locaux ChanvHQ</h1>
+          <h1 className="text-2xl font-bold text-chanv-terre">{t("salles.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Gestion et visualisation des {stats.total} locaux de l&apos;usine
+            {t("salles.subtitle", { count: stats.total })}
           </p>
         </div>
 
@@ -49,7 +51,7 @@ export function SallesPageClient({ locaux, familles, etages, stats, isAdmin, fam
             }`}
           >
             <Map className="w-3.5 h-3.5" />
-            Plan
+            {t("salles.viewPlan")}
           </button>
           <button
             onClick={() => setView("list")}
@@ -60,18 +62,18 @@ export function SallesPageClient({ locaux, familles, etages, stats, isAdmin, fam
             }`}
           >
             <List className="w-3.5 h-3.5" />
-            Liste
+            {t("salles.viewList")}
           </button>
         </div>
       </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard icon={<Building className="w-4 h-4" />} label="Total" value={stats.total} color="text-chanv-terre" />
-        <StatCard icon={<CheckCircle className="w-4 h-4" />} label="En Service" value={stats.enService} color="text-green-600" />
-        <StatCard icon={<HardHat className="w-4 h-4" />} label="En Construction" value={stats.enConstruction} color="text-amber-600" />
-        <StatCard icon={<XCircle className="w-4 h-4" />} label="Hors Service" value={stats.horsService} color="text-red-600" />
-        <StatCard icon={<ClipboardCheck className="w-4 h-4" />} label="En Qualification" value={stats.enQualification} color="text-blue-600" />
+        <StatCard icon={<Building className="w-4 h-4" />} label={t("salles.statTotal")} value={stats.total} color="text-chanv-terre" />
+        <StatCard icon={<CheckCircle className="w-4 h-4" />} label={t("status.en_service")} value={stats.enService} color="text-green-600" />
+        <StatCard icon={<HardHat className="w-4 h-4" />} label={t("status.en_construction")} value={stats.enConstruction} color="text-amber-600" />
+        <StatCard icon={<XCircle className="w-4 h-4" />} label={t("status.hors_service")} value={stats.horsService} color="text-red-600" />
+        <StatCard icon={<ClipboardCheck className="w-4 h-4" />} label={t("status.en_qualification")} value={stats.enQualification} color="text-blue-600" />
       </div>
 
       {/* Content */}

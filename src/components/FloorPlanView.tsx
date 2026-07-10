@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Local } from "@/lib/types";
 import { FAMILLE_SHORT } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 import { LocalStatusBadge } from "./LocalStatusBadge";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
@@ -118,6 +119,7 @@ function clientMatchSensors(
 }
 
 export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorPlanViewProps) {
+  const t = useT();
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -448,18 +450,18 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 bg-chanv-fibre/20 border-b border-chanv-fibre gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
-          <button onClick={() => zoomBy(1.25)} className="plan-ctrl-btn" title="Zoom +"><ZoomIn className="w-4 h-4" /></button>
-          <button onClick={() => zoomBy(1 / 1.25)} className="plan-ctrl-btn" title="Zoom -"><ZoomOut className="w-4 h-4" /></button>
+          <button onClick={() => zoomBy(1.25)} className="plan-ctrl-btn" title={t("plan.zoomIn")}><ZoomIn className="w-4 h-4" /></button>
+          <button onClick={() => zoomBy(1 / 1.25)} className="plan-ctrl-btn" title={t("plan.zoomOut")}><ZoomOut className="w-4 h-4" /></button>
           <span className="text-xs text-slate-500 font-mono w-12 text-center">{Math.round(scale * 100)}%</span>
-          <button onClick={fitToStage} className="plan-ctrl-btn" title="Recentrer"><RotateCcw className="w-4 h-4" /></button>
-          <button onClick={() => currentPlanId && loadSnapshot(currentPlanId)} className="plan-ctrl-btn" title="Rafraîchir"><RefreshCw className="w-4 h-4" /></button>
+          <button onClick={fitToStage} className="plan-ctrl-btn" title={t("plan.recenter")}><RotateCcw className="w-4 h-4" /></button>
+          <button onClick={() => currentPlanId && loadSnapshot(currentPlanId)} className="plan-ctrl-btn" title={t("plan.refresh")}><RefreshCw className="w-4 h-4" /></button>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-slate-500">
-            {placedCount} salle{placedCount !== 1 ? "s" : ""} placée{placedCount !== 1 ? "s" : ""}
+            {t(placedCount !== 1 ? "plan.placedCountPlural" : "plan.placedCount", { count: placedCount })}
             {unplacedRooms.length > 0 && (
-              <> · {unplacedRooms.length} non placée{unplacedRooms.length !== 1 ? "s" : ""}</>
+              <> · {t(unplacedRooms.length !== 1 ? "plan.unplacedCountPlural" : "plan.unplacedCount", { count: unplacedRooms.length })}</>
             )}
           </span>
 
@@ -469,16 +471,16 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                 href="/sign/batch"
                 target="_blank"
                 className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs"
-                title="Imprimer les affiches de salles (batch)"
+                title={t("plan.printSignsTitle")}
               >
-                <Printer className="w-3.5 h-3.5" /> Imprimer affiches
+                <Printer className="w-3.5 h-3.5" /> {t("plan.printSigns")}
               </Link>
               <button
                 onClick={() => setEditMode(true)}
                 className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs"
-                title="Repositionner les salles"
+                title={t("plan.editTitle")}
               >
-                <GripVertical className="w-3.5 h-3.5" /> Éditer
+                <GripVertical className="w-3.5 h-3.5" /> {t("plan.edit")}
               </button>
             </>
           )}
@@ -489,7 +491,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                 disabled={saving || !dirty}
                 className="plan-ctrl-btn !w-auto px-3 gap-1.5 text-xs !bg-chanv-terre !text-white !border-chanv-terre disabled:opacity-50"
               >
-                <Save className="w-3.5 h-3.5" /> {saving ? "…" : "Sauvegarder"}
+                <Save className="w-3.5 h-3.5" /> {saving ? "…" : t("plan.save")}
               </button>
               <button
                 onClick={() => {
@@ -498,7 +500,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                 }}
                 className="plan-ctrl-btn !w-auto px-3 text-xs"
               >
-                Annuler
+                {t("plan.cancel")}
               </button>
             </>
           )}
@@ -508,7 +510,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
       {/* Edit mode banner */}
       {editMode && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 font-medium">
-          ✏️ Mode édition — Glisse les salles · Clic droit pour naviguer · ✕ pour retirer · Panneau latéral pour ajouter
+          {t("plan.editBanner")}
         </div>
       )}
 
@@ -566,7 +568,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
             <img
               ref={imgRef}
               src={snapshot.image_url}
-              alt="Plan"
+              alt={t("plan.imageAlt")}
               style={{ display: "block", maxWidth: "none", pointerEvents: "none", userSelect: "none" }}
               onLoad={fitToStage}
             />
@@ -645,7 +647,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                         padding: 0,
                         lineHeight: 1,
                       }}
-                      title="Retirer du plan"
+                      title={t("plan.removeFromPlan")}
                     >
                       <X style={{ width: 10, height: 10, color: "white" }} />
                     </button>
@@ -756,7 +758,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                 if (!roomSensors?.length) return null;
                 return (
                   <div className="rounded-xl p-3 space-y-2" style={{ background: "linear-gradient(135deg, #f0fdf4, #eff6ff)", border: "1px solid #e2e8f0" }}>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Capteurs live</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{t("plan.liveSensors")}</div>
                     {roomSensors.map((s) => (
                       <div key={s.sensor_id} className="flex items-center gap-2 text-xs">
                         <span
@@ -798,11 +800,11 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
 
               {/* Actifs list */}
               {actifsLoading ? (
-                <div className="text-[10px] text-slate-400 italic">Chargement actifs…</div>
+                <div className="text-[10px] text-slate-400 italic">{t("plan.loadingAssets")}</div>
               ) : roomActifs.length > 0 ? (
                 <div className="rounded-xl p-2.5 space-y-1" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                   <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
-                    <Package className="w-3 h-3" /> Actifs ({roomActifs.length > 6 ? `6/${roomActifs.length}` : roomActifs.length})
+                    <Package className="w-3 h-3" /> {t("plan.assets", { count: roomActifs.length > 6 ? `6/${roomActifs.length}` : roomActifs.length })}
                   </div>
                   {roomActifs.slice(0, 6).map((a, i) => (
                     <div key={i} className="text-[11px] text-slate-600 truncate" title={`${a.matricule} — ${a.nom}`}>
@@ -811,7 +813,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                     </div>
                   ))}
                   {roomActifs.length > 6 && (
-                    <div className="text-[10px] text-slate-400 italic">… et {roomActifs.length - 6} autres</div>
+                    <div className="text-[10px] text-slate-400 italic">{t("plan.moreAssets", { count: roomActifs.length - 6 })}</div>
                   )}
                 </div>
               ) : null}
@@ -823,7 +825,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                 className="btn-primary flex-1 flex items-center justify-center gap-2 text-xs py-2"
               >
                 <Maximize2 className="w-3 h-3" />
-                Voir détails
+                {t("plan.viewDetails")}
               </Link>
               <Link
                 href={`/sign/${encodeURIComponent(selectedLocal.id)}`}
@@ -840,7 +842,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
 
       {/* Legend */}
       <div className="flex items-center gap-3 px-4 py-3 border-t border-chanv-fibre bg-chanv-fibre/10 overflow-x-auto">
-        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider shrink-0">Légende</span>
+        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider shrink-0">{t("plan.legend")}</span>
         {Object.entries(familleColors).map(([fam, color]) => (
           <div key={fam} className="flex items-center gap-1.5 shrink-0">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
@@ -873,6 +875,7 @@ function RoomTray({
   onAdd: (roomId: string) => void;
   familleColors: Record<string, string>;
 }) {
+  const t = useT();
   // Filter by search
   const search = traySearch.toLowerCase().trim();
   const filtered = search
@@ -887,7 +890,7 @@ function RoomTray({
   // Group by famille
   const grouped = new Map<string, Local[]>();
   for (const l of filtered) {
-    const fam = l.famille || "Autre";
+    const fam = l.famille || t("plan.otherFamily");
     if (!grouped.has(fam)) grouped.set(fam, []);
     grouped.get(fam)!.push(l);
   }
@@ -902,7 +905,7 @@ function RoomTray({
       <div className="px-3 py-2.5 border-b border-chanv-fibre bg-chanv-fibre/20">
         <div className="flex items-center gap-2 mb-2">
           <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-xs font-bold text-chanv-terre">Salles à placer</span>
+          <span className="text-xs font-bold text-chanv-terre">{t("plan.roomsToPlace")}</span>
           <span className="ml-auto text-[10px] bg-chanv-fibre text-slate-600 px-1.5 py-0.5 rounded-full font-semibold">
             {unplacedRooms.length}
           </span>
@@ -913,7 +916,7 @@ function RoomTray({
             type="text"
             value={traySearch}
             onChange={(e) => setTraySearch(e.target.value)}
-            placeholder="Rechercher…"
+            placeholder={t("plan.searchPlaceholder")}
             className="w-full text-xs pl-7 pr-2 py-1.5 rounded-lg border border-chanv-fibre bg-white focus:outline-none focus:ring-1 focus:ring-chanv-terre/30"
           />
         </div>
@@ -923,7 +926,7 @@ function RoomTray({
       <div className="flex-1 overflow-y-auto">
         {families.length === 0 && (
           <div className="text-center py-8 text-xs text-slate-400">
-            {search ? "Aucun résultat" : "Toutes les salles sont placées ✓"}
+            {search ? t("plan.noResults") : t("plan.allPlaced")}
           </div>
         )}
         {families.map((fam) => {
