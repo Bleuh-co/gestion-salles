@@ -19,7 +19,7 @@ export default function LoginPage() {
     const ssoToken = hash.substring(5);
     history.replaceState(null, "", window.location.pathname + window.location.search);
 
-    const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://chanv-apps-hub-271227085398.northamerica-northeast1.run.app";
+    const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://gandalf.chanv.com";
 
     setSsoChecking(true);
     (async () => {

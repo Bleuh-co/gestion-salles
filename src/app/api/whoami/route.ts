@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { adminAuth } from "@/lib/firebase-admin";
-import { resolveRoleVerbose } from "@/lib/auth-server";
+import { verifySso, GandalfDenied } from "@bleuh-co/gandalf-sdk-next/server";
+import { gandalfAdmin } from "@/lib/gandalf";
+import { SESSION_COOKIE, resolveRoleVerbose } from "@/lib/auth-server";
 import { isEmailDomainAllowed } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -10,18 +10,27 @@ export const runtime = "nodejs";
  * Endpoint de diagnostic : montre EXACTEMENT comment l'app résout le
  * rôle de l'utilisateur connecté. Utile pour déboguer les soucis de
  * propagation des accès depuis le gestionnaire Gandalf.
+ *
+ * Accepte les mêmes credentials que le reste de l'app (SDK Gandalf) :
+ * Bearer OU cookie __session de l'app OU cookie hub __gandalf_session.
+ * failOpen local : on renvoie la résolution verbose même pour un rôle
+ * refusé (c'est le but du diagnostic) — l'identité, elle, est vérifiée.
  */
 export async function GET() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__session")?.value;
-  if (!sessionCookie) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-  }
   let email: string | null = null;
   try {
-    const decoded = await adminAuth().verifySessionCookie(sessionCookie, true);
-    email = decoded.email || null;
-  } catch {
+    const s = await verifySso(gandalfAdmin, {
+      cookieName: SESSION_COOKIE,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      // Pas de résolution de rôle ici : seul le credential est vérifié, pour
+      // pouvoir diagnostiquer aussi les utilisateurs sans accès.
+      roleMapper: async () => "diagnostic",
+    });
+    email = s.user.email;
+  } catch (e) {
+    if (e instanceof GandalfDenied) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: e.status });
+    }
     return NextResponse.json({ error: "Session invalide" }, { status: 401 });
   }
   if (!email || !isEmailDomainAllowed(email)) {

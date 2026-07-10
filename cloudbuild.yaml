@@ -1,63 +1,71 @@
-steps:
-  # Build Docker image
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      - "build"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_API_KEY=${_NEXT_PUBLIC_FIREBASE_API_KEY}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_NEXT_PUBLIC_FIREBASE_PROJECT_ID}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_FIREBASE_APP_ID=${_NEXT_PUBLIC_FIREBASE_APP_ID}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=${_NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS}"
-      - "--build-arg"
-      - "NEXT_PUBLIC_HUB_URL=${_NEXT_PUBLIC_HUB_URL}"
-      - "-t"
-      - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
-      - "."
-
-  # Push image to Artifact Registry
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      - "push"
-      - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
-
-  # Deploy to Cloud Run
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
-    entrypoint: gcloud
-    args:
-      - "run"
-      - "deploy"
-      - "gestion-salles"
-      - "--image"
-      - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
-      - "--region"
-      - "northamerica-northeast1"
-      - "--platform"
-      - "managed"
-      - "--allow-unauthenticated"
-      - "--port"
-      - "8080"
-
-images:
-  - "northamerica-northeast1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/gestion-salles:${COMMIT_SHA}"
+# Build + déploiement Gestion Salles (contrat Gandalf) — modèle xero_photo_achat.
+# Build en région nord (trigger Cloud Build) → déploiement Cloud Run en us-east1
+# dans antigravity prod. Install du SDK privé @bleuh-co via secret BuildKit
+# (jamais gravé dans l'image).
 
 substitutions:
-  _NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyDIzsBK6Oq0Nzpe4WHXFHJ6cT3vVPMRlqY"
-  _NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "antigravity-20260107.firebaseapp.com"
-  _NEXT_PUBLIC_FIREBASE_PROJECT_ID: "antigravity-20260107"
-  _NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "antigravity-20260107.firebasestorage.app"
-  _NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "271227085398"
-  _NEXT_PUBLIC_FIREBASE_APP_ID: "1:271227085398:web:default"
-  _NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS: "chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com"
-  _NEXT_PUBLIC_HUB_URL: "https://chanv-apps-hub-fkdfx4bpva-nn.a.run.app"
+  _SERVICE: gestion-salles
+  _REGION_DEPLOY: us-east1
+  _TAG: latest
+  _IMAGE: us-east1-docker.pkg.dev/antigravity-20260107/cloud-run-source-deploy/gestion-salles
+  # ID Firestore du doc `apps` de l'app (résolution des rôles). Vide = fallback
+  # par matcher de nom dans resolveGestiSalleAppId (à définir en prod).
+  _GESTISALLE_APP_ID: ""
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    secretEnv: ["GH_PKG_TOKEN"]
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        trap 'rm -f /workspace/gh_token' EXIT
+        printf '%s' "$$GH_PKG_TOKEN" > /workspace/gh_token
+        DOCKER_BUILDKIT=1 docker build \
+          --secret id=gh_token,src=/workspace/gh_token \
+          --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyDIzsBK6Oq0Nzpe4WHXFHJ6cT3vVPMRlqY \
+          --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=antigravity-20260107.firebaseapp.com \
+          --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID=antigravity-20260107 \
+          --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=antigravity-20260107.firebasestorage.app \
+          --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=271227085398 \
+          --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=1:271227085398:web:default \
+          --build-arg NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com \
+          --build-arg NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com \
+          -t "${_IMAGE}:${_TAG}" .
+        rm -f /workspace/gh_token
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_IMAGE}:${_TAG}"]
+
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_IMAGE}:${_TAG}
+      - --project=antigravity-20260107
+      - --region=${_REGION_DEPLOY}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=1Gi
+      - --cpu=1
+      - --update-env-vars=^;^HUB_URL=https://gandalf.chanv.com;NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com;NEXT_PUBLIC_FIREBASE_PROJECT_ID=antigravity-20260107;NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com;GESTISALLE_APP_ID=${_GESTISALLE_APP_ID}
+      - --set-secrets=FIREBASE_SERVICE_ACCOUNT_JSON=FIREBASE_SERVICE_ACCOUNT_JSON:latest,TEMPSTICK_API_KEY=TEMPSTICK_API_KEY:latest
+
+images:
+  - "${_IMAGE}:${_TAG}"
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/antigravity-20260107/secrets/GITHUB_PACKAGES_TOKEN/versions/latest
+      env: GH_PKG_TOKEN
 
 options:
+  machineType: "E2_HIGHCPU_8"
   logging: CLOUD_LOGGING_ONLY
