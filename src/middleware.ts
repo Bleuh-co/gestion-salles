@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { gandalfMiddleware } from "@bleuh-co/gandalf-sdk-next/middleware";
 
 /**
+ * Middleware composé (modèle elearning / xero_photo_achat) :
+ *  - /api/*        → rate limiter in-memory (inchangé)
+ *  - autres routes → contrat d'embarquement Gandalf (embed + langue + thème
+ *                    + frame-ancestors du hub)
+ *
  * In-memory rate limiter for API routes.
  * 120 requests per minute per IP — prevents abuse and runaway read storms.
  *
@@ -29,9 +35,9 @@ function getClientIp(req: NextRequest): string {
 }
 
 export function middleware(req: NextRequest) {
-  // Only rate-limit API routes
+  // Autres routes (pages) : contrat d'embarquement Gandalf (embed + langue + thème).
   if (!req.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.next();
+    return gandalfMiddleware(req);
   }
 
   const ip = getClientIp(req);
@@ -68,5 +74,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ["/((?!_next|favicon.ico|favicon.svg|manifest.webmanifest|sw.js|logo-groupe-chanv.svg|api/health).*)"],
 };
