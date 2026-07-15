@@ -25,12 +25,12 @@ steps:
         printf '%s' "$$GH_PKG_TOKEN" > /workspace/gh_token
         DOCKER_BUILDKIT=1 docker build \
           --secret id=gh_token,src=/workspace/gh_token \
-          --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyDIzsBK6Oq0Nzpe4WHXFHJ6cT3vVPMRlqY \
+          --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBj17yDs3xOQq8lFYjOfx3TmKTeIPANNXs \
           --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=antigravity-20260107.firebaseapp.com \
           --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID=antigravity-20260107 \
           --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=antigravity-20260107.firebasestorage.app \
           --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=271227085398 \
-          --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=1:271227085398:web:default \
+          --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=1:271227085398:web:dd67b650261fbb28d551f7 \
           --build-arg NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com \
           --build-arg NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com \
           --build-arg NEXT_PUBLIC_APP_URL=https://gestion-salles.chanv.com \

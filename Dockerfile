@@ -21,12 +21,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Les variables NEXT_PUBLIC_* doivent être disponibles au BUILD (inlined).
 # Défauts = PROD (antigravity + hub gandalf.chanv.com), overridés par
 # cloudbuild.yaml au besoin.
-ARG NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyDIzsBK6Oq0Nzpe4WHXFHJ6cT3vVPMRlqY
+ARG NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBj17yDs3xOQq8lFYjOfx3TmKTeIPANNXs
 ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=antigravity-20260107.firebaseapp.com
 ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID=antigravity-20260107
 ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=antigravity-20260107.firebasestorage.app
 ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=271227085398
-ARG NEXT_PUBLIC_FIREBASE_APP_ID=1:271227085398:web:default
+ARG NEXT_PUBLIC_FIREBASE_APP_ID=1:271227085398:web:dd67b650261fbb28d551f7
 ARG NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com
 ARG NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com
 ARG NEXT_PUBLIC_APP_URL=https://gestion-salles.chanv.com
