@@ -757,7 +757,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
                 const roomSensors = selectedRoom ? sensorsByRoom.get(selectedRoom) : undefined;
                 if (!roomSensors?.length) return null;
                 return (
-                  <div className="rounded-xl p-3 space-y-2" style={{ background: "linear-gradient(135deg, #f0fdf4, #eff6ff)", border: "1px solid #e2e8f0" }}>
+                  <div className="rounded-xl p-3 space-y-2 bg-chanv-fibre/30 border border-chanv-fibre">
                     <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{t("plan.liveSensors")}</div>
                     {roomSensors.map((s) => (
                       <div key={s.sensor_id} className="flex items-center gap-2 text-xs">
@@ -802,7 +802,7 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
               {actifsLoading ? (
                 <div className="text-[10px] text-slate-400 italic">{t("plan.loadingAssets")}</div>
               ) : roomActifs.length > 0 ? (
-                <div className="rounded-xl p-2.5 space-y-1" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                <div className="rounded-xl p-2.5 space-y-1 bg-chanv-fibre/30 border border-chanv-fibre">
                   <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
                     <Package className="w-3 h-3" /> {t("plan.assets", { count: roomActifs.length > 6 ? `6/${roomActifs.length}` : roomActifs.length })}
                   </div>

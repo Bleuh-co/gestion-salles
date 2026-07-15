@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,15 +29,24 @@ const LINKS: NavLink[] = [
 export function NavBar() {
   const pathname = usePathname();
   const { session } = useAuth();
-  const { embedded, hubUrl } = useGandalf();
+  const { hubUrl } = useGandalf();
   const t = useT();
+
+  // Le flag `embedded` du SDK dérive du cookie gandalf_embed (collant) : après
+  // une visite embed il reste vrai en standalone → chrome d'embed sans burger.
+  // On décide le chrome par le VRAI framing (window.self !== window.top). On part
+  // de false (standalone) au SSR : une visite directe n'est jamais rendue en embed.
+  const [framed, setFramed] = useState(false);
+  useEffect(() => {
+    setFramed(window.self !== window.top);
+  }, []);
 
   if (!session) return null;
 
   const isAdmin = session.role === "admin" || session.role === "superadmin";
   const visible = LINKS.filter((l) => !l.adminOnly || isAdmin);
 
-  if (embedded) {
+  if (framed) {
     // Contrat d'embed, morceau 3 — nav interne d'embed, modèle xero/elearning
     // (#gandalf-embed-nav) : barre claire sticky sur fond parchemin, pastilles
     // blanches arrondies, pastille active or. Le hub fournit logo/titre/profil —

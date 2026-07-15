@@ -159,6 +159,9 @@ export const MESSAGES: Record<Lang, Record<string, string>> = {
     // auth
     "auth.domainNotAllowed": "Domaine non autorisé. Domaines acceptés: {domains}",
     "auth.sessionRefused": "Session refusée ({status})",
+    "blocked.title": "Accès non autorisé",
+    "blocked.message": "Ce compte n'a pas accès à Gestion des Salles. Contactez un administrateur pour obtenir un rôle, ou essayez un autre compte.",
+    "blocked.retry": "Essayer un autre compte",
     "auth.signInFailed": "Échec de la connexion",
 
     // famille
@@ -471,6 +474,9 @@ export const MESSAGES: Record<Lang, Record<string, string>> = {
     // auth
     "auth.domainNotAllowed": "Domain not allowed. Accepted domains: {domains}",
     "auth.sessionRefused": "Session refused ({status})",
+    "blocked.title": "Access denied",
+    "blocked.message": "This account does not have access to Room Management. Contact an administrator to be granted a role, or try another account.",
+    "blocked.retry": "Try another account",
     "auth.signInFailed": "Sign-in failed",
 
     // famille
@@ -783,6 +789,9 @@ export const MESSAGES: Record<Lang, Record<string, string>> = {
     // auth
     "auth.domainNotAllowed": "Dominio no autorizado. Dominios aceptados: {domains}",
     "auth.sessionRefused": "Sesión rechazada ({status})",
+    "blocked.title": "Acceso no autorizado",
+    "blocked.message": "Esta cuenta no tiene acceso a Gestión de Salas. Contacta a un administrador para obtener un rol, o prueba con otra cuenta.",
+    "blocked.retry": "Probar con otra cuenta",
     "auth.signInFailed": "No se pudo iniciar sesión",
 
     // famille

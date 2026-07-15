@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const t = useT();
-  const { session, signInWithGoogle, loading } = useAuth();
+  const { session, signInWithGoogle, loading, deniedEmail } = useAuth();
   const router = useRouter();
   const [ssoChecking, setSsoChecking] = useState(false);
 
@@ -80,6 +80,23 @@ export default function LoginPage() {
       router.replace("/salles");
     }
   }, [session, router]);
+
+  // Carte de refus standard (contrat recette) : compte authentifié mais rôle
+  // « blocked » — email affiché + « Essayer un autre compte ».
+  if (deniedEmail !== null) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="card w-full max-w-md p-10 text-center animate-[chanvFadeIn_0.5s_ease-out_both]">
+          <h1 className="text-2xl font-bold text-chanv-terre mb-4">{t("blocked.title")}</h1>
+          <p className="text-sm text-slate-500 leading-relaxed mb-3">{t("blocked.message")}</p>
+          {deniedEmail && <p className="text-xs text-slate-400 mb-6">{deniedEmail}</p>}
+          <button onClick={signInWithGoogle} className="btn-primary w-full py-4 text-base">
+            {t("blocked.retry")}
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
