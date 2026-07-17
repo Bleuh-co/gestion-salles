@@ -17,7 +17,6 @@ import {
   type User,
 } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase-client";
-import { isEmailDomainAllowed, allowedDomains } from "@/lib/utils";
 import type { Role } from "@/lib/types";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
@@ -77,13 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      if (!isEmailDomainAllowed(u.email)) {
-        await fbSignOut(auth);
-        toast.error(tRef.current("auth.domainNotAllowed", { domains: allowedDomains().join(", ") }));
-        setSession(null);
-        setLoading(false);
-        return;
-      }
+      // Pas de blocage domaine côté client : la whitelist (users.invited) n'est
+      // vérifiable que côté serveur. On délègue la décision à /api/session, qui
+      // répond 200 (domaine OU whitelisté + rôle) ou 403 { blocked } → carte de
+      // refus standard. Un externe non whitelisté est donc refusé par le serveur.
       try {
         const idToken = await u.getIdToken(true);
         const res = await fetch("/api/session", {

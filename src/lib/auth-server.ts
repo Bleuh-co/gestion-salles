@@ -1,5 +1,6 @@
 import "server-only";
 import { adminAuth, adminDb } from "./firebase-admin";
+import { isEmailDomainAllowed } from "./utils";
 import type { Role } from "./types";
 
 const SESSION_COOKIE = "__session";
@@ -57,7 +58,7 @@ function mapLegacyToStandard(oldRole: string): string {
     case "Employe":
       return "Consulter";
     default:
-      return "Consulter";
+      return "Non visible";
   }
 }
 
@@ -117,7 +118,7 @@ export async function resolveRoleVerbose(email: string): Promise<RoleResolution>
     userAppRoleGrade: null,
     legacyGlobalRole: null,
     source: "default",
-    role: "membre",
+    role: "blocked",
   };
 
   // 1. Bootstrap
@@ -170,8 +171,25 @@ export async function resolveRoleVerbose(email: string): Promise<RoleResolution>
     console.warn("[auth] users lookup failed", e);
   }
 
-  // 4. Default — ouvert au domaine
-  return { ...base, source: "default", role: "membre" };
+  // 4. Default — deny-by-default : aucun accès explicite trouvé → blocked.
+  return { ...base, source: "default", role: "blocked" };
+}
+
+// --- Whitelist (utilisateurs invites hors-domaine) ---------------------------
+// Un email hors domaine (gmail, etc.) est autorise au gate SEULEMENT s'il a ete
+// invite via le hub : users/{email}.invited === true. isEmailAllowed = domaine
+// autorise OU whiteliste. Le ROLE decide ensuite (deny-by-default inchange).
+export async function isWhitelisted(email: string | null | undefined): Promise<boolean> {
+  const e = (email || "").toLowerCase().trim();
+  if (!e) return false;
+  try {
+    const doc = await adminDb().collection("users").doc(e).get();
+    return doc.exists && doc.data()?.invited === true;
+  } catch { return false; }
+}
+export async function isEmailAllowed(email: string | null | undefined): Promise<boolean> {
+  if (isEmailDomainAllowed(email)) return true;
+  return isWhitelisted(email);
 }
 
 /**

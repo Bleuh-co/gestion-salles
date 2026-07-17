@@ -1,8 +1,7 @@
 import "server-only";
 import type { AdminLike } from "@bleuh-co/gandalf-sdk-next/server";
 import { adminAuth, adminDb } from "./firebase-admin";
-import { isEmailDomainAllowed } from "./utils";
-import { resolveRole } from "./auth-server";
+import { resolveRole, isEmailAllowed } from "./auth-server";
 
 /**
  * Adaptateur firebase-admin → contrat AdminLike du SDK Gandalf (modèle elearning).
@@ -16,13 +15,14 @@ export const gandalfAdmin: AdminLike = {
 /**
  * roleMapper : branche la résolution de rôle propre à Gestion Salles dans le
  * SDK — règles EXACTES de l'ancien getSession, zéro régression :
- *   1. filtre de domaine (isEmailDomainAllowed) → sinon "blocked",
+ *   1. gate d'accès (isEmailAllowed = domaine autorisé OU whitelisté
+ *      users.invited) → sinon "blocked",
  *   2. resolveRole (bootstrap super admins → user_app_roles
  *      `${email}__${appId}` (GESTISALLE_APP_ID ou matcher par nom) →
- *      users.role legacy → défaut "membre" pour les domaines autorisés).
+ *      users.role legacy → défaut deny-by-default "blocked").
  * "blocked" est listé dans noAccessRoles → refus (deny-by-default).
  */
 export const gestionSallesRoleMapper = async (email: string): Promise<string> => {
-  if (!isEmailDomainAllowed(email)) return "blocked";
+  if (!(await isEmailAllowed(email))) return "blocked";
   return resolveRole(email);
 };

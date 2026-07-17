@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifySso, GandalfDenied } from "@bleuh-co/gandalf-sdk-next/server";
 import { gandalfAdmin } from "@/lib/gandalf";
-import { SESSION_COOKIE, resolveRoleVerbose } from "@/lib/auth-server";
-import { isEmailDomainAllowed } from "@/lib/utils";
+import { SESSION_COOKIE, resolveRoleVerbose, isEmailAllowed } from "@/lib/auth-server";
 
 export const runtime = "nodejs";
 
@@ -33,7 +32,7 @@ export async function GET() {
     }
     return NextResponse.json({ error: "Session invalide" }, { status: 401 });
   }
-  if (!email || !isEmailDomainAllowed(email)) {
+  if (!email || !(await isEmailAllowed(email))) {
     return NextResponse.json({ error: "Domaine non autorisé" }, { status: 403 });
   }
 

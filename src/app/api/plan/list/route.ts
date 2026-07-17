@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth-server";
 import { adminDb } from "@/lib/firebase-admin";
 
 const PLANS_COLLECTION = "plans";
 
 export async function GET() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   try {
     const db = adminDb();
 
