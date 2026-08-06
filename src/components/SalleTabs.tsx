@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Wrench, Info, Thermometer, Wifi, WifiOff, Battery, Clock } from "lucide-react";
-import type { Actif, SensorReading } from "@/lib/types";
+import { Wrench, Info, Thermometer, Sprout, Wifi, WifiOff, Battery, Clock } from "lucide-react";
+import type { Actif, ItemAgricole, SensorReading } from "@/lib/types";
 import { ActifsTable } from "./ActifsTable";
+import { ItemsAgricolesTable } from "./ItemsAgricolesTable";
 
 const TABS = [
   { key: "infos", label: "Informations", icon: Info },
   { key: "actifs", label: "Actifs", icon: Wrench },
+  { key: "items-agricoles", label: "Actif agricole", icon: Sprout },
   { key: "capteurs", label: "Capteurs", icon: Thermometer },
 ] as const;
 
@@ -17,6 +19,9 @@ interface SalleTabsProps {
   children: React.ReactNode; // infos panel (server rendered)
   actifs: Actif[];
   sensors?: SensorReading[];
+  itemsAgricoles?: ItemAgricole[];
+  achatUrl?: string;
+  salleId?: string;
 }
 
 function formatTimeAgo(utcStr: string | null): string {
@@ -31,11 +36,22 @@ function formatTimeAgo(utcStr: string | null): string {
   return `il y a ${days}j`;
 }
 
-export function SalleTabs({ children, actifs, sensors = [] }: SalleTabsProps) {
+export function SalleTabs({
+  children,
+  actifs,
+  sensors = [],
+  itemsAgricoles = [],
+  achatUrl = "https://demande-achat.chanv.com",
+  salleId = "",
+}: SalleTabsProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("infos");
 
-  // Only show capteurs tab if sensors exist
-  const visibleTabs = sensors.length > 0 ? TABS : TABS.filter((t) => t.key !== "capteurs");
+  // Only show capteurs / items-agricoles tabs if data exists
+  const visibleTabs = TABS.filter((t) => {
+    if (t.key === "capteurs") return sensors.length > 0;
+    if (t.key === "items-agricoles") return itemsAgricoles.length > 0;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -45,6 +61,7 @@ export function SalleTabs({ children, actifs, sensors = [] }: SalleTabsProps) {
           const isActive = activeTab === tab.key;
           const count =
             tab.key === "actifs" ? actifs.length :
+            tab.key === "items-agricoles" ? itemsAgricoles.length :
             tab.key === "capteurs" ? sensors.length :
             undefined;
           return (
@@ -74,6 +91,9 @@ export function SalleTabs({ children, actifs, sensors = [] }: SalleTabsProps) {
       <div>
         {activeTab === "infos" && children}
         {activeTab === "actifs" && <ActifsTable actifs={actifs} />}
+        {activeTab === "items-agricoles" && (
+          <ItemsAgricolesTable items={itemsAgricoles} achatUrl={achatUrl} salleId={salleId} />
+        )}
         {activeTab === "capteurs" && <SensorPanel sensors={sensors} />}
       </div>
     </div>

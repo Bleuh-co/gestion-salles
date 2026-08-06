@@ -111,6 +111,21 @@ export interface Actif {
   statut: string;
 }
 
+/**
+ * Item agricole — document de la collection `fa_inventory_items`
+ * (écrite par l'app formulaire-achat, même Firestore). LECTURE SEULE ici.
+ */
+export interface ItemAgricole {
+  id: string;
+  sku: string;
+  name: string;
+  description?: string;
+  link?: string;
+  supplierName?: string;
+  countingUnit?: string;
+  salleId: string;
+}
+
 /** Options des dropdowns du formulaire salle (générées dynamiquement). */
 export interface LocalFormOptions {
   familles: string[];

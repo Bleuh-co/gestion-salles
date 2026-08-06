@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLocal, getLocaux } from "@/lib/repo/locaux";
 import { getActifsBySalle } from "@/lib/repo/actifs";
+import { getItemsAgricolesBySalle } from "@/lib/repo/items-agricoles";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { SalleTabs } from "@/components/SalleTabs";
@@ -59,8 +60,12 @@ export default async function SalleDetailPage({ params }: Props) {
   const local = await getLocal(decodeURIComponent(salleId));
   if (!local) notFound();
 
-  const actifs = await getActifsBySalle(local.id);
-  const sensors = await fetchRoomSensors(local.id);
+  const [actifs, sensors, itemsAgricoles] = await Promise.all([
+    getActifsBySalle(local.id),
+    fetchRoomSensors(local.id),
+    getItemsAgricolesBySalle(local.id),
+  ]);
+  const achatUrl = process.env.ACHAT_APP_URL || "https://demande-achat.chanv.com";
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence;
 
@@ -132,8 +137,14 @@ export default async function SalleDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Tabs (Infos + Actifs + Capteurs) */}
-      <SalleTabs actifs={actifs} sensors={sensors}>
+      {/* Tabs (Infos + Actifs + Actif agricole + Capteurs) */}
+      <SalleTabs
+        actifs={actifs}
+        sensors={sensors}
+        itemsAgricoles={itemsAgricoles}
+        achatUrl={achatUrl}
+        salleId={local.id}
+      >
         {/* This is the infos panel content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InfoCard icon={<Building className="w-4 h-4" />} label="Bâtiment" value={local.batiment} />
