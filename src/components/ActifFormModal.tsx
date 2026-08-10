@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Actif, Local } from "@/lib/types";
 import { SelectWithCustom } from "@/components/LocalFormModal";
+import { useT } from "@/lib/i18n";
 import { X, Loader2, Save, Plus, AlertTriangle } from "lucide-react";
 
 // ============================================================
@@ -37,6 +38,7 @@ export function ActifFormModal({
   onClose,
   onSaved,
 }: ActifFormModalProps) {
+  const t = useT();
   const isEdit = actif !== null;
 
   const [nom, setNom] = useState(actif?.nom ?? "");
@@ -106,10 +108,10 @@ export function ActifFormModal({
             body: JSON.stringify(fields),
           });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      if (!res.ok) throw new Error(data.error || t("actifForm.errorStatus", { status: res.status }));
       onSaved();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setError(e instanceof Error ? e.message : t("actifForm.unknownError"));
       setSaving(false);
     }
   };
@@ -129,7 +131,9 @@ export function ActifFormModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-chanv-fibre">
           <div>
             <h2 className="text-base font-bold text-chanv-terre">
-              {isEdit ? `Modifier ${actif!.nom || actif!.id}` : "Nouvel actif"}
+              {isEdit
+                ? t("actifForm.editTitle", { name: actif!.nom || actif!.id })
+                : t("actifForm.createTitle")}
             </h2>
             {isEdit && (
               <p className="text-[11px] text-slate-400 font-mono">
@@ -150,43 +154,43 @@ export function ActifFormModal({
           {/* ── Identification ── */}
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-              Identification
+              {t("actifForm.sectionIdentification")}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
-                  Nom <span className="text-red-400">*</span>
+                  {t("actifForm.name")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
-                  placeholder="ex. BALANCE OHAUS VALOR 1000"
+                  placeholder={t("actifForm.namePlaceholder")}
                   className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Matricule</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t("actifForm.matricule")}</label>
                 <input
                   type="text"
                   value={matricule}
                   onChange={(e) => setMatricule(e.target.value.toUpperCase())}
-                  placeholder="ex. CAN-PROD-141"
+                  placeholder={t("actifForm.matriculePlaceholder")}
                   className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">ID Masterlist</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t("actifForm.masterlistId")}</label>
                 <input
                   type="text"
                   value={idMasterlist}
                   onChange={(e) => setIdMasterlist(e.target.value.toUpperCase())}
-                  placeholder="ex. AGR-BAL001"
+                  placeholder={t("actifForm.masterlistIdPlaceholder")}
                   className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Marque</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t("actifForm.brand")}</label>
                 <input
                   type="text"
                   value={marque}
@@ -195,7 +199,7 @@ export function ActifFormModal({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Modèle</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t("actifForm.model")}</label>
                 <input
                   type="text"
                   value={modele}
@@ -204,7 +208,7 @@ export function ActifFormModal({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">N° de série</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t("actifForm.serialNumber")}</label>
                 <input
                   type="text"
                   value={numSerie}
@@ -218,19 +222,19 @@ export function ActifFormModal({
           {/* ── Localisation ── */}
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-              Localisation
+              {t("actifForm.sectionLocation")}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
-                  Salle
+                  {t("actifForm.room")}
                 </label>
                 <select
                   value={salleInconnue ? "" : idSalle}
                   onChange={(e) => setIdSalle(e.target.value)}
                   className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
                 >
-                  <option value="">— Aucune —</option>
+                  <option value="">{t("actifForm.roomNone")}</option>
                   {sortedSalles.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.nomSalle ? `${s.nomSalle} (${s.id})` : s.id}
@@ -240,19 +244,19 @@ export function ActifFormModal({
                 {salleInconnue && (
                   <p className="flex items-center gap-1 text-[11px] text-amber-600 mt-1">
                     <AlertTriangle className="w-3 h-3 shrink-0" />
-                    Salle actuelle « {idSalle} » introuvable — choisir une salle valide.
+                    {t("actifForm.unknownRoom", { id: idSalle })}
                   </p>
                 )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
-                  Autres locaux desservis
+                  {t("actifForm.otherRooms")}
                 </label>
                 <input
                   type="text"
                   value={locauxDesservis}
                   onChange={(e) => setLocauxDesservis(e.target.value)}
-                  placeholder="Codes séparés par des virgules"
+                  placeholder={t("actifForm.otherRoomsPlaceholder")}
                   className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
                 />
               </div>
@@ -262,30 +266,30 @@ export function ActifFormModal({
           {/* ── État ── */}
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-              Classification & état
+              {t("actifForm.sectionState")}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <SelectWithCustom
-                label="Catégorie"
+                label={t("actifForm.category")}
                 value={categorie}
                 onChange={setCategorie}
                 options={options.categories}
               />
               <SelectWithCustom
-                label="Criticité"
+                label={t("actifForm.criticality")}
                 value={criticite}
                 onChange={setCriticite}
                 options={options.criticites}
               />
               <SelectWithCustom
-                label="Statut"
+                label={t("actifForm.status")}
                 value={statut}
                 onChange={setStatut}
                 options={options.statuts}
               />
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
-                  Date d'installation
+                  {t("actifForm.installDate")}
                 </label>
                 <input
                   type="date"
@@ -310,7 +314,7 @@ export function ActifFormModal({
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-chanv-terre rounded-xl hover:bg-chanv-fibre/50 transition-colors"
           >
-            Annuler
+            {t("actifForm.cancel")}
           </button>
           <button
             onClick={submit}
@@ -324,7 +328,7 @@ export function ActifFormModal({
             ) : (
               <Plus className="w-4 h-4" />
             )}
-            {isEdit ? "Enregistrer" : "Créer l'actif"}
+            {isEdit ? t("actifForm.save") : t("actifForm.create")}
           </button>
         </div>
       </div>

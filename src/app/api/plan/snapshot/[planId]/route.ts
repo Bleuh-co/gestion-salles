@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth-server";
 import { adminDb } from "@/lib/firebase-admin";
 import { listAllSensors, isAnySensorProviderConfigured } from "@/lib/sensors";
 
@@ -9,6 +10,10 @@ interface Props {
 }
 
 export async function GET(_req: NextRequest, { params }: Props) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
   const { planId } = await params;
 
   try {

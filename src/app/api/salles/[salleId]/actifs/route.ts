@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth-server";
 import { getLocal } from "@/lib/repo/locaux";
 import { getActifsBySalle } from "@/lib/repo/actifs";
 
@@ -7,6 +8,10 @@ interface Props {
 }
 
 export async function GET(_req: NextRequest, { params }: Props) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
   const { salleId } = await params;
   const id = decodeURIComponent(salleId);
   const local = await getLocal(id);

@@ -1,5 +1,4 @@
 import "server-only";
-import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "./firebase-admin";
 import { isEmailDomainAllowed } from "./utils";
 import type { Role } from "./types";
@@ -59,7 +58,7 @@ function mapLegacyToStandard(oldRole: string): string {
     case "Employe":
       return "Consulter";
     default:
-      return "Consulter";
+      return "Non visible";
   }
 }
 
@@ -119,7 +118,7 @@ export async function resolveRoleVerbose(email: string): Promise<RoleResolution>
     userAppRoleGrade: null,
     legacyGlobalRole: null,
     source: "default",
-    role: "membre",
+    role: "blocked",
   };
 
   // 1. Bootstrap
@@ -172,8 +171,25 @@ export async function resolveRoleVerbose(email: string): Promise<RoleResolution>
     console.warn("[auth] users lookup failed", e);
   }
 
-  // 4. Default — ouvert au domaine
-  return { ...base, source: "default", role: "membre" };
+  // 4. Default — deny-by-default : aucun accès explicite trouvé → blocked.
+  return { ...base, source: "default", role: "blocked" };
+}
+
+// --- Whitelist (utilisateurs invites hors-domaine) ---------------------------
+// Un email hors domaine (gmail, etc.) est autorise au gate SEULEMENT s'il a ete
+// invite via le hub : users/{email}.invited === true. isEmailAllowed = domaine
+// autorise OU whiteliste. Le ROLE decide ensuite (deny-by-default inchange).
+export async function isWhitelisted(email: string | null | undefined): Promise<boolean> {
+  const e = (email || "").toLowerCase().trim();
+  if (!e) return false;
+  try {
+    const doc = await adminDb().collection("users").doc(e).get();
+    return doc.exists && doc.data()?.invited === true;
+  } catch { return false; }
+}
+export async function isEmailAllowed(email: string | null | undefined): Promise<boolean> {
+  if (isEmailDomainAllowed(email)) return true;
+  return isWhitelisted(email);
 }
 
 /**
@@ -189,26 +205,30 @@ export async function resolveRole(email: string): Promise<Role> {
 }
 
 export async function getSession(): Promise<SessionContext | null> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!sessionCookie) return null;
+  // Garde d'accès via le SDK Gandalf : cookie __session de l'app OU cookie de
+  // session partagé du hub (__gandalf_session) OU Bearer, check d'audience
+  // (V4), deny-by-default. La résolution de rôle reste celle de l'app
+  // (domaine autorisé + resolveRole) via gestionSallesRoleMapper — zéro régression.
+  const { verifySso, GandalfDenied } = await import("@bleuh-co/gandalf-sdk-next/server");
+  const { gandalfAdmin, gestionSallesRoleMapper } = await import("./gandalf");
   try {
-    const decoded = await adminAuth().verifySessionCookie(sessionCookie, true);
-    const email = decoded.email || null;
-    if (!isEmailDomainAllowed(email)) return null;
-
-    const role = await resolveRole(email!);
-    if (role === "blocked") return null;
+    const s = await verifySso(gandalfAdmin, {
+      cookieName: SESSION_COOKIE,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      noAccessRoles: ["blocked"],
+      roleMapper: gestionSallesRoleMapper,
+    });
 
     return {
-      uid: decoded.uid,
-      email: email!,
-      displayName: (decoded.name as string) || null,
-      photoURL: (decoded.picture as string) || null,
-      role,
+      uid: s.user.uid,
+      email: s.user.email,
+      displayName: s.user.name,
+      photoURL: s.user.picture,
+      role: s.role as Role,
     };
   } catch (e) {
-    console.warn("[auth] invalid session", e);
+    if (e instanceof GandalfDenied) return null;
+    console.warn("[auth] getSession error", e);
     return null;
   }
 }

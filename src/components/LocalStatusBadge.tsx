@@ -1,7 +1,7 @@
 "use client";
 
 import type { LocalStatut } from "@/lib/types";
-import { LOCAL_STATUT_LABELS } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 const STATUS_STYLES: Record<LocalStatut, string> = {
   en_service: "bg-green-100 text-green-800",
@@ -16,9 +16,10 @@ interface LocalStatusBadgeProps {
 }
 
 export function LocalStatusBadge({ status, size = "md" }: LocalStatusBadgeProps) {
+  const t = useT();
   return (
     <span className={`badge ${STATUS_STYLES[status]} ${size === "sm" ? "text-[10px] px-1.5 py-0.5" : ""}`}>
-      {LOCAL_STATUT_LABELS[status]}
+      {t(`status.${status}`)}
     </span>
   );
 }

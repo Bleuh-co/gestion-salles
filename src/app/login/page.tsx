@@ -5,9 +5,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { allowedDomains } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
-  const { session, signInWithGoogle, loading } = useAuth();
+  const t = useT();
+  const { session, signInWithGoogle, loading, deniedEmail } = useAuth();
   const router = useRouter();
   const [ssoChecking, setSsoChecking] = useState(false);
 
@@ -19,7 +21,7 @@ export default function LoginPage() {
     const ssoToken = hash.substring(5);
     history.replaceState(null, "", window.location.pathname + window.location.search);
 
-    const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://chanv-apps-hub-271227085398.northamerica-northeast1.run.app";
+    const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://gandalf.chanv.com";
 
     setSsoChecking(true);
     (async () => {
@@ -79,6 +81,23 @@ export default function LoginPage() {
     }
   }, [session, router]);
 
+  // Carte de refus standard (contrat recette) : compte authentifié mais rôle
+  // « blocked » — email affiché + « Essayer un autre compte ».
+  if (deniedEmail !== null) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="card w-full max-w-md p-10 text-center animate-[chanvFadeIn_0.5s_ease-out_both]">
+          <h1 className="text-2xl font-bold text-chanv-terre mb-4">{t("blocked.title")}</h1>
+          <p className="text-sm text-slate-500 leading-relaxed mb-3">{t("blocked.message")}</p>
+          {deniedEmail && <p className="text-xs text-slate-400 mb-6">{deniedEmail}</p>}
+          <button onClick={signInWithGoogle} className="btn-primary w-full py-4 text-base">
+            {t("blocked.retry")}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
       <div className="card w-full max-w-md p-10 animate-[chanvFadeIn_0.5s_ease-out_both]">
@@ -86,12 +105,12 @@ export default function LoginPage() {
           <div className="bg-chanv-fibre p-5 rounded-chanv shadow-chanv-soft mb-5">
             <Image src="/favicon.svg" alt="Chanv" width={64} height={64} />
           </div>
-          <h1 className="text-2xl font-bold text-chanv-terre">Gestion Salles</h1>
+          <h1 className="text-2xl font-bold text-chanv-terre">{t("app.title")}</h1>
           <p className="text-[11px] uppercase tracking-[3px] text-chanv-terre/60 mt-2">
             Groupe Chanv
           </p>
           <p className="text-sm text-slate-500 mt-5 leading-relaxed">
-            Connexion réservée aux domaines&nbsp;
+            {t("login.restrictedDomains")}&nbsp;
             <span className="font-semibold text-chanv-terre">
               {allowedDomains().join(", ")}
             </span>
@@ -103,13 +122,13 @@ export default function LoginPage() {
           className="btn-primary w-full py-4 text-base"
         >
           {ssoChecking
-            ? "Connexion SSO en cours..."
+            ? t("login.ssoChecking")
             : loading
-            ? "Chargement..."
-            : "Se connecter avec Google"}
+            ? t("login.loading")
+            : t("login.signInGoogle")}
         </button>
         <p className="text-xs text-slate-400 text-center mt-6 leading-relaxed">
-          Une session s&apos;ouvrira pour 5 jours.
+          {t("login.sessionDuration")}
         </p>
       </div>
     </main>

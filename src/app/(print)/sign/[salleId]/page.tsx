@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getLocal, getLocaux } from "@/lib/repo/locaux";
+import { getServerT } from "@/lib/i18n-server";
 import { SignPageClient } from "./SignClient";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +11,14 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { salleId } = await params;
-  const local = await getLocal(decodeURIComponent(salleId));
-  if (!local) return { title: "Local introuvable" };
+  const [local, t] = await Promise.all([
+    getLocal(decodeURIComponent(salleId)),
+    getServerT(),
+  ]);
+  if (!local) return { title: t("sign.metaNotFound") };
   return {
-    title: `Panneau — ${local.nomSalle || local.id}`,
-    description: `Panneau imprimable pour ${local.id}`,
+    title: t("sign.metaTitle", { name: local.nomSalle || local.id }),
+    description: t("sign.metaDescription", { id: local.id }),
   };
 }
 

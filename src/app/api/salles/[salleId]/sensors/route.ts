@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth-server";
 import { getLocaux } from "@/lib/repo/locaux";
 import { listAllSensors } from "@/lib/sensors";
 import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-match";
@@ -12,6 +13,10 @@ interface Props {
  * Returns TempStick sensors associated with a room.
  */
 export async function GET(_req: NextRequest, { params }: Props) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
   const { salleId } = await params;
   const decodedId = decodeURIComponent(salleId);
 

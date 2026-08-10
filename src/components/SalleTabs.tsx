@@ -5,12 +5,13 @@ import { Wrench, Info, Thermometer, Sprout, Wifi, WifiOff, Battery, Clock } from
 import type { Actif, ItemAgricole, SensorReading } from "@/lib/types";
 import { ActifsTable } from "./ActifsTable";
 import { ItemsAgricolesTable } from "./ItemsAgricolesTable";
+import { useT } from "@/lib/i18n";
 
 const TABS = [
-  { key: "infos", label: "Informations", icon: Info },
-  { key: "actifs", label: "Actifs", icon: Wrench },
-  { key: "items-agricoles", label: "Actif agricole", icon: Sprout },
-  { key: "capteurs", label: "Capteurs", icon: Thermometer },
+  { key: "infos", labelKey: "tabs.infos", icon: Info },
+  { key: "actifs", labelKey: "tabs.actifs", icon: Wrench },
+  { key: "items-agricoles", labelKey: "tabs.itemsAgricoles", icon: Sprout },
+  { key: "capteurs", labelKey: "tabs.capteurs", icon: Thermometer },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -24,16 +25,19 @@ interface SalleTabsProps {
   salleId?: string;
 }
 
-function formatTimeAgo(utcStr: string | null): string {
+function formatTimeAgo(
+  utcStr: string | null,
+  t: (key: string, vars?: Record<string, string | number>) => string
+): string {
   if (!utcStr) return "—";
   const diff = Date.now() - new Date(utcStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "< 1 min";
-  if (mins < 60) return `il y a ${mins} min`;
+  if (mins < 1) return t("tabs.timeAgoNow");
+  if (mins < 60) return t("tabs.timeAgoMinutes", { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `il y a ${hours}h`;
+  if (hours < 24) return t("tabs.timeAgoHours", { n: hours });
   const days = Math.floor(hours / 24);
-  return `il y a ${days}j`;
+  return t("tabs.timeAgoDays", { n: days });
 }
 
 export function SalleTabs({
@@ -44,6 +48,7 @@ export function SalleTabs({
   achatUrl = "https://demande-achat.chanv.com",
   salleId = "",
 }: SalleTabsProps) {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<TabKey>("infos");
 
   // Only show capteurs / items-agricoles tabs if data exists
@@ -77,7 +82,7 @@ export function SalleTabs({
               }`}
             >
               <Icon className="w-4 h-4" />
-              {tab.label}
+              {t(tab.labelKey)}
               {count !== undefined && (
                 <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-chanv-terre/10 text-chanv-terre font-bold">
                   {count}
@@ -105,10 +110,11 @@ export function SalleTabs({
 // ============================================================
 
 function SensorPanel({ sensors }: { sensors: SensorReading[] }) {
+  const t = useT();
   if (sensors.length === 0) {
     return (
       <div className="text-center py-12 text-sm text-slate-400">
-        Aucun capteur associé à cette salle.
+        {t("tabs.noSensors")}
       </div>
     );
   }
@@ -123,6 +129,7 @@ function SensorPanel({ sensors }: { sensors: SensorReading[] }) {
 }
 
 function SensorCard({ sensor }: { sensor: SensorReading }) {
+  const t = useT();
   const isOnline = !sensor.offline;
 
   return (
@@ -160,10 +167,10 @@ function SensorCard({ sensor }: { sensor: SensorReading }) {
                 className="w-1.5 h-1.5 rounded-full"
                 style={{ backgroundColor: isOnline ? "#22c55e" : "#ef4444" }}
               />
-              {isOnline ? "En ligne" : "Hors ligne"}
+              {isOnline ? t("tabs.online") : t("tabs.offline")}
             </span>
             <span className="text-[10px] text-slate-400 px-1.5 py-0.5 rounded-full bg-chanv-fibre font-medium">
-              {sensor.match_source === "override" ? "Override admin" : "Auto-match"}
+              {sensor.match_source === "override" ? t("tabs.overrideAdmin") : t("tabs.autoMatch")}
             </span>
           </div>
         </div>
@@ -174,7 +181,7 @@ function SensorCard({ sensor }: { sensor: SensorReading }) {
         {/* Temperature */}
         <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-xl p-3 border border-rose-100">
           <div className="text-[10px] uppercase tracking-wider text-rose-400 font-semibold mb-1">
-            Température
+            {t("tabs.temperature")}
           </div>
           <div className="text-2xl font-bold text-rose-600">
             {sensor.last_temp_c != null ? `${sensor.last_temp_c.toFixed(1)}°` : "—"}
@@ -184,7 +191,7 @@ function SensorCard({ sensor }: { sensor: SensorReading }) {
         {/* Humidity */}
         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-3 border border-blue-100">
           <div className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-1">
-            Humidité
+            {t("tabs.humidity")}
           </div>
           <div className="text-2xl font-bold text-blue-600">
             {sensor.last_humidity != null ? `${Math.round(sensor.last_humidity)}%` : "—"}
@@ -196,7 +203,7 @@ function SensorCard({ sensor }: { sensor: SensorReading }) {
       <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-chanv-fibre/50">
         <div className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
-          {formatTimeAgo(sensor.last_checkin_utc)}
+          {formatTimeAgo(sensor.last_checkin_utc, t)}
         </div>
         {sensor.battery != null && (
           <div className="flex items-center gap-1">

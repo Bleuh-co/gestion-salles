@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-server";
 import { NavBar } from "@/components/NavBar";
-import Script from "next/script";
+import { StandaloneWidgets } from "@/components/StandaloneWidgets";
 
-const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://chanv-apps-hub-271227085398.northamerica-northeast1.run.app";
+const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://gandalf.chanv.com";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await getSession();
@@ -13,10 +13,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <NavBar />
       <div className="chanv-surface mx-auto max-w-5xl px-4 pb-16">{children}</div>
-      {/* Hub Widgets — only on app pages, NOT on print pages */}
-      <Script src={`${HUB_URL}/widgets/chatbot.js`} data-hub={HUB_URL} strategy="lazyOnload" />
-      <Script src={`${HUB_URL}/widgets/feedback.js`} data-hub={HUB_URL} strategy="lazyOnload" />
-      <Script src={`${HUB_URL}/js/gandalf-widget.js`} data-hub={HUB_URL} strategy="lazyOnload" />
+      {/* Widgets flottants du hub — STANDALONE seulement. AVANT : gardés par le
+          flag serveur `!embedded` (dérivé du cookie gandalf_embed collant) qui
+          contaminait le standalone. Le composant client vérifie le VRAI framing
+          (window.self !== window.top). */}
+      <StandaloneWidgets hubUrl={HUB_URL} scripts={["/widgets/chatbot.js", "/widgets/feedback.js", "/js/gandalf-widget.js"]} />
     </>
   );
 }

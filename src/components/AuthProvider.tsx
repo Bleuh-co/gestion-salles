@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -16,9 +17,9 @@ import {
   type User,
 } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase-client";
-import { isEmailDomainAllowed, allowedDomains } from "@/lib/utils";
 import type { Role } from "@/lib/types";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 
 export interface SessionUser {
   uid: string;
@@ -32,6 +33,8 @@ interface AuthContextValue {
   firebaseUser: User | null;
   session: SessionUser | null;
   loading: boolean;
+  /** Email d'un compte authentifié mais refusé (rôle blocked) — carte de refus standard */
+  deniedEmail: string | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -40,9 +43,15 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // t() dans des callbacks/effets : on passe par une ref pour ne pas
+  // recréer les effets quand la langue change (modèle elearning).
+  const t = useT();
+  const tRef = useRef(t);
+  tRef.current = t;
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [session, setSession] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
 
   const refreshSession = useCallback(async () => {
     try {
@@ -67,13 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      if (!isEmailDomainAllowed(u.email)) {
-        await fbSignOut(auth);
-        toast.error(`Domaine non autorisé. Domaines acceptés: ${allowedDomains().join(", ")}`);
-        setSession(null);
-        setLoading(false);
-        return;
-      }
+      // Pas de blocage domaine côté client : la whitelist (users.invited) n'est
+      // vérifiable que côté serveur. On délègue la décision à /api/session, qui
+      // répond 200 (domaine OU whitelisté + rôle) ou 403 { blocked } → carte de
+      // refus standard. Un externe non whitelisté est donc refusé par le serveur.
       try {
         const idToken = await u.getIdToken(true);
         const res = await fetch("/api/session", {
@@ -84,14 +90,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           setSession(data.user || null);
+          setDeniedEmail(null);
         } else {
           const err = await res.json().catch(() => ({}));
-          console.error("[AuthProvider] session POST failed:", res.status);
-          toast.error(
-            err.error
-              ? `${err.error}${err.detail ? ` (${err.detail})` : ""}`
-              : `Session refusée (${res.status})`
-          );
+          if (res.status === 403 && err.blocked) {
+            // Carte de refus standard (contrat recette) — pas de toast en doublon.
+            setDeniedEmail(err.email || u.email || "");
+          } else {
+            console.error("[AuthProvider] session POST failed:", res.status);
+            toast.error(
+              err.error
+                ? `${err.error}${err.detail ? ` (${err.detail})` : ""}`
+                : tRef.current("auth.sessionRefused", { status: res.status })
+            );
+          }
           await fbSignOut(auth);
           setSession(null);
         }
@@ -107,24 +119,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     const auth = firebaseAuth();
+    setDeniedEmail(null);
     try {
       await signInWithPopup(auth, googleProvider());
     } catch (e: any) {
       if (e?.code !== "auth/popup-closed-by-user") {
-        toast.error(e?.message || "Échec de la connexion");
+        toast.error(e?.message || tRef.current("auth.signInFailed"));
       }
     }
   }, []);
 
   const signOut = useCallback(async () => {
     await fetch("/api/session", { method: "DELETE" });
+    // Le SDK accepte AUSSI le cookie hub __gandalf_session (.chanv.com) en repli :
+    // sans le fermer côté hub, la session renaissait aussitôt et « Déconnexion »
+    // ne faisait rien en standalone.
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_HUB_URL || "https://gandalf.chanv.com"}/api/sso/session`,
+        { method: "DELETE", credentials: "include" }
+      );
+    } catch {
+      /* hub injoignable — la session app est quand même fermée */
+    }
     await fbSignOut(firebaseAuth());
     setSession(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ firebaseUser, session, loading, signInWithGoogle, signOut, refreshSession }),
-    [firebaseUser, session, loading, signInWithGoogle, signOut, refreshSession]
+    () => ({ firebaseUser, session, loading, deniedEmail, signInWithGoogle, signOut, refreshSession }),
+    [firebaseUser, session, loading, deniedEmail, signInWithGoogle, signOut, refreshSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

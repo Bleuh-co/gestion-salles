@@ -48,8 +48,7 @@ function RoomPanel({ local, targetUrl }: PanelSource) {
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence || "?";
   const displayName = local.nomSalle || local.id;
-  const isProd = local.prod;
-  const badgeLetter = isProd ? "P" : familleShort.charAt(0);
+  const badgeLetter = familleShort.charAt(0);
 
   // Generate QR code (matrix redraw + centered Chanv icon)
   useEffect(() => {
@@ -376,9 +375,9 @@ export function PrintableRoomSign({ left, right }: RoomSignProps) {
           }
           .sign-toolbar { display: none !important; }
           /* Hide ALL external widgets */
-          [data-feedback], [class*="feedback"],
-          [data-gandalf], [class*="gandalf"],
-          iframe, .intercom-lightweight-app,
+          body [data-feedback], body [class*="feedback"],
+          body [data-gandalf], body [class*="gandalf"],
+          body iframe, .intercom-lightweight-app,
           .crisp-client, #hubspot-messages-iframe-container,
           div[style*="z-index: 2147"], div[style*="z-index: 9999"] {
             display: none !important;

@@ -2,9 +2,9 @@
 
 import { useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./AuthProvider";
-import { ROLE_LABELS } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
-const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://chanv-apps-hub-271227085398.northamerica-northeast1.run.app";
+const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://gandalf.chanv.com";
 
 /**
  * Sidebar component — delegates to the GANDALF widget (gandalf-widget.js).
@@ -14,19 +14,20 @@ const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://chanv-apps-hub-27122
  */
 export function Sidebar() {
   const { session, firebaseUser, signOut } = useAuth();
+  const t = useT();
 
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   // Build app-specific links for the widget
   const getLinks = useCallback(() => {
     const links: Array<{ label: string; icon: string; href: string; mobileOnly?: boolean }> = [
-      { label: "Locaux", icon: "🏢", href: "/salles" },
+      { label: t("nav.rooms"), icon: "🏢", href: "/salles" },
     ];
     if (isAdmin) {
-      links.push({ label: "Administration", icon: "⚙️", href: "/admin", mobileOnly: true });
+      links.push({ label: t("nav.admin"), icon: "⚙️", href: "/admin", mobileOnly: true });
     }
     return links;
-  }, [isAdmin]);
+  }, [isAdmin, t]);
 
   // Initialize GANDALF widget once session is ready
   const initDone = useRef(false);
@@ -67,7 +68,7 @@ export function Sidebar() {
           name: session.displayName || session.email,
           email: session.email,
           photo: session.photoURL || "",
-          role: ROLE_LABELS[session.role] || session.role,
+          role: t(`role.${session.role}`),
         },
         token,
         lang: localStorage.getItem("gandalf_lang") || "fr",
@@ -99,7 +100,7 @@ export function Sidebar() {
       id="avatar-burger-btn"
       onClick={() => (window as any).GandalfWidget?.toggle()}
       className="avatar-burger-btn relative"
-      title="Menu"
+      title={t("nav.menu")}
     >
       <div className="avatar-burger-inner">
         {session.photoURL && (

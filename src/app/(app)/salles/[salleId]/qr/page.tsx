@@ -3,12 +3,16 @@
 import { useParams, useRouter } from "next/navigation";
 import { PrintableQRCode } from "@/components/PrintableQRCode";
 import { ArrowLeft } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export default function QRPage() {
+  const t = useT();
   const params = useParams<{ salleId: string }>();
   const router = useRouter();
   const salleId = decodeURIComponent(params.salleId);
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
   const targetUrl = `${origin}/salles/${encodeURIComponent(salleId)}`;
 
   return (
@@ -18,7 +22,7 @@ export default function QRPage() {
         className="absolute top-6 left-6 flex items-center gap-2 text-sm text-slate-500 hover:text-chanv-terre transition-colors print:hidden"
       >
         <ArrowLeft className="w-4 h-4" />
-        Retour
+        {t("salles.back")}
       </button>
       <PrintableQRCode localId={salleId} targetUrl={targetUrl} />
     </div>
