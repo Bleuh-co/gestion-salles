@@ -16,7 +16,8 @@ y pointe. Elle se redéploie à la main, aucun déclencheur ne la suit :
 ```bash
 gcloud run deploy gestion-salles --project=antigravity-20260107 \
   --region=northamerica-northeast1 --source=deploiement/ancienne-adresse \
-  --port=8080 --clear-env-vars --clear-secrets --memory=256Mi --max-instances=2
+  --port=8080 --clear-env-vars --clear-secrets --cpu-throttling \
+  --memory=256Mi --max-instances=2
 ```
 
 ## Registre par salle
