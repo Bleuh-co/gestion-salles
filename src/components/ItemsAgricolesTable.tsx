@@ -2,12 +2,15 @@
 
 import type { ItemAgricole } from "@/lib/types";
 import { EmptyState } from "./EmptyState";
-import { ExternalLink, ShoppingCart } from "lucide-react";
+import { ExternalLink, History, ShoppingCart } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface ItemsAgricolesTableProps {
   items: ItemAgricole[];
   achatUrl: string;
   salleId: string;
+  /** Lignes du registre de cet item (ajouts, déplacements… inscrits par Demande d'achats). */
+  onHistorique?: (item: ItemAgricole) => void;
 }
 
 function buildCommanderUrl(item: ItemAgricole, achatUrl: string, salleId: string): string {
@@ -23,7 +26,8 @@ function buildCommanderUrl(item: ItemAgricole, achatUrl: string, salleId: string
   return `${achatUrl}/achat?${params.toString()}`;
 }
 
-export function ItemsAgricolesTable({ items, achatUrl, salleId }: ItemsAgricolesTableProps) {
+export function ItemsAgricolesTable({ items, achatUrl, salleId, onHistorique }: ItemsAgricolesTableProps) {
+  const t = useT();
   if (items.length === 0) {
     return (
       <EmptyState
@@ -80,7 +84,17 @@ export function ItemsAgricolesTable({ items, achatUrl, salleId }: ItemsAgricoles
                     <span className="text-slate-400">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  {onHistorique && (
+                    <button
+                      onClick={() => onHistorique(item)}
+                      className="p-2 mr-1 align-middle text-slate-400 hover:text-chanv-terre rounded-lg hover:bg-chanv-fibre/50"
+                      title={t("actifsSalle.historique")}
+                      aria-label={t("actifsSalle.historique")}
+                    >
+                      <History className="w-4 h-4" />
+                    </button>
+                  )}
                   <a
                     href={buildCommanderUrl(item, achatUrl, salleId)}
                     target="_blank"

@@ -48,7 +48,16 @@ function docToLocal(id: string, data: FirebaseFirestore.DocumentData): Local {
     statut: data.statut ?? "en_service",
     niveauAcces: data.niveauAcces ?? "",
     archived: Boolean(data.archived),
+    plageTempMin: nombreOuNull(data.plageTempMin),
+    plageTempMax: nombreOuNull(data.plageTempMax),
+    plageHumMin: nombreOuNull(data.plageHumMin),
+    plageHumMax: nombreOuNull(data.plageHumMax),
+    plageSeuil: nombreOuNull(data.plageSeuil),
   };
+}
+
+function nombreOuNull(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 async function loadAll(): Promise<Local[]> {
@@ -186,6 +195,35 @@ export async function updateLocal(
   }
   if (Object.keys(clean).length === 0) return;
 
+  const ref = adminDb().collection(COLLECTION).doc(id);
+  const doc = await ref.get();
+  if (!doc.exists) throw new Error(`Local "${id}" introuvable`);
+  await ref.set({ ...clean, ...metaFields(updatedBy) }, { merge: true });
+  invalidateLocauxCache();
+}
+
+/** Champs de plage cible (registre) : nombres ou null. */
+export const LOCAL_PLAGE_FIELDS = [
+  "plageTempMin",
+  "plageTempMax",
+  "plageHumMin",
+  "plageHumMax",
+  "plageSeuil",
+] as const;
+
+export type LocalPlageField = (typeof LOCAL_PLAGE_FIELDS)[number];
+
+/** Met à jour la plage cible d'un local (nombres ou null). */
+export async function updateLocalPlages(
+  id: string,
+  plages: Partial<Record<LocalPlageField, number | null>>,
+  updatedBy: string
+): Promise<void> {
+  const clean: Record<string, number | null> = {};
+  for (const k of LOCAL_PLAGE_FIELDS) {
+    if (k in plages) clean[k] = plages[k] ?? null;
+  }
+  if (Object.keys(clean).length === 0) return;
   const ref = adminDb().collection(COLLECTION).doc(id);
   const doc = await ref.get();
   if (!doc.exists) throw new Error(`Local "${id}" introuvable`);

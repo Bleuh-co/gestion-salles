@@ -1,0 +1,516 @@
+{
+ "salles": [
+  {
+   "id": "APT10",
+   "nomSalle": ""
+  },
+  {
+   "id": "APT11",
+   "nomSalle": ""
+  },
+  {
+   "id": "APT9",
+   "nomSalle": ""
+  },
+  {
+   "id": "AUTRES",
+   "nomSalle": ""
+  },
+  {
+   "id": "BLEUH",
+   "nomSalle": ""
+  },
+  {
+   "id": "BUR1",
+   "nomSalle": "Administration & comptabilité"
+  },
+  {
+   "id": "BUR10",
+   "nomSalle": "Salle conférence"
+  },
+  {
+   "id": "BUR11",
+   "nomSalle": ""
+  },
+  {
+   "id": "BUR2",
+   "nomSalle": "Marketing"
+  },
+  {
+   "id": "BUR3",
+   "nomSalle": "Finances"
+  },
+  {
+   "id": "BUR4",
+   "nomSalle": "Opérations & Innovations"
+  },
+  {
+   "id": "BUR5",
+   "nomSalle": "Direction"
+  },
+  {
+   "id": "BUR6",
+   "nomSalle": "Accueil"
+  },
+  {
+   "id": "BUR7",
+   "nomSalle": "Contrôle qualité"
+  },
+  {
+   "id": "BUR8",
+   "nomSalle": "Assurance qualité"
+  },
+  {
+   "id": "BUR9",
+   "nomSalle": "Maintenance & mécanique"
+  },
+  {
+   "id": "CABANNE #2",
+   "nomSalle": "Salle d'irrigation"
+  },
+  {
+   "id": "CHAMPS EXTÉRIEUR",
+   "nomSalle": ""
+  },
+  {
+   "id": "CHAMPS EXTÉRIEUR 2",
+   "nomSalle": ""
+  },
+  {
+   "id": "CUI1",
+   "nomSalle": "Cuisinette qualité"
+  },
+  {
+   "id": "CUI2",
+   "nomSalle": "Cuisinette principale"
+  },
+  {
+   "id": "CUI3",
+   "nomSalle": ""
+  },
+  {
+   "id": "CUI4",
+   "nomSalle": "Cuisinette Guatémaltèques"
+  },
+  {
+   "id": "DÔME",
+   "nomSalle": "Dôme"
+  },
+  {
+   "id": "ENTREPÔT 1",
+   "nomSalle": "Voûte Bleuh"
+  },
+  {
+   "id": "ENTREPÔT 10",
+   "nomSalle": "Entrepôt Marketing"
+  },
+  {
+   "id": "ENTREPÔT 11",
+   "nomSalle": "introuvable"
+  },
+  {
+   "id": "ENTREPÔT 2",
+   "nomSalle": "Congélateur"
+  },
+  {
+   "id": "ENTREPÔT 3",
+   "nomSalle": "Entrepôt vieux vracs"
+  },
+  {
+   "id": "ENTREPÔT 4",
+   "nomSalle": "Entrepôt emballages Bleuh"
+  },
+  {
+   "id": "ENTREPÔT 5",
+   "nomSalle": "Entrepôt des chandelles"
+  },
+  {
+   "id": "ENTREPÔT 6",
+   "nomSalle": "Matières premières Chanv"
+  },
+  {
+   "id": "ENTREPÔT 7",
+   "nomSalle": "Entrepôt étiquettes Chanv"
+  },
+  {
+   "id": "ENTREPÔT 8",
+   "nomSalle": "Entrepôt Chanv"
+  },
+  {
+   "id": "ENTREPÔT 9",
+   "nomSalle": "Magasin"
+  },
+  {
+   "id": "ENTRÉE 1",
+   "nomSalle": ""
+  },
+  {
+   "id": "ENTRÉE 2",
+   "nomSalle": ""
+  },
+  {
+   "id": "ENTRÉE 3",
+   "nomSalle": ""
+  },
+  {
+   "id": "ENTRÉE 4",
+   "nomSalle": ""
+  },
+  {
+   "id": "GARAGE 1",
+   "nomSalle": "Garage"
+  },
+  {
+   "id": "GYM1",
+   "nomSalle": "Gym"
+  },
+  {
+   "id": "LAVAGE 1",
+   "nomSalle": "Salle de lavage"
+  },
+  {
+   "id": "PUIT1",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT10",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT11",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT12",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT13",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT2",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT3",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT4",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT5",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT6",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT7",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT8",
+   "nomSalle": ""
+  },
+  {
+   "id": "PUIT9",
+   "nomSalle": ""
+  },
+  {
+   "id": "RÉCEPTION 1",
+   "nomSalle": "Réception expédition Bleuh"
+  },
+  {
+   "id": "RÉCEPTION 2",
+   "nomSalle": "Réception/Expédition Chanv"
+  },
+  {
+   "id": "SAS1",
+   "nomSalle": ""
+  },
+  {
+   "id": "SAS2",
+   "nomSalle": ""
+  },
+  {
+   "id": "SAS3",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB1",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB2",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB3",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB4",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB5",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB6",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDB7",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDC1",
+   "nomSalle": ""
+  },
+  {
+   "id": "SDC2",
+   "nomSalle": ""
+  },
+  {
+   "id": "SELEC 1",
+   "nomSalle": "Salle électrique"
+  },
+  {
+   "id": "SIT1",
+   "nomSalle": ""
+  },
+  {
+   "id": "SIT2",
+   "nomSalle": ""
+  },
+  {
+   "id": "SÉCHOIR 1 - ZONE MULTI",
+   "nomSalle": "Grand séchoir"
+  },
+  {
+   "id": "SÉCHOIR 1 - ZONE MULTI CONTENEUR #1",
+   "nomSalle": "Conteneur #1"
+  },
+  {
+   "id": "SÉCHOIR 1 - ZONE MULTI CONTENEUR #2",
+   "nomSalle": "Conteneur #2"
+  },
+  {
+   "id": "SÉCHOIR 2 - ZONE MULTI",
+   "nomSalle": "Petit séchoir 2"
+  },
+  {
+   "id": "SÉCHOIR 3 - ZONE MULTI",
+   "nomSalle": "Petit séchoir 3"
+  },
+  {
+   "id": "TERRAIN_HQ",
+   "nomSalle": ""
+  },
+  {
+   "id": "TOIT",
+   "nomSalle": ""
+  },
+  {
+   "id": "VES1",
+   "nomSalle": ""
+  },
+  {
+   "id": "VES2",
+   "nomSalle": ""
+  },
+  {
+   "id": "VES3",
+   "nomSalle": ""
+  },
+  {
+   "id": "VES4",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO1",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO10",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO11",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO12",
+   "nomSalle": "Corridor principale Bleuh"
+  },
+  {
+   "id": "ZCO13",
+   "nomSalle": "Corridor transformation Bleuh"
+  },
+  {
+   "id": "ZCO14",
+   "nomSalle": "Corridor voûte Bleuh"
+  },
+  {
+   "id": "ZCO15",
+   "nomSalle": "Corridor grand séchoir"
+  },
+  {
+   "id": "ZCO16",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO17",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO18",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO19",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO2",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO20",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO21",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO22",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO3",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO4",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO5",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO6",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO7",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO8",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZCO9",
+   "nomSalle": ""
+  },
+  {
+   "id": "ZONE MULTI 1",
+   "nomSalle": "Salle de trimmage"
+  },
+  {
+   "id": "ZONE MULTI 10",
+   "nomSalle": "Salle orange photonics"
+  },
+  {
+   "id": "ZONE MULTI 11",
+   "nomSalle": "Traçabilité"
+  },
+  {
+   "id": "ZONE MULTI 12",
+   "nomSalle": "Salle des chandelles"
+  },
+  {
+   "id": "ZONE MULTI 13",
+   "nomSalle": "Salle Chanv 1"
+  },
+  {
+   "id": "ZONE MULTI 14",
+   "nomSalle": "Salle de fabrication Chanv"
+  },
+  {
+   "id": "ZONE MULTI 15",
+   "nomSalle": "Salle Chanv 2"
+  },
+  {
+   "id": "ZONE MULTI 16",
+   "nomSalle": "Salle Crocx"
+  },
+  {
+   "id": "ZONE MULTI 17",
+   "nomSalle": "Salle R&D Cannabis"
+  },
+  {
+   "id": "ZONE MULTI 2",
+   "nomSalle": "Salle de curing"
+  },
+  {
+   "id": "ZONE MULTI 3",
+   "nomSalle": "Entrepôt vieux équipements"
+  },
+  {
+   "id": "ZONE MULTI 4",
+   "nomSalle": "Salle pouponnière"
+  },
+  {
+   "id": "ZONE MULTI 5",
+   "nomSalle": "Chambre froide"
+  },
+  {
+   "id": "ZONE MULTI 6",
+   "nomSalle": "Grande salle des mères"
+  },
+  {
+   "id": "ZONE MULTI 7",
+   "nomSalle": "Salle de transformation Cannabis"
+  },
+  {
+   "id": "ZONE MULTI 8",
+   "nomSalle": "Entrepôt des engrais"
+  },
+  {
+   "id": "ZONE MULTI 9",
+   "nomSalle": "Petite salle des mères"
+  }
+ ],
+ "capteurs": [
+  "Zone Multi 9C",
+  "Sechoir 3 Zone Multi C",
+  "SECHOIR5",
+  "Zone Multi 1C",
+  "Salle 102",
+  "Zone Multi 2C",
+  "Zone Multi 4C",
+  "Sechoir 1 Zone Multi C",
+  "Sechoir 2 Zone Multi C",
+  "Zone Multi 6C",
+  "Zone Multi 5 (chambre froide)",
+  "SECHOIR11",
+  "Zone Multi 8",
+  "SECHOIR2",
+  "SECHOIR3",
+  "SECHOIR1",
+  "SECHOIR4",
+  "SECHOIR8",
+  "SECHOIR6",
+  "SECHOIR7",
+  "SECHOIR9",
+  "SECHOIR10"
+ ]
+}

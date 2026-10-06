@@ -1,7 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLocal, getLocaux } from "@/lib/repo/locaux";
-import { getActifsBySalle } from "@/lib/repo/actifs";
+import { getActifsBySalle, getAllActifs } from "@/lib/repo/actifs";
+import { getPeriodes } from "@/lib/repo/rattachements";
+import { getSession } from "@/lib/auth-server";
+import { actifsDeLaSalle, plagesDe } from "@/lib/registre/service";
+import { peutNoter } from "@/lib/registre/notes";
+import { PlagesCartes } from "@/components/registre/PlagesCartes";
 import { getItemsAgricolesBySalle } from "@/lib/repo/items-agricoles";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
 import { LocalStatusBadge } from "@/components/LocalStatusBadge";
@@ -52,6 +57,7 @@ async function fetchRoomSensors(localId: string): Promise<SensorReading[]> {
       battery: s.battery,
       match_source: s.match_source as "auto" | "override",
       provider: s.provider,
+      send_interval_s: s.send_interval_s ?? null,
     }));
   } catch (e) {
     console.warn("[sensors] Failed to fetch for room", localId, e);
@@ -65,11 +71,26 @@ export default async function SalleDetailPage({ params }: Props) {
   const local = await getLocal(decodeURIComponent(salleId));
   if (!local) notFound();
 
-  const [actifs, sensors, itemsAgricoles] = await Promise.all([
+  const session = await getSession();
+  const estAdmin = session?.role === "admin" || session?.role === "superadmin";
+  const noter = peutNoter(session?.role);
+  const [actifs, sensors, itemsAgricoles, locaux, periodes] = await Promise.all([
     getActifsBySalle(local.id),
     fetchRoomSensors(local.id),
     getItemsAgricolesBySalle(local.id),
+    getLocaux(),
+    getPeriodes().catch(() => []),
   ]);
+  // « Dans la salle depuis » (V4) : dernier mouvement, installation ou ouverture du registre.
+  const depuis = await actifsDeLaSalle(local.id, actifs).catch(() =>
+    actifs.map((actif) => ({ actif, depuis: null, origine: "ouverture" as const }))
+  );
+  const lignesActifs = depuis.map((x) => ({ ...x, dessert: x.actif.idSalle !== local.id }));
+  const tousActifs = estAdmin ? await getAllActifs() : null;
+  const aEuCapteur = periodes.some((p) => p.salleId === local.id);
+  const salles = locaux.map((l) => ({ id: l.id, nomSalle: l.nomSalle, famille: l.famille }));
+  const intervalles = sensors.map((s) => s.send_interval_s).filter((v): v is number => !!v);
+  const intervalleS = intervalles.length ? Math.min(...intervalles) : null;
   const achatUrl = process.env.ACHAT_APP_URL || "https://demande-achat.chanv.com";
   const familleColor = FAMILLE_COLORS[local.famille] || "#94a3b8";
   const familleShort = FAMILLE_SHORT[local.famille] || local.idLicence;
@@ -144,11 +165,16 @@ export default async function SalleDetailPage({ params }: Props) {
 
       {/* Tabs (Infos + Actifs + Actif agricole + Capteurs) */}
       <SalleTabs
-        actifs={actifs}
+        actifs={lignesActifs}
         sensors={sensors}
         itemsAgricoles={itemsAgricoles}
         achatUrl={achatUrl}
         salleId={local.id}
+        aEuCapteur={aEuCapteur}
+        estAdmin={estAdmin}
+        peutNoter={noter}
+        salles={salles}
+        tousActifs={tousActifs}
       >
         {/* This is the infos panel content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -159,6 +185,7 @@ export default async function SalleDetailPage({ params }: Props) {
           <InfoCard icon={<Thermometer className="w-4 h-4" />} label={t("salles.infoConditions")} value={local.conditions || "—"} />
           <InfoCard icon={<Shield className="w-4 h-4" />} label={t("salles.infoAccessLevel")} value={local.niveauAcces || "—"} />
           <InfoCard icon={<Factory className="w-4 h-4" />} label={t("salles.infoProduction")} value={local.prod ? t("salles.yes") : t("salles.no")} />
+          <PlagesCartes salleId={local.id} plages={plagesDe(local)} intervalleS={intervalleS} estAdmin={estAdmin} />
         </div>
       </SalleTabs>
     </div>

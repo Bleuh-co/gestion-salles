@@ -3,7 +3,7 @@ import "server-only";
 import type { ProviderSensor, SensorProvider } from "./provider";
 import { tempStickProvider } from "./tempstick";
 
-export type { ProviderSensor, SensorProvider } from "./provider";
+export type { ProviderReading, ProviderSensor, SensorProvider } from "./provider";
 
 // ============================================================
 // Registre des fournisseurs de capteurs.
@@ -41,4 +41,9 @@ export async function listAllSensors(): Promise<ProviderSensor[]> {
     }
   });
   return sensors;
+}
+
+/** Fournisseur d'un capteur (par l'id du fournisseur, TempStick par défaut). */
+export function providerOf(providerId: string | undefined): SensorProvider | null {
+  return getConfiguredProviders().find((p) => p.id === (providerId || "tempstick")) ?? null;
 }

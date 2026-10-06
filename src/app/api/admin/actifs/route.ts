@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
 import { createActif, getAllActifs, ACTIF_EDITABLE_FIELDS } from "@/lib/repo/actifs";
-import { getLocal } from "@/lib/repo/locaux";
+import { getLocal, getLocaux } from "@/lib/repo/locaux";
 import { logAudit } from "@/lib/repo/audit";
+import { assurerOuverture, inscrireActif } from "@/lib/repo/registre";
+import { auteurDe } from "@/lib/registre/routes";
 import type { Actif } from "@/lib/types";
 
 // ============================================================
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     const actif = { id, ...fields } as unknown as Actif;
+    await assurerOuverture();
     await createActif(actif, session.email);
 
     await logAudit({
@@ -79,6 +82,8 @@ export async function POST(req: NextRequest) {
       targetName: nom,
       user: session.email,
     });
+    const salles = new Set((await getLocaux({ includeArchived: true })).map((l) => l.id));
+    await inscrireActif(null, actif, await auteurDe(session), salles, null);
 
     return NextResponse.json({ status: "success", actif }, { status: 201 });
   } catch (e: unknown) {

@@ -8,10 +8,13 @@ import { LocalStatusBadge } from "@/components/LocalStatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { LocalFormModal } from "@/components/LocalFormModal";
 import { ActifFormModal, type ActifFormOptions } from "@/components/ActifFormModal";
+import { AdminRattachements } from "@/components/registre/AdminRattachements";
+import { AdminOrphelins } from "@/components/registre/AdminOrphelins";
+import { AdminRegistre } from "@/components/registre/AdminRegistre";
 import {
   Building, Wrench, ClipboardList, Search, Plus, Pencil, Trash2, RotateCcw,
-  X, Save, Clock, User, Thermometer, Wifi, WifiOff,
-  Link2, Unlink, RefreshCw, Loader2, Palette, Check
+  X, Save, Clock, User, Thermometer,
+  RefreshCw, Loader2, Palette, Check
 } from "lucide-react";
 
 // ============================================================
@@ -32,7 +35,7 @@ const ADMIN_TABS = [
   { key: "actifs", labelKey: "admin.tabActifs", icon: Wrench },
   { key: "capteurs", labelKey: "admin.tabCapteurs", icon: Thermometer },
   { key: "couleurs", labelKey: "admin.tabCouleurs", icon: Palette },
-  { key: "logs", labelKey: "admin.tabLogs", icon: ClipboardList },
+  { key: "registre", labelKey: "admin.tabRegistre", icon: ClipboardList },
 ] as const;
 
 type AdminTab = (typeof ADMIN_TABS)[number]["key"];
@@ -83,8 +86,7 @@ export function AdminClient({
           const isActive = activeTab === tab.key;
           const count = tab.key === "locaux" ? initialLocaux.length :
             tab.key === "actifs" ? actifs.length :
-            tab.key === "logs" ? auditLogs.length :
-            undefined; // capteurs count loaded async
+            undefined; // capteurs et registre : chargés à l'ouverture
           return (
             <button
               key={tab.key}
@@ -99,9 +101,11 @@ export function AdminClient({
             >
               <Icon className="w-4 h-4" />
               {t(tab.labelKey)}
-              <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-chanv-terre/10 text-chanv-terre font-bold">
-                {count}
-              </span>
+              {count !== undefined && (
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-chanv-terre/10 text-chanv-terre font-bold">
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
@@ -184,21 +188,29 @@ export function AdminClient({
         />
       )}
       {activeTab === "actifs" && (
-        <AdminActifsTable
-          actifs={actifs}
-          locaux={initialLocaux}
-          search={searchQuery}
-          onEdit={(a) => setModalActif(a)}
-        />
+        <div className="space-y-4">
+          <AdminOrphelins salles={initialLocaux.filter((l) => !l.archived)} />
+          <AdminActifsTable
+            actifs={actifs}
+            locaux={initialLocaux}
+            search={searchQuery}
+            onEdit={(a) => setModalActif(a)}
+          />
+        </div>
       )}
       {activeTab === "capteurs" && (
-        <AdminSensorsTab locaux={initialLocaux} search={searchQuery} />
+        <AdminRattachements search={searchQuery} />
       )}
       {activeTab === "couleurs" && (
         <AdminColorsTab />
       )}
-      {activeTab === "logs" && (
-        <AdminAuditLog logs={auditLogs} search={searchQuery} />
+      {activeTab === "registre" && (
+        <AdminRegistre
+          salles={initialLocaux
+            .filter((l) => !l.archived)
+            .map((l) => ({ id: l.id, nomSalle: l.nomSalle, famille: l.famille }))}
+          journalTechnique={<AdminAuditLog logs={auditLogs} search={searchQuery} />}
+        />
       )}
     </div>
   );
@@ -665,242 +677,6 @@ function AdminAuditLog({ logs, search }: { logs: AuditLogEntry[]; search: string
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// ============================================================
-// Sensors Tab (Capteurs)
-// ============================================================
-
-interface MappingEntry {
-  sensor_id: string;
-  sensor_name: string | null;
-  matched_local_id: string | null;
-  match_source: "auto" | "override" | "none";
-  online: boolean;
-  last_temp_c: number | null;
-  last_humidity: number | null;
-  battery: number | null;
-  last_checkin_utc: string | null;
-  provider?: string;
-}
-
-function AdminSensorsTab({ locaux, search }: { locaux: Local[]; search: string }) {
-  const t = useT();
-  const [mappings, setMappings] = useState<MappingEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [savingId, setSavingId] = useState<string | null>(null);
-
-  const fetchMappings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/sensor-mapping");
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("admin.errorStatus", { status: res.status }));
-      }
-      const data = await res.json();
-      setMappings(data.mappings || []);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("admin.errorUnknown"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    fetchMappings();
-  }, [fetchMappings]);
-
-  const handleOverride = async (sensorId: string, localId: string) => {
-    setSavingId(sensorId);
-    try {
-      const res = await fetch("/api/admin/sensor-overrides", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sensor_id: sensorId, local_id: localId }),
-      });
-      if (!res.ok) throw new Error("Erreur sauvegarde");
-      await fetchMappings();
-    } catch (e) {
-      console.error("Override failed", e);
-    } finally {
-      setSavingId(null);
-    }
-  };
-
-  const handleRemoveOverride = async (sensorId: string) => {
-    setSavingId(sensorId);
-    try {
-      const res = await fetch("/api/admin/sensor-overrides", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sensor_id: sensorId }),
-      });
-      if (!res.ok) throw new Error("Erreur suppression");
-      await fetchMappings();
-    } catch (e) {
-      console.error("Remove override failed", e);
-    } finally {
-      setSavingId(null);
-    }
-  };
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return mappings;
-    const q = search.toLowerCase();
-    return mappings.filter(
-      (m) =>
-        (m.sensor_name || "").toLowerCase().includes(q) ||
-        m.sensor_id.toLowerCase().includes(q) ||
-        (m.matched_local_id || "").toLowerCase().includes(q)
-    );
-  }, [mappings, search]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-chanv-terre" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="section-card p-6 text-center space-y-3">
-        <p className="text-sm text-red-600">{error}</p>
-        <button onClick={fetchMappings} className="btn-ghost text-xs flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> {t("admin.retry")}
-        </button>
-      </div>
-    );
-  }
-
-  if (filtered.length === 0) {
-    return <EmptyState icon="🌡️" title={t("admin.emptySensorsTitle")} description={search ? t("admin.noResults") : t("admin.emptySensorsDesc")} />;
-  }
-
-  const matched = mappings.filter((m) => m.match_source !== "none").length;
-  const overrides = mappings.filter((m) => m.match_source === "override").length;
-  const unmatched = mappings.filter((m) => m.match_source === "none").length;
-
-  return (
-    <div className="space-y-4">
-      {/* Stats row */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 text-xs">
-          <Link2 className="w-3.5 h-3.5 text-green-500" />
-          <span className="text-slate-600">{matched > 1 ? t("admin.matchedCountPlural", { count: matched }) : t("admin.matchedCount", { count: matched })}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          <Pencil className="w-3.5 h-3.5 text-blue-500" />
-          <span className="text-slate-600">{overrides > 1 ? t("admin.overrideCountPlural", { count: overrides }) : t("admin.overrideCount", { count: overrides })}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          <Unlink className="w-3.5 h-3.5 text-red-400" />
-          <span className="text-slate-600">{unmatched > 1 ? t("admin.unmatchedCountPlural", { count: unmatched }) : t("admin.unmatchedCount", { count: unmatched })}</span>
-        </div>
-        <button
-          onClick={fetchMappings}
-          className="ml-auto text-xs text-slate-400 hover:text-chanv-terre flex items-center gap-1"
-        >
-          <RefreshCw className="w-3 h-3" /> {t("admin.refresh")}
-        </button>
-      </div>
-
-      {/* Table */}
-      <div className="section-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-chanv-fibre text-left">
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colCapteur")}</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colSalleAssociee")}</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colSource")}</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colTemp")}</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colHumid")}</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colStatut")}</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("admin.colActions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m) => (
-                <tr key={m.sensor_id} className="border-b border-chanv-fibre/50 hover:bg-chanv-fibre/20 transition-colors">
-                  <td className="px-3 py-2.5">
-                    <div className="font-medium text-chanv-terre text-xs">{m.sensor_name || t("admin.unnamedSensor")}</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate max-w-[120px]">{m.sensor_id}</div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {savingId === m.sensor_id ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-chanv-terre" />
-                    ) : (
-                      <select
-                        value={m.matched_local_id || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val) {
-                            handleOverride(m.sensor_id, val);
-                          } else if (m.match_source === "override") {
-                            handleRemoveOverride(m.sensor_id);
-                          }
-                        }}
-                        className="text-xs border border-chanv-fibre rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-chanv-terre/30 max-w-[180px]"
-                      >
-                        <option value="">{t("admin.notAssociated")}</option>
-                        {locaux.map((l) => (
-                          <option key={l.id} value={l.id}>{l.nomSalle || l.id}{l.nomSalle ? ` (${l.id})` : ""}</option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                      m.match_source === "override" ? "bg-blue-100 text-blue-700" :
-                      m.match_source === "auto" ? "bg-green-100 text-green-700" :
-                      "bg-red-100 text-red-600"
-                    }`}>
-                      {m.match_source === "override" ? t("admin.sourceOverride") : m.match_source === "auto" ? t("admin.sourceAuto") : t("admin.sourceNone")}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-rose-600">
-                    {m.last_temp_c != null ? `${m.last_temp_c.toFixed(1)}°` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-blue-600">
-                    {m.last_humidity != null ? `${Math.round(m.last_humidity)}%` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      m.online ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
-                    }`}>
-                      {m.online ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
-                      {m.online ? t("admin.online") : t("admin.offline")}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {m.match_source === "override" && (
-                      <button
-                        onClick={() => handleRemoveOverride(m.sensor_id)}
-                        className="text-[10px] text-red-500 hover:text-red-700 flex items-center gap-1"
-                        title={t("admin.removeOverrideTitle")}
-                      >
-                        <Trash2 className="w-3 h-3" /> {t("admin.remove")}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-3 py-2 text-xs text-slate-400 border-t border-chanv-fibre">
-          {filtered.length > 1
-            ? t("admin.sensorsShownPlural", { count: filtered.length })
-            : t("admin.sensorsShown", { count: filtered.length })}
-        </div>
-      </div>
     </div>
   );
 }

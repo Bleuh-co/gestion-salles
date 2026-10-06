@@ -4,11 +4,14 @@
 // "config") — voir src/lib/repo/.
 // ============================================================
 
-export type Role = "superadmin" | "admin" | "membre" | "blocked";
+// « gestionnaire » = grade Gestionnaire du hub : lecture, plus les notes
+// au registre et la justification des écarts. « membre » = Consulter.
+export type Role = "superadmin" | "admin" | "gestionnaire" | "membre" | "blocked";
 
 export const ROLE_LABELS: Record<Role, string> = {
   superadmin: "Super Administrateur",
   admin: "Administrateur",
+  gestionnaire: "Gestionnaire",
   membre: "Membre",
   blocked: "Bloqué",
 };
@@ -84,6 +87,13 @@ export interface Local {
   statut: LocalStatut;
   niveauAcces: string;
   archived?: boolean;
+  /** Plage cible (registre, V5) — null = non suivie. Saisie par un administrateur. */
+  plageTempMin?: number | null;
+  plageTempMax?: number | null;
+  plageHumMin?: number | null;
+  plageHumMax?: number | null;
+  /** Relevés de suite hors plage avant de parler d'écart (2 par défaut). */
+  plageSeuil?: number | null;
 }
 
 // ============================================================
@@ -141,7 +151,7 @@ export interface LocalFormOptions {
 // ============================================================
 
 export type AuditAction = "create" | "update" | "delete" | "restore";
-export type AuditTarget = "local" | "actif";
+export type AuditTarget = "local" | "actif" | "capteur";
 
 export interface AuditLogEntry {
   id: string;
@@ -188,6 +198,8 @@ export interface SensorReading {
   match_source: "auto" | "override";
   /** Id du fournisseur (ex. "tempstick"). */
   provider?: string;
+  /** Intervalle d'envoi des relevés, en secondes. */
+  send_interval_s?: number | null;
 }
 
 export interface SensorMapping {

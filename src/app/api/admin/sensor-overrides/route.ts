@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
-import { loadOverrides, saveOverride, deleteOverride } from "@/lib/sensor-match";
+import { loadOverrides, deleteOverride } from "@/lib/sensor-match";
+import { getLocal } from "@/lib/repo/locaux";
+import { rattacher } from "@/lib/repo/rattachements";
+import { listAllSensors } from "@/lib/sensors";
+import { auteurDe } from "@/lib/registre/routes";
 
 /**
  * GET /api/admin/sensor-overrides
@@ -54,7 +58,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await saveOverride(sensor_id, local_id, session.email);
+    if (!(await getLocal(local_id))) {
+      return NextResponse.json({ error: "Local introuvable" }, { status: 400 });
+    }
+    // Rattachement daté à partir de maintenant (le passé du capteur reste où il était).
+    const capteur = (await listAllSensors()).find((s) => s.sensor_id === sensor_id);
+    await rattacher({
+      sensorId: sensor_id,
+      sensorName: capteur?.sensor_name || sensor_id,
+      provider: capteur?.provider,
+      salleId: local_id,
+      du: Date.now(),
+      par: await auteurDe(session),
+    });
 
     return NextResponse.json({
       status: "success",

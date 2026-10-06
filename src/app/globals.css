@@ -3,6 +3,17 @@
 @tailwind utilities;
 
 :root {
+  /* Courbes du registre : palette catégorielle validée (clair) — voir CourbeSvg.tsx */
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+  --serie-4: #eda100;
+  --serie-5: #e87ba4;
+  --serie-6: #008300;
+  --serie-7: #4a3aa7;
+  --serie-8: #e34948;
+  --serie-autre: #898781;
+  --plage: #0ca30c;
   --chanv-blanc: #FFFFFF;
   --chanv-beige: #DDCBA4;
   --chanv-fibre: #F1EADA;
@@ -411,6 +422,15 @@ h4 {
    ============================================================ */
 
 html.gandalf-dark {
+  /* Courbes du registre : mêmes teintes, pas du mode sombre (validées sur #2b2823) */
+  --serie-1: #3987e5;
+  --serie-2: #d95926;
+  --serie-3: #199e70;
+  --serie-4: #c98500;
+  --serie-5: #d55181;
+  --serie-6: #008300;
+  --serie-7: #9085e9;
+  --serie-8: #e66767;
   --chanv-fibre: rgba(221, 203, 164, 0.14);
   --color-secondary-bg: rgba(255, 255, 255, 0.08);
   --color-secondary-text: rgba(255, 255, 255, 0.8);

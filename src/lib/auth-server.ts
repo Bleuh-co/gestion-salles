@@ -1,6 +1,7 @@
 import "server-only";
 import { adminAuth, adminDb } from "./firebase-admin";
 import { isEmailDomainAllowed } from "./utils";
+import { peutNoter } from "./registre/notes";
 import type { Role } from "./types";
 
 const SESSION_COOKIE = "__session";
@@ -38,6 +39,7 @@ function mapStandardRole(grade: string): Role {
     case "Administrateur":
       return "admin";
     case "Gestionnaire":
+      return "gestionnaire";
     case "Consulter":
       return "membre";
     case "Non visible":
@@ -245,6 +247,16 @@ export async function requireSession(): Promise<SessionContext> {
 export async function requireAdmin(): Promise<SessionContext> {
   const s = await requireSession();
   if (s.role !== "admin" && s.role !== "superadmin") throw new Error("FORBIDDEN");
+  return s;
+}
+
+/**
+ * Exige `gestionnaire`, `admin` ou `superadmin` : notes au registre et
+ * justification des écarts. « Consulter » reste en lecture seule.
+ */
+export async function requireGestionnaire(): Promise<SessionContext> {
+  const s = await requireSession();
+  if (!peutNoter(s.role)) throw new Error("FORBIDDEN");
   return s;
 }
 
