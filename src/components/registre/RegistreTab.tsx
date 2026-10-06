@@ -1,34 +1,47 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, Loader2, Thermometer, X } from "lucide-react";
+import { Download, Loader2, MessageSquareText, MessageSquareWarning, NotebookPen, Thermometer, X } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
-import { auteurLigne, dateCourte, dateLongue, decrireLigne, duree, heure, nombre, plageTexte, type Formats } from "@/lib/registre/libelles";
+import { auteurLigne, dateCourte, dateHeure, dateLongue, decrireLigne, duree, heure, nombre, plageTexte, type Formats } from "@/lib/registre/libelles";
 import { jourDe } from "@/lib/registre/temps";
 import type { LigneRegistre, SorteLigne } from "@/lib/registre/types";
-import { ChoixPeriode, Encart, ICONES, tonLigne, urlPeriode, useJson, type Periode, type ReponseSalle } from "./commun";
+import type { VueJustification } from "@/lib/registre/service";
+import { ChoixPeriode, Encart, iconeLigne, tonLigne, urlPeriode, useJson, type Periode, type ReponseSalle } from "./commun";
+import { JustifierDialog, NoteDialog } from "./NoteDialog";
 
 // ============================================================
 // Onglet « Registre » d'une salle (V1, V11) : la ligne du temps de
 // la salle, les chiffres de la période et les filtres par sorte.
 // ============================================================
 
-const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "capteur", "ecart", "export"];
+const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "item", "capteur", "ecart", "note", "export"];
+
+export interface FiltreCible {
+  id: string;
+  nom: string;
+  /** Item agricole (sinon actif). */
+  item?: boolean;
+}
 
 interface Props {
   salleId: string;
   noms: Record<string, string>;
-  filtreActif?: { id: string; nom: string } | null;
+  filtreActif?: FiltreCible | null;
   onEffacerFiltre?: () => void;
   onExporter: () => void;
+  /** Gestionnaire ou administrateur : notes et justification des écarts (lot 5). */
+  peutNoter?: boolean;
 }
 
-export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExporter }: Props) {
+export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExporter, peutNoter = false }: Props) {
   const t = useT();
   const locale = useLocale();
   const [periode, setPeriode] = useState<Periode>({ code: "tout" });
   const [sorte, setSorte] = useState<SorteLigne | "tout">("tout");
-  const { data, chargement, erreur } = useJson<ReponseSalle>(
+  const [noter, setNoter] = useState(false);
+  const [aJustifier, setAJustifier] = useState<LigneRegistre | null>(null);
+  const { data, chargement, erreur, recharger } = useJson<ReponseSalle>(
     `/api/salles/${encodeURIComponent(salleId)}/registre?vue=registre&${urlPeriode(periode)}`
   );
   const f: Formats = { t, locale, noms };
@@ -38,6 +51,8 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
     [data, filtreActif]
   );
   const compte = (s: SorteLigne | "tout") => (s === "tout" ? lignes.length : lignes.filter((l) => l.sorte === s).length);
+  // Items agricoles : le filtre n'apparaît que dans une salle qui en a eu.
+  const sortes = SORTES.filter((x) => x !== "item" || compte("item") > 0 || sorte === "item");
   const visibles = sorte === "tout" ? lignes : lignes.filter((l) => l.sorte === sorte);
   const jours = useMemo(() => {
     const g: { jour: string; t: number; lignes: LigneRegistre[] }[] = [];
@@ -57,10 +72,18 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ChoixPeriode valeur={periode} codes={["7j", "30j", "3m", "tout", "perso"]} onChange={setPeriode} />
-        <button onClick={onExporter} className="btn-ghost border border-chanv-fibre text-xs">
-          <Download className="w-4 h-4" />
-          {t("registre.exporter")}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {peutNoter && (
+            <button onClick={() => setNoter(true)} className="btn-ghost border border-chanv-fibre text-xs">
+              <NotebookPen className="w-4 h-4" />
+              {t("note.ajouter")}
+            </button>
+          )}
+          <button onClick={onExporter} className="btn-ghost border border-chanv-fibre text-xs">
+            <Download className="w-4 h-4" />
+            {t("registre.exporter")}
+          </button>
+        </div>
       </div>
 
       {erreur && <p className="text-sm text-red-600">{erreur}</p>}
@@ -121,7 +144,7 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
           {data.incomplet && <p className="text-xs text-amber-700">{t("registre.incomplet")}</p>}
 
           <div className="flex flex-wrap items-center gap-1.5">
-            {SORTES.map((x) => (
+            {sortes.map((x) => (
               <button
                 key={x}
                 onClick={() => setSorte(x)}
@@ -135,7 +158,7 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
             ))}
             {filtreActif && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-chanv-terre text-white">
-                {t("registre.filtreActif", { nom: filtreActif.nom })}
+                {t(filtreActif.item ? "registre.filtreItem" : "registre.filtreActif", { nom: filtreActif.nom })}
                 <button onClick={onEffacerFiltre} aria-label={t("registre.effacerFiltre")}>
                   <X className="w-3 h-3" />
                 </button>
@@ -152,8 +175,12 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{dateLongue(g.t, locale)}</div>
                   <div className="space-y-2">
                     {g.lignes.map((l) => {
-                      const Icone = ICONES[l.type];
-                      const d = decrireLigne(l, f);
+                      const Icone = iconeLigne(l);
+                      // À l'écran, chaque justification a sa ligne sous l'écart (Excel et imprimé : à la suite).
+                      const justifs = (l.details?.justifications as VueJustification[] | undefined) ?? [];
+                      const d = decrireLigne(justifs.length ? { ...l, details: { ...l.details, justifications: [] } } : l, f);
+                      const justifiable = peutNoter && l.type === "ecart" && !!l.cible?.id;
+                      const justifie = justifs.length > 0;
                       return (
                         <div key={l.id} className="section-card p-3 flex items-start gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tonLigne(l)}`}>
@@ -162,6 +189,21 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
                           <div className="flex-1 min-w-0">
                             <div className="text-sm text-chanv-terre break-words">{d.titre}</div>
                             {d.detail && <div className="text-xs text-slate-500 mt-0.5 break-words">{d.detail}</div>}
+                            {justifs.map((j, i) => (
+                              <div key={i} className="mt-1 flex items-start gap-1.5 text-xs text-chanv-terre break-words">
+                                <MessageSquareText className="w-3.5 h-3.5 shrink-0 mt-px text-amber-700" />
+                                <span>{t("ligne.justifie", { nom: j.parNom, date: dateHeure(j.inscritA, locale), texte: j.texte })}</span>
+                              </div>
+                            ))}
+                            {justifiable && (
+                              <button
+                                onClick={() => setAJustifier(l)}
+                                className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:underline"
+                              >
+                                <MessageSquareWarning className="w-3.5 h-3.5" />
+                                {t(justifie ? "ecart.completer" : "ecart.justifier")}
+                              </button>
+                            )}
                           </div>
                           <div className="text-right shrink-0 text-[11px] text-slate-400 leading-tight">
                             <div>{l.jourSeulement ? t("registre.dansLaJournee") : heure(l.t, locale)}</div>
@@ -176,6 +218,30 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
             </div>
           )}
         </div>
+      )}
+
+      {noter && (
+        <NoteDialog
+          salleId={salleId}
+          nomSalle={noms[salleId] ? `${salleId} · ${noms[salleId]}` : salleId}
+          onClose={() => setNoter(false)}
+          onFait={() => {
+            setNoter(false);
+            recharger();
+          }}
+        />
+      )}
+      {aJustifier && (
+        <JustifierDialog
+          salleId={salleId}
+          ligne={aJustifier}
+          f={f}
+          onClose={() => setAJustifier(null)}
+          onFait={() => {
+            setAJustifier(null);
+            recharger();
+          }}
+        />
       )}
     </div>
   );

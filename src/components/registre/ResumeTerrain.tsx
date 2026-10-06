@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NotebookPen } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
 import { dateCourte, decrireLigne, heure, nombre, type Formats } from "@/lib/registre/libelles";
 import { CourbeSvg, COULEUR_TEMP } from "./CourbeSvg";
-import { ICONES, tonLigne, useJson, type ReponseSalle } from "./commun";
+import { iconeLigne, tonLigne, useJson, type ReponseSalle } from "./commun";
+import { NoteDialog } from "./NoteDialog";
 
 // ============================================================
 // Sur téléphone, après le code QR (V12) : la mesure actuelle, les
@@ -12,10 +14,22 @@ import { ICONES, tonLigne, useJson, type ReponseSalle } from "./commun";
 // de fiche. Ne charge rien sur un écran large.
 // ============================================================
 
-export function ResumeTerrain({ salleId, noms, onVoirRegistre }: { salleId: string; noms: Record<string, string>; onVoirRegistre: () => void }) {
+export function ResumeTerrain({
+  salleId,
+  noms,
+  onVoirRegistre,
+  peutNoter = false,
+}: {
+  salleId: string;
+  noms: Record<string, string>;
+  onVoirRegistre: () => void;
+  /** Gestionnaire ou administrateur : « Ajouter une note » sur place (lot 5). */
+  peutNoter?: boolean;
+}) {
   const t = useT();
   const locale = useLocale();
   const [petit, setPetit] = useState(false);
+  const [noter, setNoter] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     setPetit(mq.matches);
@@ -34,7 +48,7 @@ export function ResumeTerrain({ salleId, noms, onVoirRegistre }: { salleId: stri
   const courbe = m?.courbes?.capteurs[0];
   const lignes = (registre.data?.lignes ?? []).slice(0, 3);
   const f: Formats = { t, locale, noms };
-  if (!c && !lignes.length) return null;
+  if (!c && !lignes.length && !peutNoter) return null;
 
   return (
     <div className="card p-4 space-y-3 sm:hidden">
@@ -84,7 +98,7 @@ export function ResumeTerrain({ salleId, noms, onVoirRegistre }: { salleId: stri
         <div className="space-y-2 pt-1 border-t border-chanv-fibre">
           <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold pt-2">{t("tabs.registre")}</div>
           {lignes.map((l) => {
-            const Icone = ICONES[l.type];
+            const Icone = iconeLigne(l);
             return (
               <div key={l.id} className="flex items-start gap-2">
                 <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${tonLigne(l)}`}>
@@ -105,6 +119,23 @@ export function ResumeTerrain({ salleId, noms, onVoirRegistre }: { salleId: stri
             {t("terrain.voirTout")}
           </button>
         </div>
+      )}
+      {peutNoter && (
+        <button onClick={() => setNoter(true)} className="btn-primary w-full text-xs">
+          <NotebookPen className="w-4 h-4" />
+          {t("note.ajouter")}
+        </button>
+      )}
+      {noter && (
+        <NoteDialog
+          salleId={salleId}
+          nomSalle={noms[salleId] ? `${salleId} · ${noms[salleId]}` : salleId}
+          onClose={() => setNoter(false)}
+          onFait={() => {
+            setNoter(false);
+            registre.recharger();
+          }}
+        />
       )}
     </div>
   );

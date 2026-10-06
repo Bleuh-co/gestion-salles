@@ -217,19 +217,70 @@ export function decrireLigne(l: LigneRegistre, f: Formats): Description {
       });
       detail.push(t("ligne.ecartDetail", { n: d.n as number, capteur: l.cible?.nom ?? "" }));
       if (d.enCours) detail.push(t("ligne.enCours"));
+      for (const j of (d.justifications as { texte: string; parNom: string; inscritA: number }[] | undefined) ?? []) {
+        detail.push(t("ligne.justifie", { nom: j.parNom, date: dateHeure(j.inscritA, f.locale), texte: j.texte }));
+      }
       break;
     }
+    case "ecart_justifie": {
+      // Justification restée seule : l'écart n'est pas dans la période, ou a été recalculé autrement.
+      titre = t("ligne.ecartJustifieSeul", { texte: l.note ?? "" });
+      detail.push(
+        t("ligne.ecartJustifieDetail", {
+          grandeur: t(d.grandeur === "h" ? "tabs.humidity" : "tabs.temperature"),
+          quand: dateHeure(typeof d.debut === "number" ? d.debut : l.t, f.locale),
+          capteur: l.cible?.nom ?? "",
+        })
+      );
+      break;
+    }
+    case "note": {
+      const k = `note.cat.${String(d.categorie ?? "")}`;
+      const categorie = (t(k) === k ? t("note.cat.observation") : t(k)).toLocaleLowerCase(f.locale);
+      titre = t("ligne.noteTitre", { categorie, texte: l.note ?? "" });
+      break;
+    }
+    case "item_ajoute":
+      titre = t("ligne.itemAjoute", { item: actifTexte(l) });
+      break;
+    case "item_present":
+      titre = t("ligne.itemPresent", { item: actifTexte(l) });
+      detail.push(
+        typeof d.creeA === "string"
+          ? t("ligne.itemPresentCree", { date: dateCourte(Date.parse(d.creeA), f.locale) })
+          : t("ligne.itemPresentDetail")
+      );
+      break;
+    case "item_entre":
+      titre = t("ligne.itemEntre", { item: actifTexte(l), salle: salleTexte(l.autreSalle, f) });
+      detail.push(t("ligne.aussiAuRegistre", { salle: salleTexte(l.autreSalle, f) }));
+      break;
+    case "item_sorti":
+      titre = t("ligne.itemSorti", { item: actifTexte(l), salle: salleTexte(l.autreSalle, f) });
+      detail.push(t("ligne.aussiAuRegistre", { salle: salleTexte(l.autreSalle, f) }));
+      break;
+    case "item_modifie":
+      titre = t("ligne.itemModifie", { item: actifTexte(l), changements: changementsTexte(l.changes, f) });
+      break;
+    case "item_supprime":
+      titre = t("ligne.itemSupprime", { item: actifTexte(l) });
+      break;
     case "muet":
       titre = t("ligne.muet", { duree: duree(d.dureeMin as number, t), n: d.manquants as number });
       detail.push(l.cible?.nom ?? "");
       if (d.enCours) detail.push(t("ligne.enCours"));
       break;
+    default:
+      // Sorte de ligne inscrite par une version plus récente d'une app : rien ne casse.
+      titre = l.cible?.nom ? `${String(l.type)} : ${l.cible.nom}` : String(l.type);
   }
   if (l.motif) {
     const k = `motif.${l.motif}`;
     detail.push(t("ligne.motif", { motif: t(k) === k ? l.motif : t(k) }));
   }
-  if (l.note) detail.push(t("ligne.note", { note: l.note }));
+  // Note et justification : leur texte est déjà le titre.
+  if (l.note && l.type !== "note" && l.type !== "ecart_justifie") detail.push(t("ligne.note", { note: l.note }));
+  if (d.app === "demande-achats") detail.push(t("ligne.parDemandeAchats"));
   if (l.inscritA && l.parNom) {
     detail.push(t("ligne.inscritLe", { date: dateHeure(l.inscritA, f.locale), nom: l.parNom }));
   }

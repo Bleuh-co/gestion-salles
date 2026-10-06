@@ -6,7 +6,7 @@ import type { Actif, ItemAgricole, SensorReading } from "@/lib/types";
 import { ItemsAgricolesTable } from "./ItemsAgricolesTable";
 import { ActifsSalle, type ActifLigne } from "./registre/ActifsSalle";
 import { CapteursTab } from "./registre/CapteursTab";
-import { RegistreTab } from "./registre/RegistreTab";
+import { RegistreTab, type FiltreCible } from "./registre/RegistreTab";
 import { ExportDialog, type SalleChoix } from "./registre/ExportDialog";
 import { ResumeTerrain } from "./registre/ResumeTerrain";
 import { useT } from "@/lib/i18n";
@@ -33,6 +33,8 @@ interface SalleTabsProps {
   estAdmin?: boolean;
   salles?: SalleChoix[];
   tousActifs?: Actif[] | null;
+  /** Gestionnaire ou administrateur : notes et justification des écarts (lot 5). */
+  peutNoter?: boolean;
 }
 
 export function SalleTabs({
@@ -46,10 +48,11 @@ export function SalleTabs({
   estAdmin = false,
   salles = [],
   tousActifs = null,
+  peutNoter = false,
 }: SalleTabsProps) {
   const t = useT();
   const [activeTab, setActiveTab] = useState<TabKey>("infos");
-  const [filtreActif, setFiltreActif] = useState<{ id: string; nom: string } | null>(null);
+  const [filtreActif, setFiltreActif] = useState<FiltreCible | null>(null);
   const [exporter, setExporter] = useState(false);
   const haut = useRef<HTMLDivElement>(null);
   const noms = Object.fromEntries(salles.map((s) => [s.id, s.nomSalle]));
@@ -74,7 +77,7 @@ export function SalleTabs({
 
   return (
     <div className="space-y-6">
-      <ResumeTerrain salleId={salleId} noms={noms} onVoirRegistre={() => ouvrir("registre")} />
+      <ResumeTerrain salleId={salleId} noms={noms} peutNoter={peutNoter} onVoirRegistre={() => ouvrir("registre")} />
 
       <div ref={haut} className="flex gap-1 overflow-x-auto pb-1 border-b border-chanv-fibre scroll-mt-4" role="tablist">
         {visibleTabs.map((tab) => {
@@ -130,7 +133,15 @@ export function SalleTabs({
           />
         )}
         {activeTab === "items-agricoles" && (
-          <ItemsAgricolesTable items={itemsAgricoles} achatUrl={achatUrl} salleId={salleId} />
+          <ItemsAgricolesTable
+            items={itemsAgricoles}
+            achatUrl={achatUrl}
+            salleId={salleId}
+            onHistorique={(it) => {
+              setFiltreActif({ id: it.id, nom: it.name || it.sku || it.id, item: true });
+              setActiveTab("registre");
+            }}
+          />
         )}
         {activeTab === "capteurs" && <CapteursTab salleId={salleId} />}
         {activeTab === "registre" && (
@@ -140,6 +151,7 @@ export function SalleTabs({
             filtreActif={filtreActif}
             onEffacerFiltre={() => setFiltreActif(null)}
             onExporter={() => setExporter(true)}
+            peutNoter={peutNoter}
           />
         )}
       </div>

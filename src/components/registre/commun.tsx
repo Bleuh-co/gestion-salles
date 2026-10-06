@@ -7,15 +7,19 @@ import {
   ArchiveRestore,
   ArrowLeftRight,
   BookOpen,
+  Circle,
   Download,
   Link2,
   LogIn,
   LogOut,
+  MessageSquareWarning,
+  NotebookPen,
   PackageMinus,
   PackagePlus,
   Pencil,
   Radio,
   Share2,
+  Sprout,
   SquarePlus,
   Target,
   Thermometer,
@@ -157,7 +161,7 @@ export function ChoixPeriode({
   );
 }
 
-export const ICONES: Record<LigneRegistre["type"], LucideIcon> = {
+const ICONES: Record<LigneRegistre["type"], LucideIcon> = {
   ouverture: BookOpen,
   salle_creee: SquarePlus,
   fiche_modifiee: Pencil,
@@ -181,14 +185,29 @@ export const ICONES: Record<LigneRegistre["type"], LucideIcon> = {
   capteur_nouveau: Radio,
   ecart: AlertTriangle,
   muet: WifiOff,
+  note: NotebookPen,
+  ecart_justifie: MessageSquareWarning,
+  item_ajoute: Sprout,
+  item_present: Sprout,
+  item_entre: LogIn,
+  item_sorti: LogOut,
+  item_modifie: Pencil,
+  item_supprime: Trash2,
 };
+
+/** Icône d'une ligne ; une sorte inconnue (inscrite par une app plus récente) garde une icône. */
+export function iconeLigne(l: LigneRegistre): LucideIcon {
+  return ICONES[l.type] ?? Circle;
+}
 
 export const ICONE_DEPLACER = ArrowLeftRight;
 
 /** Teinte de l'icône d'une ligne (les écarts portent toujours icône + texte). */
 export function tonLigne(l: LigneRegistre): string {
-  if (l.type === "ecart") return "bg-amber-100 text-amber-700";
+  if (l.type === "ecart" || l.type === "ecart_justifie") return "bg-amber-100 text-amber-700";
   if (l.type === "muet") return "bg-red-100 text-red-600";
+  if (l.sorte === "note") return "bg-violet-100 text-violet-700";
+  if (l.sorte === "item") return "bg-lime-100 text-lime-800";
   if (l.sorte === "capteur") return "bg-blue-100 text-blue-700";
   if (l.sorte === "fiche") return "bg-chanv-fibre text-chanv-terre";
   if (l.sorte === "export") return "bg-slate-100 text-slate-600";

@@ -9,6 +9,7 @@ import type {
   EvenementSalle,
 } from "@/lib/registre/types";
 import { lireDateInstall, sallesDesservies } from "@/lib/registre/actifs";
+import { repriseItem, type ItemSource, type RepriseItem } from "@/lib/registre/items";
 import { midiDe, OUVERTURE_DONNEES } from "@/lib/registre/temps";
 import { nomsPersonnes } from "./personnes";
 
@@ -16,11 +17,14 @@ import { nomsPersonnes } from "./personnes";
 // Registre par salle — registre_salles/{salleId}/evenements/{id}.
 //
 // Une ligne par fait qui touche la salle : fiche modifiée, actif
-// entré, sorti, déplacé, retiré, plage changée, export… Un
-// déplacement s'inscrit dans la salle de départ ET dans celle
-// d'arrivée. Rien ne s'efface : une erreur se corrige par une
-// nouvelle ligne. Le journal d'audit (audit_logs) reste tel quel ;
-// chaque écriture alimente les deux.
+// entré, sorti, déplacé, retiré, plage changée, export, note,
+// justification d'un écart… Un déplacement s'inscrit dans la salle de
+// départ ET dans celle d'arrivée. Rien ne s'efface : une erreur se
+// corrige par une nouvelle ligne. Le journal d'audit (audit_logs)
+// reste tel quel ; chaque écriture de fiche ou d'actif alimente les deux.
+//
+// L'app Demande d'achats (formulaire-achat) écrit aussi ici, avec la
+// même forme de ligne (versDoc), les mouvements des items agricoles.
 //
 // Une sous-collection par salle : les lectures par salle et par
 // période n'ont besoin que des index automatiques de Firestore.
@@ -34,6 +38,7 @@ const RACINE = "registre_salles";
 const SOUS = "evenements";
 const META_COL = "registre_meta";
 const META_DOC = "ouverture";
+const META_ITEMS = "items_agricoles";
 
 export interface Auteur {
   email: string;
@@ -106,6 +111,12 @@ export async function inscrire(evts: NouvelEvenement[]): Promise<void> {
   }
 }
 
+/** Inscrit un geste dont l'inscription EST l'écriture (note, justification) : l'erreur remonte. */
+export async function inscrireGeste(evts: NouvelEvenement[]): Promise<void> {
+  await assurerOuverture();
+  await ecrire(evts.filter((e) => e.salleId && !e.salleId.includes("/")));
+}
+
 function docVersEvenement(id: string, d: FirebaseFirestore.DocumentData): EvenementSalle {
   return {
     id,
@@ -157,6 +168,7 @@ export async function ouvertureSalle(salleId: string): Promise<EvenementSalle | 
 // ============================================================
 
 let ouverture: Promise<void> | null = null;
+let repriseItems: Promise<void> | null = null;
 
 /** À appeler AVANT toute écriture métier : l'état de départ doit précéder le premier mouvement. */
 export function assurerOuverture(): Promise<void> {
@@ -166,13 +178,22 @@ export function assurerOuverture(): Promise<void> {
       throw e;
     });
   }
-  return ouverture;
+  // Reprise des items agricoles (lot 6) : après l'ouverture, une fois ;
+  // un échec ne bloque aucune écriture et se retente au prochain appel.
+  return ouverture.then(() => {
+    if (!repriseItems) {
+      repriseItems = reprendreItems().catch((e) => {
+        repriseItems = null;
+        console.error("[registre] reprise des items agricoles", e);
+      });
+    }
+    return repriseItems;
+  });
 }
 
-async function ouvrir(): Promise<void> {
-  const db = adminDb();
-  const meta = db.collection(META_COL).doc(META_DOC);
-  const prise = await db.runTransaction(async (tx) => {
+/** Verrou d'une étape faite une seule fois (repris après 5 min si une instance est tombée). */
+async function prendreVerrou(meta: FirebaseFirestore.DocumentReference): Promise<boolean> {
+  return adminDb().runTransaction(async (tx) => {
     const m = await tx.get(meta);
     const etat = m.data()?.etat;
     if (etat === "faite") return false;
@@ -181,7 +202,12 @@ async function ouvrir(): Promise<void> {
     tx.set(meta, { etat: "en_cours", debut: new Date().toISOString() }, { merge: true });
     return true;
   });
-  if (!prise) return;
+}
+
+async function ouvrir(): Promise<void> {
+  const db = adminDb();
+  const meta = db.collection(META_COL).doc(META_DOC);
+  if (!(await prendreVerrou(meta))) return;
 
   const [locauxSnap, actifsSnap, auditSnap] = await Promise.all([
     db.collection("locaux").get(),
@@ -286,6 +312,53 @@ async function ouvrir(): Promise<void> {
     { merge: true }
   );
   console.log(`[registre] ouverture faite : ${salles.size} salles, ${lignes.length} lignes`);
+}
+
+/**
+ * Reprise des items agricoles déjà rattachés à une salle (14 dans 5 salles
+ * au 6 octobre 2026). Un item que Demande d'achats a déjà inscrit dans sa
+ * salle (app mise en ligne avant cette reprise) n'est pas repris.
+ */
+async function reprendreItems(): Promise<void> {
+  const db = adminDb();
+  const meta = db.collection(META_COL).doc(META_ITEMS);
+  if (!(await prendreVerrou(meta))) return;
+
+  const [itemsSnap, locauxSnap] = await Promise.all([
+    db.collection("fa_inventory_items").where("agricole", "==", true).get(),
+    db.collection("locaux").get(),
+  ]);
+  const salles = new Set(locauxSnap.docs.map((d) => d.id));
+  const maintenant = Date.now();
+  const reprises = itemsSnap.docs
+    .map((d) => ({ id: d.id, data: d.data(), r: repriseItem(d.data() as ItemSource, salles, maintenant) }))
+    .filter((x): x is typeof x & { r: RepriseItem } => x.r !== null);
+
+  const deja = new Set<string>();
+  for (const salleId of new Set(reprises.map((x) => x.r.salleId))) {
+    const snap = await evenements(salleId).get();
+    for (const d of snap.docs) {
+      const c = d.data().cible;
+      if (c?.type === "item" && c.id) deja.add(`${salleId}|${c.id}`);
+    }
+  }
+  const aReprendre = reprises.filter((x) => !deja.has(`${x.r.salleId}|${x.id}`));
+  const noms = await nomsPersonnes(aReprendre.map((x) => x.r.par));
+  const lignes: NouvelEvenement[] = aReprendre.map((x) => ({
+    id: `item_${x.id}`,
+    salleId: x.r.salleId,
+    action: x.r.action,
+    at: new Date(x.r.at).toISOString(),
+    par: { email: x.r.par, nom: noms.get(x.r.par) || x.r.par },
+    cible: { type: "item", id: x.id, nom: (x.data.name as string) || x.id, matricule: (x.data.sku as string) || "" },
+    details:
+      typeof x.data.createdAt === "number" ? { creeA: new Date(x.data.createdAt).toISOString() } : null,
+    source: "reprise",
+  }));
+
+  await ecrire(lignes);
+  await meta.set({ etat: "faite", faiteA: new Date().toISOString(), lignes: lignes.length }, { merge: true });
+  console.log(`[registre] reprise des items agricoles : ${lignes.length} lignes`);
 }
 
 // ============================================================

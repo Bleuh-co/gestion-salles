@@ -343,8 +343,9 @@ export async function construireClasseur(x: DonneesExport, exportePar: string): 
       ],
       lignes: presents,
     });
+    // Actifs et items agricoles (lot 6 : le SKU dans la colonne du matricule).
     const mouvements = salles
-      .flatMap((d) => d.lignes.filter((l) => l.sorte === "actif" && l.type !== "ouverture"))
+      .flatMap((d) => d.lignes.filter((l) => (l.sorte === "actif" || l.sorte === "item") && l.type !== "ouverture"))
       .sort((a, b) => a.t - b.t)
       .map((l) => {
         const desc = decrireLigne(l, f);

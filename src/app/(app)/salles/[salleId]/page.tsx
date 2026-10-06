@@ -5,6 +5,7 @@ import { getActifsBySalle, getAllActifs } from "@/lib/repo/actifs";
 import { getPeriodes } from "@/lib/repo/rattachements";
 import { getSession } from "@/lib/auth-server";
 import { actifsDeLaSalle, plagesDe } from "@/lib/registre/service";
+import { peutNoter } from "@/lib/registre/notes";
 import { PlagesCartes } from "@/components/registre/PlagesCartes";
 import { getItemsAgricolesBySalle } from "@/lib/repo/items-agricoles";
 import { FAMILLE_COLORS, FAMILLE_SHORT } from "@/lib/types";
@@ -72,6 +73,7 @@ export default async function SalleDetailPage({ params }: Props) {
 
   const session = await getSession();
   const estAdmin = session?.role === "admin" || session?.role === "superadmin";
+  const noter = peutNoter(session?.role);
   const [actifs, sensors, itemsAgricoles, locaux, periodes] = await Promise.all([
     getActifsBySalle(local.id),
     fetchRoomSensors(local.id),
@@ -170,6 +172,7 @@ export default async function SalleDetailPage({ params }: Props) {
         salleId={local.id}
         aEuCapteur={aEuCapteur}
         estAdmin={estAdmin}
+        peutNoter={noter}
         salles={salles}
         tousActifs={tousActifs}
       >

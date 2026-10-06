@@ -4,11 +4,14 @@
 // "config") — voir src/lib/repo/.
 // ============================================================
 
-export type Role = "superadmin" | "admin" | "membre" | "blocked";
+// « gestionnaire » = grade Gestionnaire du hub : lecture, plus les notes
+// au registre et la justification des écarts. « membre » = Consulter.
+export type Role = "superadmin" | "admin" | "gestionnaire" | "membre" | "blocked";
 
 export const ROLE_LABELS: Record<Role, string> = {
   superadmin: "Super Administrateur",
   admin: "Administrateur",
+  gestionnaire: "Gestionnaire",
   membre: "Membre",
   blocked: "Bloqué",
 };

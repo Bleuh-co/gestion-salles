@@ -23,6 +23,7 @@ import {
   type SerieCapteur,
   type StatsPeriode,
 } from "./mesures";
+import { viseEcart, type RefEcart } from "./notes";
 import { bornesPeriode, pasCourbe, type Bornes } from "./periode";
 import { fenetresDeSalle, periodeEnCours, type Periode } from "./rattachement";
 import { debutJour, joursEntre, lireHeureUtc, OUVERTURE_DONNEES } from "./temps";
@@ -89,6 +90,9 @@ export interface InfoCapteur {
 
 function sorteDe(action: ActionEvenement): SorteLigne {
   if (action === "registre_exporte") return "export";
+  if (action === "note") return "note";
+  if (action === "ecart_justifie") return "ecart";
+  if (action.startsWith("item_")) return "item";
   if (
     action === "salle_creee" ||
     action === "fiche_modifiee" ||
@@ -123,6 +127,36 @@ export function ligneEcrite(e: EvenementSalle): LigneRegistre {
     motif: e.motif,
     note: e.note,
     details: e.details,
+  };
+}
+
+const MARGE_JUSTIFICATIONS_MS = 31 * 86_400_000;
+
+/** Ce qu'une justification apporte à la ligne de son écart. */
+export interface VueJustification {
+  texte: string;
+  parNom: string;
+  /** ms UTC */
+  inscritA: number;
+}
+
+interface Justification {
+  id: string;
+  ref: RefEcart;
+  vue: VueJustification;
+}
+
+function justificationDe(e: EvenementSalle): Justification | null {
+  if (e.action !== "ecart_justifie" || !e.cible?.id) return null;
+  const d = e.details ?? {};
+  const grandeur = d.grandeur === "c" || d.grandeur === "h" ? d.grandeur : null;
+  const debut = typeof d.debut === "number" ? d.debut : Date.parse(e.at);
+  const fin = typeof d.fin === "number" ? d.fin : debut;
+  if (!grandeur || !Number.isFinite(debut)) return null;
+  return {
+    id: e.id,
+    ref: { sensorId: e.cible.id, grandeur, debut, fin },
+    vue: { texte: e.note ?? "", parNom: e.parNom || e.par, inscritA: Date.parse(e.inscritA) },
   };
 }
 
@@ -248,11 +282,24 @@ export async function chargerSalle(salleId: string, opts: OptionsChargement = {}
 
   let lignes: LigneRegistre[] = [];
   if (opts.lignes !== false) {
-    const ecrites = await evenementsSalle(salleId, new Date(du).toISOString(), new Date(au).toISOString());
-    lignes = [...ecrites.map(ligneEcrite), ...lignesCapteurs(etat.periodes, salleId, du, au)];
+    // Lu un mois plus tôt : la justification d'un écart commencé avant la
+    // période (datée du début de l'écart) s'y rattache quand même.
+    const ecrites = await evenementsSalle(
+      salleId,
+      new Date(du - MARGE_JUSTIFICATIONS_MS).toISOString(),
+      new Date(au).toISOString()
+    );
+    const justifs = ecrites.map(justificationDe).filter((j): j is Justification => j !== null);
+    const rattachees = new Set<string>();
+    lignes = [
+      ...ecrites.filter((e) => Date.parse(e.at) >= du).map(ligneEcrite),
+      ...lignesCapteurs(etat.periodes, salleId, du, au),
+    ];
     if (stats) {
       for (const e of stats.ecarts) {
         const p = e.grandeur === "c" ? plageC(plages) : plageH(plages);
+        const siennes = justifs.filter((j) => viseEcart(j.ref, e));
+        for (const j of siennes) rattachees.add(j.id);
         lignes.push({
           id: `ecart_${e.sensorId}_${e.grandeur}_${e.debut}`,
           sorte: "ecart",
@@ -272,6 +319,8 @@ export async function chargerSalle(salleId: string, opts: OptionsChargement = {}
             enCours: e.enCours,
             min: p.min,
             max: p.max,
+            fin: e.fin,
+            justifications: siennes.map((j) => j.vue),
           },
         });
       }
@@ -290,6 +339,9 @@ export async function chargerSalle(salleId: string, opts: OptionsChargement = {}
         });
       }
     }
+    // Une justification rattachée se lit sur la ligne de son écart ; seule
+    // (écart recalculé autrement depuis, plage changée), elle reste visible.
+    lignes = lignes.filter((l) => !rattachees.has(l.id));
     lignes.sort((a, b) => b.t - a.t);
   }
 

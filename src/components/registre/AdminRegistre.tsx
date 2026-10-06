@@ -6,7 +6,7 @@ import { useLocale, useT } from "@/lib/i18n";
 import { auteurLigne, dateHeure, dateCourte, decrireLigne, type Formats } from "@/lib/registre/libelles";
 import type { Bornes } from "@/lib/registre/periode";
 import type { LigneRegistre, SorteLigne } from "@/lib/registre/types";
-import { ChoixPeriode, ICONES, tonLigne, urlPeriode, useJson, type Periode } from "./commun";
+import { ChoixPeriode, iconeLigne, tonLigne, urlPeriode, useJson, type Periode } from "./commun";
 import { ExportDialog, type SalleChoix } from "./ExportDialog";
 
 // ============================================================
@@ -22,7 +22,7 @@ interface Reponse {
   noms: Record<string, string>;
 }
 
-const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "capteur", "export"];
+const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "item", "capteur", "note", "export"];
 
 export function AdminRegistre({ salles, journalTechnique }: { salles: SalleChoix[]; journalTechnique: React.ReactNode }) {
   const t = useT();
@@ -107,7 +107,7 @@ export function AdminRegistre({ salles, journalTechnique }: { salles: SalleChoix
               </thead>
               <tbody>
                 {lignes.map((l) => {
-                  const Icone = ICONES[l.type];
+                  const Icone = iconeLigne(l);
                   const d = decrireLigne(l, f);
                   return (
                     <tr key={`${l.salleId}-${l.id}`} className="border-b border-chanv-fibre/50 align-top">

@@ -5,7 +5,7 @@
 import type { Grandeur } from "./mesures.ts";
 
 /** Sorte d'une ligne du registre (filtres de l'onglet Registre). */
-export type SorteLigne = "fiche" | "actif" | "capteur" | "ecart" | "export";
+export type SorteLigne = "fiche" | "actif" | "item" | "capteur" | "ecart" | "note" | "export";
 
 export type ActionEvenement =
   | "ouverture"
@@ -25,10 +25,21 @@ export type ActionEvenement =
   | "actif_corrige"
   | "dessert_ajoute"
   | "dessert_retire"
-  | "registre_exporte";
+  | "registre_exporte"
+  // Lot 5 : notes sur place et justification d'un écart calculé.
+  | "note"
+  | "ecart_justifie"
+  // Lot 6 : items agricoles, inscrits par l'app Demande d'achats
+  // (formulaire-achat, src/lib/registre-salles.ts) ; « présent » = reprise.
+  | "item_ajoute"
+  | "item_present"
+  | "item_entre"
+  | "item_sorti"
+  | "item_modifie"
+  | "item_supprime";
 
 export interface CibleEvenement {
-  type: "local" | "actif" | "capteur";
+  type: "local" | "actif" | "capteur" | "item";
   id: string;
   nom: string;
   matricule?: string;
