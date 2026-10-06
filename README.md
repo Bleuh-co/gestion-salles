@@ -1,6 +1,24 @@
 # gestion-salles
 Application de gestion des salles dans les usines du Groupe Chanv. ## Concept L'app organise les données par Usine → Salle. Chaque usine contient plusieurs salles. Chaque salle contient des capteurs, des employés, des appareils (devices), des équipements, et un historique d'événements. ## Pages ### /usines — Liste des usines - Affiche des cards pou
 
+## Mise en ligne
+
+Pousser `main` met en ligne : le déclencheur Cloud Build `gestion-salles-us-east1`
+(région northamerica-northeast1) suit `cloudbuild.yaml` et déploie le service
+Cloud Run `gestion-salles` de **us-east1**, celui de gestion-salles.chanv.com.
+`dev` ne déploie plus rien (jusqu'au 6 octobre 2026, c'était lui).
+
+L'ancienne adresse, le service `gestion-salles` de **northamerica-northeast1**,
+ne sert plus l'app : elle renvoie vers gestion-salles.chanv.com en gardant le
+chemin, parce que des affiches de salle imprimées depuis elle ont un code QR qui
+y pointe. Elle se redéploie à la main, aucun déclencheur ne la suit :
+
+```bash
+gcloud run deploy gestion-salles --project=antigravity-20260107 \
+  --region=northamerica-northeast1 --source=deploiement/ancienne-adresse \
+  --port=8080 --clear-env-vars --clear-secrets --memory=256Mi --max-instances=2
+```
+
 ## Registre par salle
 
 Chaque salle a un registre (onglet « Registre » de la fiche) : fiche modifiée,
