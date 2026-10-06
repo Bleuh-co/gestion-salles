@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
 import { createLocal, getLocal } from "@/lib/repo/locaux";
 import { logAudit } from "@/lib/repo/audit";
+import { assurerOuverture, inscrireFiche } from "@/lib/repo/registre";
+import { auteurDe } from "@/lib/registre/routes";
 import { LOCAL_STATUT_LABELS } from "@/lib/types";
 import type { Local, LocalStatut } from "@/lib/types";
 
@@ -80,6 +82,7 @@ export async function POST(req: NextRequest) {
       archived: false,
     };
 
+    await assurerOuverture();
     await createLocal(local, session.email);
 
     await logAudit({
@@ -89,6 +92,7 @@ export async function POST(req: NextRequest) {
       targetName: local.nomSalle || id,
       user: session.email,
     });
+    await inscrireFiche(local, "salle_creee", await auteurDe(session));
 
     return NextResponse.json({ status: "success", local }, { status: 201 });
   } catch (e: unknown) {

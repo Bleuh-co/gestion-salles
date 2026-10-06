@@ -6,8 +6,10 @@ import {
   deleteActif,
   ACTIF_EDITABLE_FIELDS,
 } from "@/lib/repo/actifs";
-import { getLocal } from "@/lib/repo/locaux";
+import { getLocal, getLocaux } from "@/lib/repo/locaux";
 import { logAudit, computeChanges } from "@/lib/repo/audit";
+import { assurerOuverture, inscrireActif } from "@/lib/repo/registre";
+import { auteurDe } from "@/lib/registre/routes";
 import type { Actif } from "@/lib/types";
 
 // ============================================================
@@ -69,6 +71,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       }
     }
 
+    await assurerOuverture();
     await updateActif(id, clean as Partial<Actif>, session.email);
 
     const changes = computeChanges(actif as unknown as Record<string, unknown>, clean);
@@ -81,6 +84,8 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         changes,
         user: session.email,
       });
+      const salles = new Set((await getLocaux({ includeArchived: true })).map((l) => l.id));
+      await inscrireActif(actif, { ...actif, ...clean }, await auteurDe(session), salles, changes);
     }
 
     return NextResponse.json({ status: "success", updated: Object.keys(clean) });
@@ -104,6 +109,7 @@ export async function DELETE(_req: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "Actif introuvable" }, { status: 404 });
     }
 
+    await assurerOuverture();
     await deleteActif(id);
     await logAudit({
       action: "delete",
@@ -112,6 +118,8 @@ export async function DELETE(_req: NextRequest, { params }: Props) {
       targetName: actif.nom || id,
       user: session.email,
     });
+    const salles = new Set((await getLocaux({ includeArchived: true })).map((l) => l.id));
+    await inscrireActif(actif, null, await auteurDe(session), salles, null);
 
     return NextResponse.json({ status: "success", deleted: id });
   } catch (e: unknown) {

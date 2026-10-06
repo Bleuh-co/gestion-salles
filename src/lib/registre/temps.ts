@@ -102,6 +102,14 @@ export function lireHeureUtc(s: unknown): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
+/** Instant UTC (ms) d'une heure de Montréal ("AAAA-MM-JJ", "HH:MM"). */
+export function instantMontreal(jour: string, hhmm: string): number {
+  const [h, mi] = hhmm.split(":").map(Number);
+  const debut = debutJour(jour);
+  const t = debut + (h * 60 + mi) * 60_000;
+  return t + (decalage(debut) - decalage(t));
+}
+
 /** Midi (heure de Montréal) d'un jour : instant retenu pour un geste daté au jour. */
 export function midiDe(jour: string): number {
   const debut = debutJour(jour);

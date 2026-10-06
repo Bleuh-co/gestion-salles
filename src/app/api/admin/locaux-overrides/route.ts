@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-server";
 import { getLocal, updateLocal, LOCAL_EDITABLE_FIELDS } from "@/lib/repo/locaux";
 import { logAudit, computeChanges } from "@/lib/repo/audit";
+import { assurerOuverture, inscrireFiche } from "@/lib/repo/registre";
+import { auteurDe } from "@/lib/registre/routes";
 
 // ============================================================
 // Compat : ancienne API "overrides" — écrit désormais
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Valeur trop longue (max 500)" }, { status: 400 });
     }
 
+    await assurerOuverture();
     await updateLocal(local_id, { [field]: value }, session.email);
 
     const changes = computeChanges(
@@ -64,6 +67,7 @@ export async function POST(req: NextRequest) {
         changes,
         user: session.email,
       });
+      await inscrireFiche(local, "fiche_modifiee", await auteurDe(session), changes);
     }
 
     return NextResponse.json({

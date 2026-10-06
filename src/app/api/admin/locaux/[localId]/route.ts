@@ -8,6 +8,8 @@ import {
   LOCAL_EDITABLE_FIELDS,
 } from "@/lib/repo/locaux";
 import { logAudit, computeChanges } from "@/lib/repo/audit";
+import { assurerOuverture, inscrireFiche } from "@/lib/repo/registre";
+import { auteurDe } from "@/lib/registre/routes";
 import { LOCAL_STATUT_LABELS } from "@/lib/types";
 import type { Local } from "@/lib/types";
 
@@ -39,6 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
 
     // ── Archive / restore ──
     if (typeof body.archive === "boolean") {
+      await assurerOuverture();
       await setLocalArchived(id, body.archive, session.email);
       await logAudit({
         action: body.archive ? "delete" : "restore",
@@ -47,6 +50,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         targetName: local.nomSalle || id,
         user: session.email,
       });
+      await inscrireFiche(local, body.archive ? "salle_archivee" : "salle_restauree", await auteurDe(session));
       return NextResponse.json({ status: "success", archived: body.archive });
     }
 
@@ -88,6 +92,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "Aucun champ à mettre à jour" }, { status: 400 });
     }
 
+    await assurerOuverture();
     await updateLocal(id, clean as Partial<Local>, session.email);
 
     const changes = computeChanges(local as unknown as Record<string, unknown>, clean);
@@ -100,6 +105,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         changes,
         user: session.email,
       });
+      await inscrireFiche(local, "fiche_modifiee", await auteurDe(session), changes);
     }
 
     return NextResponse.json({ status: "success", updated: Object.keys(clean) });
@@ -129,6 +135,7 @@ export async function DELETE(_req: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "Local introuvable" }, { status: 404 });
     }
 
+    await assurerOuverture();
     await hardDeleteLocal(id);
     await logAudit({
       action: "delete",
@@ -137,6 +144,7 @@ export async function DELETE(_req: NextRequest, { params }: Props) {
       targetName: `${local.nomSalle || id} (suppression définitive)`,
       user: session.email,
     });
+    await inscrireFiche(local, "salle_supprimee", await auteurDe(session));
 
     return NextResponse.json({ status: "success", deleted: id });
   } catch (e: unknown) {
