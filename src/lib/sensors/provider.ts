@@ -27,6 +27,17 @@ export interface ProviderSensor {
   battery: number | null;
   /** Id du fournisseur (ex. "tempstick"). */
   provider: string;
+  /** Création du capteur chez le fournisseur (UTC, ex. "2026-05-26 19:03:31"). */
+  created_utc?: string | null;
+  /** Intervalle d'envoi des relevés, en secondes. */
+  send_interval_s?: number | null;
+}
+
+/** Relevé historique normalisé : t en ms UTC. */
+export interface ProviderReading {
+  t: number;
+  c: number | null;
+  h: number | null;
 }
 
 export interface SensorProvider {
@@ -38,4 +49,9 @@ export interface SensorProvider {
   isConfigured(): boolean;
   /** Liste normalisée des capteurs (ne doit pas jeter — retourner [] en cas d'erreur). */
   listSensors(): Promise<ProviderSensor[]>;
+  /**
+   * Relevés d'un capteur sur des jours de Montréal (AAAA-MM-JJ, inclus).
+   * Jette en cas d'erreur : la copie de nuit doit savoir qu'elle a échoué.
+   */
+  readings?(sensorId: string, jourDebut: string, jourFin: string): Promise<ProviderReading[]>;
 }

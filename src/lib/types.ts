@@ -84,6 +84,13 @@ export interface Local {
   statut: LocalStatut;
   niveauAcces: string;
   archived?: boolean;
+  /** Plage cible (registre, V5) — null = non suivie. Saisie par un administrateur. */
+  plageTempMin?: number | null;
+  plageTempMax?: number | null;
+  plageHumMin?: number | null;
+  plageHumMax?: number | null;
+  /** Relevés de suite hors plage avant de parler d'écart (2 par défaut). */
+  plageSeuil?: number | null;
 }
 
 // ============================================================
@@ -141,7 +148,7 @@ export interface LocalFormOptions {
 // ============================================================
 
 export type AuditAction = "create" | "update" | "delete" | "restore";
-export type AuditTarget = "local" | "actif";
+export type AuditTarget = "local" | "actif" | "capteur";
 
 export interface AuditLogEntry {
   id: string;
