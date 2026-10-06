@@ -203,23 +203,30 @@ export async function synchroniserPeriodes(
   const db = adminDb();
   let changes = 0;
 
+  // Premier rattachement connu : quand le capteur est-il arrivé dans la salle ?
+  // (un appel au fournisseur par capteur, quatre à la fois)
+  const poses = new Map<string, number>();
+  const premiers = aFaire.filter((s) => s.matched_local_id && !periodes.some((p) => p.sensorId === s.sensor_id));
+  for (let i = 0; i < premiers.length; i += 4) {
+    await Promise.all(
+      premiers.slice(i, i + 4).map(async (s) => {
+        let propose: number | null = null;
+        try {
+          propose = proposerDatePose(await historique(s), jourDe);
+        } catch (e) {
+          console.warn("[rattachements] historique indisponible pour", s.sensor_id, e);
+        }
+        const cree = lireHeureUtc(s.created_utc ?? null);
+        poses.set(s.sensor_id, propose ?? cree ?? Date.now());
+      })
+    );
+  }
+
   for (const s of aFaire) {
     const salleId = s.matched_local_id;
-    const dejaEu = periodes.some((p) => p.sensorId === s.sensor_id);
-    let du = Date.now();
-    let source: SourceRattachement = s.match_source === "override" ? "manuel" : "nom";
-    if (salleId && !dejaEu) {
-      // Premier rattachement connu : quand le capteur est-il arrivé dans la salle ?
-      const cree = lireHeureUtc(s.created_utc ?? null);
-      let propose: number | null = null;
-      try {
-        propose = proposerDatePose(await historique(s), jourDe);
-      } catch (e) {
-        console.warn("[rattachements] historique indisponible pour", s.sensor_id, e);
-      }
-      du = propose ?? cree ?? du;
-      source = "reprise";
-    }
+    const premier = poses.has(s.sensor_id);
+    const du = poses.get(s.sensor_id) ?? Date.now();
+    const source: SourceRattachement = premier ? "reprise" : s.match_source === "override" ? "manuel" : "nom";
     const manuel = manuels.get(s.sensor_id);
     const par = manuel?.updated_by || "";
 
