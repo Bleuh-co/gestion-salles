@@ -2,7 +2,7 @@ import "server-only";
 
 import { adminDb } from "@/lib/firebase-admin";
 import { listAllSensors, providerOf, type ProviderSensor } from "@/lib/sensors";
-import type { Releve } from "@/lib/registre/mesures";
+import { relevesUniques, type Releve } from "@/lib/registre/mesures";
 import { ajouterJours, debutJour, finJour, jourDe, joursEntre, lireHeureUtc } from "@/lib/registre/temps";
 
 // ============================================================
@@ -63,7 +63,7 @@ export type CapteurRef = Pick<ProviderSensor, "sensor_id" | "sensor_name"> &
 
 function parJour(rs: Releve[]): Map<string, Releve[]> {
   const m = new Map<string, Releve[]>();
-  for (const r of rs) {
+  for (const r of relevesUniques(rs)) {
     const j = jourDe(r.t);
     const l = m.get(j);
     if (l) l.push(r);
@@ -236,7 +236,7 @@ export async function lireReleves(
     }
   }
   return {
-    releves: releves.filter((r) => r.t >= du && r.t < au).sort((a, b) => a.t - b.t),
+    releves: relevesUniques(releves.filter((r) => r.t >= du && r.t < au)),
     incomplet,
   };
 }

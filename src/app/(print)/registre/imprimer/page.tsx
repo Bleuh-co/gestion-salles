@@ -287,11 +287,11 @@ function Section({
                   </td>
                   <td>{r.recus}</td>
                   <td>{r.attendus}</td>
-                  <td>{nombre(r.cMin, locale, 2)}</td>
-                  <td>{nombre(r.cMax, locale, 2)}</td>
-                  <td>{nombre(r.cMoy, locale, 2)}</td>
-                  <td>{nombre(r.hMin, locale)}</td>
-                  <td>{nombre(r.hMax, locale)}</td>
+                  <td>{nombre(r.cMin, locale, 2, true)}</td>
+                  <td>{nombre(r.cMax, locale, 2, true)}</td>
+                  <td>{nombre(r.cMoy, locale, 2, true)}</td>
+                  <td>{nombre(r.hMin, locale, 1, true)}</td>
+                  <td>{nombre(r.hMax, locale, 1, true)}</td>
                   <td>{r.minutesHorsPlage}</td>
                 </tr>
               ))}

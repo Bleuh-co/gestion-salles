@@ -53,6 +53,20 @@ export function dansFenetres(t: number, fenetres: Fenetre[]): boolean {
   return fenetres.some((f) => t >= f.du && t < f.au);
 }
 
+/**
+ * Relevés triés, un seul par instant : TempStick renvoie parfois le même
+ * relevé deux fois à la même seconde (ex. le 2 octobre 2026 à 13 h 10).
+ * Ce n'est pas une mesure de plus.
+ */
+export function relevesUniques(rs: Releve[]): Releve[] {
+  const out: Releve[] = [];
+  for (const r of [...rs].sort((a, b) => a.t - b.t)) {
+    if (out.length && out[out.length - 1].t === r.t) continue;
+    out.push(r);
+  }
+  return out;
+}
+
 /** Relevés compris dans les fenêtres, triés, sans doublon d'heure. */
 export function filtrerReleves(releves: Releve[], fenetres: Fenetre[]): Releve[] {
   const vus = new Set<number>();

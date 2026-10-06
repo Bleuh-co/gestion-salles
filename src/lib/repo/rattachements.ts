@@ -244,7 +244,8 @@ export async function synchroniserPeriodes(
             source,
             par,
             parNom: par ? noms.get(par) || par : "",
-            inscritA: maintenant,
+            // Choix manuel repris : il a été fait par cette personne, à cette date-là.
+            inscritA: manuel?.updated_at && !Number.isNaN(Date.parse(manuel.updated_at)) ? Date.parse(manuel.updated_at) : maintenant,
             note: "",
           })
         );

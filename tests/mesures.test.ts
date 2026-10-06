@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  relevesUniques,
   calculerEcarts,
   calculerMuets,
   moyenneParPas,
@@ -133,6 +134,13 @@ test("le registre de la salle ne reprend pas les mesures d'avant la pose", () =>
   assert.equal(s.depuis, pose);
   // Avant la pose, le même capteur mesurait −19 °C : la salle ne le voit pas.
   assert.ok(Math.min(...reel.map((r) => r.c as number)) < -18);
+});
+
+test("un relevé envoyé deux fois à la même seconde ne compte qu'une fois", () => {
+  // TempStick, chambre froide, 2 octobre 2026 à 17:10:12 UTC : 97 relevés reçus pour 96 instants.
+  const t = Date.UTC(2026, 9, 2, 17, 10, 12);
+  const rs = [{ t, c: 3.4, h: 85 }, { t: t - Q, c: 3.3, h: 85 }, { t, c: 3.4, h: 85 }];
+  assert.deepEqual(relevesUniques(rs).map((r) => r.t), [t - Q, t]);
 });
 
 test("moyennes par heure et par jour", () => {

@@ -96,7 +96,7 @@ export function CapteursTab({ salleId }: { salleId: string }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data.capteurs.map((c) => (
               <div key={c.sensorId} className="section-card p-3 flex items-start gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.enLigne === false ? "bg-red-50" : "bg-green-50"}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.enLigne === false ? "bg-red-500/10" : "bg-green-500/10"}`}>
                   {c.enLigne === false ? <WifiOff className="w-4 h-4 text-red-500" /> : <Wifi className="w-4 h-4 text-green-600" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -159,7 +159,7 @@ export function CapteursTab({ salleId }: { salleId: string }) {
                         }
                         aria-pressed={!cache}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border ${
-                          cache ? "border-chanv-fibre text-slate-400 line-through" : "border-chanv-beige text-chanv-terre bg-chanv-fibre/40"
+                          cache ? "border-chanv-fibre text-slate-400 line-through" : "border-chanv-beige text-chanv-terre bg-chanv-fibre/50"
                         }`}
                       >
                         <span className="inline-block w-3 h-0.5 rounded" style={{ background: couleurCapteur(rangs.get(c.sensorId) ?? 0) }} />
@@ -172,7 +172,9 @@ export function CapteursTab({ salleId }: { salleId: string }) {
                 <div className="text-xs text-slate-500">
                   {t(grandeur === "c" ? "capteurs.titreTemp" : "capteurs.titreHum")} · {t(`capteurs.pas.${pas}`)}
                   {" · "}
-                  {plageTexte(grandeur === "c" ? data.plages.tempMin : data.plages.humMin, grandeur === "c" ? data.plages.tempMax : data.plages.humMax, grandeur === "c" ? "°C" : "%", f)}
+                  {t("capteurs.plage", {
+                    plage: plageTexte(grandeur === "c" ? data.plages.tempMin : data.plages.humMin, grandeur === "c" ? data.plages.tempMax : data.plages.humMax, grandeur === "c" ? "°C" : "%", f),
+                  })}
                 </div>
                 <Courbe
                   titre={t(grandeur === "c" ? "capteurs.titreTemp" : "capteurs.titreHum")}
@@ -231,7 +233,7 @@ export function CapteursTab({ salleId }: { salleId: string }) {
           {/* Résumé par jour (le tableau qui double les courbes) */}
           {courbes && courbes.parJour.length > 0 && (
             <div className="section-card overflow-hidden">
-              <div className="px-4 pt-3 text-sm font-bold text-chanv-terre">{t("capteurs.resumeParJour")}</div>
+              <div className="mb-2 text-sm font-bold text-chanv-terre">{t("capteurs.resumeParJour")}</div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm tabular-nums">
                   <thead>
@@ -255,9 +257,9 @@ export function CapteursTab({ salleId }: { salleId: string }) {
                         <td className={`px-3 py-1.5 ${r.recus < r.attendus * 0.9 ? "text-amber-700 font-semibold" : "text-slate-600"}`}>
                           {r.recus} / {r.attendus}
                         </td>
-                        <td className="px-3 py-1.5 text-slate-600">{nombre(r.cMin, locale)}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{nombre(r.cMax, locale)}</td>
-                        <td className="px-3 py-1.5 text-slate-600">{nombre(r.cMoy, locale)}</td>
+                        <td className="px-3 py-1.5 text-slate-600">{nombre(r.cMin, locale, 1, true)}</td>
+                        <td className="px-3 py-1.5 text-slate-600">{nombre(r.cMax, locale, 1, true)}</td>
+                        <td className="px-3 py-1.5 text-slate-600">{nombre(r.cMoy, locale, 1, true)}</td>
                         <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap">
                           {r.hMin != null ? `${nombre(r.hMin, locale, 0)} – ${nombre(r.hMax, locale, 0)} %` : "—"}
                         </td>

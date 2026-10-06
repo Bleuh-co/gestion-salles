@@ -16,9 +16,13 @@ export interface Formats {
   noms?: Record<string, string>;
 }
 
-export function nombre(v: number | null | undefined, locale: string, decimales = 1): string {
+/** Nombre lisible ; `fixe` = toujours `decimales` chiffres après la virgule (colonnes de tableau). */
+export function nombre(v: number | null | undefined, locale: string, decimales = 1, fixe = false): string {
   if (v == null || !Number.isFinite(v)) return "—";
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: decimales, minimumFractionDigits: 0 }).format(v);
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: decimales,
+    minimumFractionDigits: fixe ? decimales : 0,
+  }).format(v);
 }
 
 export function dateCourte(t: number, locale: string, annee = true): string {
@@ -37,7 +41,7 @@ export function dateLongue(t: number, locale: string): string {
 }
 
 export function heure(t: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: FUSEAU, hour: "2-digit", minute: "2-digit" }).format(new Date(t));
+  return new Intl.DateTimeFormat(locale, { timeZone: FUSEAU, hour: "numeric", minute: "2-digit" }).format(new Date(t));
 }
 
 export function dateHeure(t: number, locale: string): string {

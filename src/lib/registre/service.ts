@@ -113,7 +113,9 @@ export function ligneEcrite(e: EvenementSalle): LigneRegistre {
     salleId: e.salleId,
     par: e.par,
     parNom: e.parNom,
-    inscritA: Math.abs(ins - t) > 10 * 60_000 ? ins : undefined,
+    // « inscrit le … par … » seulement pour un geste fait dans l'app et daté
+    // d'avant son inscription (une reprise n'a pas été inscrite par la personne).
+    inscritA: e.source === "app" && Math.abs(ins - t) > 10 * 60_000 ? ins : undefined,
     source: e.source,
     cible: e.cible,
     changes: e.changes,
@@ -140,7 +142,7 @@ export function lignesCapteurs(periodes: Periode[], salleId: string | null, du: 
         salleId: p.salleId,
         par: p.par,
         parNom: p.parNom,
-        inscritA: p.inscritA,
+        inscritA: Math.abs(p.inscritA - p.du) > 10 * 60_000 ? p.inscritA : undefined,
         source: "rattachement",
         cible,
         details: { confirme: p.confirme, origine: p.source },

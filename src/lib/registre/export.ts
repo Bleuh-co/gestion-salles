@@ -420,7 +420,7 @@ export function nomFichier(x: DonneesExport, extension: string): string {
   const b = x.salles[0]?.bornes;
   const qui = x.salles.length === 1 ? x.salles[0].salle.id : t("export.nSalles", { n: x.salles.length });
   const periode = b ? t("export.periodeDuAu", { du: b.duJour, au: b.auJour }) : "";
-  return `${t("export.registre")} ${qui} — ${periode}.${extension}`.replace(/[\\/:*?"<>|#]+/g, " ");
+  return `${t("export.registre")} ${qui} — ${periode}.${extension}`.replace(/[\x00-\x1f\\/:*?"<>|#]+/g, " ");
 }
 
 /** Texte des plages pour l'en-tête imprimable. */

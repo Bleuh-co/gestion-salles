@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeftRight, History, Loader2, MoreHorizontal, PackageMinus, Plus } from "lucide-react";
 import type { Actif } from "@/lib/types";
@@ -49,8 +50,19 @@ export function ActifsSalle({ salleId, lignes, estAdmin, salles, tousActifs, onH
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
-  const [menu, setMenu] = useState<string | null>(null);
+  // Menu d'une ligne, posé au-dessus de la page (le tableau défile et le couperait).
+  const [menu, setMenu] = useState<{ actif: Actif; dessert: boolean; x: number; y: number } | null>(null);
   const [geste, setGeste] = useState<Geste>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const fermer = () => setMenu(null);
+    window.addEventListener("scroll", fermer, true);
+    window.addEventListener("resize", fermer);
+    return () => {
+      window.removeEventListener("scroll", fermer, true);
+      window.removeEventListener("resize", fermer);
+    };
+  }, [menu]);
   const nomSalle = (id: string) => {
     const s = salles.find((x) => x.id === id);
     return s?.nomSalle ? `${id} · ${s.nomSalle}` : id;
@@ -130,32 +142,18 @@ export function ActifsSalle({ salleId, lignes, estAdmin, salles, tousActifs, onH
                         </>
                       )}
                     </td>
-                    <td className="px-2 py-3 relative">
+                    <td className="px-2 py-3">
                       <button
-                        onClick={() => setMenu(menu === a.id ? null : a.id)}
+                        onClick={(e) => {
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setMenu(menu?.actif.id === a.id ? null : { actif: a, dessert, x: r.right, y: r.bottom });
+                        }}
                         className="p-1.5 text-slate-400 hover:text-chanv-terre hover:bg-chanv-fibre/50 rounded-lg"
                         aria-label={t("actifsSalle.menu")}
-                        aria-expanded={menu === a.id}
+                        aria-expanded={menu?.actif.id === a.id}
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
-                      {menu === a.id && (
-                        <div className="absolute right-2 top-10 z-20 w-60 card p-1.5 text-sm" onMouseLeave={() => setMenu(null)}>
-                          {estAdmin && !dessert && (
-                            <>
-                              <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-chanv-fibre/50 text-left" onClick={() => { setMenu(null); setGeste({ type: "deplacer", actif: a }); }}>
-                                <ArrowLeftRight className="w-4 h-4" /> {t("actifsSalle.deplacer")}
-                              </button>
-                              <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-chanv-fibre/50 text-left" onClick={() => { setMenu(null); setGeste({ type: "retirer", actif: a }); }}>
-                                <PackageMinus className="w-4 h-4" /> {t("actifsSalle.retirer")}
-                              </button>
-                            </>
-                          )}
-                          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-chanv-fibre/50 text-left" onClick={() => { setMenu(null); onHistorique(a); }}>
-                            <History className="w-4 h-4" /> {t("actifsSalle.historique")}
-                          </button>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -164,6 +162,33 @@ export function ActifsSalle({ salleId, lignes, estAdmin, salles, tousActifs, onH
           </div>
         </div>
       )}
+
+      {menu &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+            <div
+              className="fixed z-50 w-60 card p-1.5 text-sm"
+              style={{ top: Math.min(menu.y + 4, window.innerHeight - 150), left: Math.max(8, menu.x - 240) }}
+              role="menu"
+            >
+              {estAdmin && !menu.dessert && (
+                <>
+                  <button role="menuitem" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-chanv-fibre/50 text-left" onClick={() => { setGeste({ type: "deplacer", actif: menu.actif }); setMenu(null); }}>
+                    <ArrowLeftRight className="w-4 h-4" /> {t("actifsSalle.deplacer")}
+                  </button>
+                  <button role="menuitem" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-chanv-fibre/50 text-left" onClick={() => { setGeste({ type: "retirer", actif: menu.actif }); setMenu(null); }}>
+                    <PackageMinus className="w-4 h-4" /> {t("actifsSalle.retirer")}
+                  </button>
+                </>
+              )}
+              <button role="menuitem" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-chanv-fibre/50 text-left" onClick={() => { onHistorique(menu.actif); setMenu(null); }}>
+                <History className="w-4 h-4" /> {t("actifsSalle.historique")}
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
 
       {geste && geste.type !== "creer" && (
         <GesteActif
