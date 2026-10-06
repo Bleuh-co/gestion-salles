@@ -195,6 +195,8 @@ export interface SensorReading {
   match_source: "auto" | "override";
   /** Id du fournisseur (ex. "tempstick"). */
   provider?: string;
+  /** Intervalle d'envoi des relevés, en secondes. */
+  send_interval_s?: number | null;
 }
 
 export interface SensorMapping {

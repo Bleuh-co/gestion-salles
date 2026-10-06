@@ -25,7 +25,9 @@ export interface ActifFormOptions {
 interface ActifFormModalProps {
   /** null = création ; sinon édition de cet actif. */
   actif: Actif | null;
-  salles: Local[];
+  salles: Pick<Local, "id" | "nomSalle">[];
+  /** Création depuis la fiche d'une salle : la salle est pré-remplie. */
+  salleInitiale?: string;
   options: ActifFormOptions;
   onClose: () => void;
   onSaved: () => void;
@@ -34,6 +36,7 @@ interface ActifFormModalProps {
 export function ActifFormModal({
   actif,
   salles,
+  salleInitiale,
   options,
   onClose,
   onSaved,
@@ -47,7 +50,7 @@ export function ActifFormModal({
   const [marque, setMarque] = useState(actif?.marque ?? "");
   const [modele, setModele] = useState(actif?.modele ?? "");
   const [numSerie, setNumSerie] = useState(actif?.numSerie ?? "");
-  const [idSalle, setIdSalle] = useState(actif?.idSalle ?? "");
+  const [idSalle, setIdSalle] = useState(actif?.idSalle ?? salleInitiale ?? "");
   const [locauxDesservis, setLocauxDesservis] = useState(actif?.locauxDesservis ?? "");
   const [categorie, setCategorie] = useState(actif?.categorie ?? "");
   const [criticite, setCriticite] = useState(actif?.criticite ?? "");
