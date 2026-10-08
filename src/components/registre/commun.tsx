@@ -6,9 +6,16 @@ import {
   Archive,
   ArchiveRestore,
   ArrowLeftRight,
+  BadgeCheck,
+  Ban,
   BookOpen,
+  CalendarCog,
+  CalendarPlus,
+  CalendarX,
   Circle,
   Download,
+  Flag,
+  Hammer,
   Link2,
   LogIn,
   LogOut,
@@ -17,6 +24,8 @@ import {
   PackageMinus,
   PackagePlus,
   Pencil,
+  Power,
+  PowerOff,
   Radio,
   Share2,
   Sprout,
@@ -24,6 +33,7 @@ import {
   Target,
   Thermometer,
   Trash2,
+  Undo2,
   Unlink,
   WifiOff,
   Wrench,
@@ -193,6 +203,16 @@ const ICONES: Record<LigneRegistre["type"], LucideIcon> = {
   item_sorti: LogOut,
   item_modifie: Pencil,
   item_supprime: Trash2,
+  entretien_ajoute: CalendarPlus,
+  entretien_modifie: CalendarCog,
+  entretien_retire: CalendarX,
+  probleme_signale: Flag,
+  entretien_fait: Hammer,
+  intervention_validee: BadgeCheck,
+  intervention_refusee: Undo2,
+  intervention_annulee: Ban,
+  actif_hors_service: PowerOff,
+  actif_remis_en_service: Power,
 };
 
 /** Icône d'une ligne ; une sorte inconnue (inscrite par une app plus récente) garde une icône. */
@@ -211,6 +231,10 @@ export function tonLigne(l: LigneRegistre): string {
   if (l.sorte === "capteur") return "bg-blue-100 text-blue-700";
   if (l.sorte === "fiche") return "bg-chanv-fibre text-chanv-terre";
   if (l.sorte === "export") return "bg-slate-100 text-slate-600";
+  if (l.type === "probleme_signale" || l.type === "actif_hors_service") return "bg-red-100 text-red-700";
+  if (l.type === "intervention_annulee" || l.type === "intervention_refusee") return "bg-slate-100 text-slate-600";
+  if (l.type === "intervention_validee" || l.type === "actif_remis_en_service") return "bg-emerald-100 text-emerald-700";
+  if (l.sorte === "entretien") return "bg-orange-100 text-orange-700";
   return "bg-green-100 text-green-700";
 }
 

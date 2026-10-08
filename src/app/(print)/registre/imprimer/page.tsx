@@ -12,6 +12,7 @@ import { jourDe } from "@/lib/registre/temps";
 import { auteurDe } from "@/lib/registre/routes";
 import { CourbeSvg } from "@/components/registre/CourbeSvg";
 import { BoutonImprimer } from "./BoutonImprimer";
+import { entretienDesSalles, type EntretienExport } from "@/lib/entretien/export";
 
 // ============================================================
 // Version imprimable du registre (V8) : une page qu'on peut classer
@@ -74,6 +75,7 @@ export default async function ImprimerRegistre({
     x.salles.map(async (d) => ({
       d,
       actifs: await actifsPresentsA(d.salle.id, Math.min(d.bornes.au, x.maintenant) >= x.maintenant - 60_000 ? x.maintenant + 1 : d.bornes.au),
+      entretien: await entretienDesSalles([d.salle.id], d.bornes.du, Math.min(d.bornes.au, x.maintenant + 1)).catch(() => null),
     }))
   );
 
@@ -81,8 +83,8 @@ export default async function ImprimerRegistre({
     <div className="registre-imprimable" lang={demande.lang}>
       <style>{CSS}</style>
       <BoutonImprimer libelle={t("imprimer.imprimer")} aide={t("imprimer.aide")} />
-      {sections.map(({ d, actifs }) => (
-        <Section key={d.salle.id} d={d} actifs={actifs} f={f} parNom={par.nom || par.email} maintenant={x.maintenant} />
+      {sections.map(({ d, actifs, entretien }) => (
+        <Section key={d.salle.id} d={d} actifs={actifs} entretien={entretien} f={f} parNom={par.nom || par.email} maintenant={x.maintenant} />
       ))}
     </div>
   );
@@ -91,12 +93,14 @@ export default async function ImprimerRegistre({
 function Section({
   d,
   actifs,
+  entretien,
   f,
   parNom,
   maintenant,
 }: {
   d: DonneesSalle;
   actifs: { id: string; matricule: string; nom: string; statut: string }[];
+  entretien: EntretienExport | null;
   f: Formats;
   parNom: string;
   maintenant: number;
@@ -247,6 +251,45 @@ function Section({
         </table>
       ) : (
         <p className="note">{t("ligne.ouvertureAucunActif")}</p>
+      )}
+
+      {entretien && (entretien.regles.length > 0 || entretien.interventions.length > 0) && (
+        <>
+          <h2>{t("imprimer.entretien")}</h2>
+          {entretien.interventions.length > 0 ? (
+            <table className="liste">
+              <thead>
+                <tr>
+                  <th>{t("export.colFaitLe")}</th>
+                  <th>{t("export.colIntervention")}</th>
+                  <th>{t("export.colStatut")}</th>
+                  <th>{t("export.colPreuves")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entretien.interventions.map(({ iv, equipements }) => (
+                  <tr key={iv.id}>
+                    <td className="quand">{iv.termineA ? dateCourte(Date.parse(iv.termineA), locale) : iv.echeance ? `${t("export.colEcheance")} ${iv.echeance}` : "—"}</td>
+                    <td>
+                      {iv.genre === "probleme" ? iv.description : iv.titre}
+                      <div className="detail">{[equipements, iv.terminePar?.nom, iv.validePar ? t("imprimer.validePar", { nom: iv.validePar.nom }) : null, iv.motif || null].filter(Boolean).join(" · ")}</div>
+                    </td>
+                    <td className="qui">{t(`entretien.statut.${iv.statut}`)}</td>
+                    <td>{[...iv.preuves.map((p) => p.nom), iv.mesure ? `${iv.mesure} ${iv.mesureUnite}` : ""].filter(Boolean).join(", ") || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="note">{t("imprimer.aucuneIntervention")}</p>
+          )}
+          {entretien.regles.length > 0 && (
+            <p className="note">
+              {t("imprimer.planEntretien")} :{" "}
+              {entretien.regles.map((r) => `${r.regle.titre}${r.equipements ? ` (${r.equipements})` : ""}${r.regle.prochaine ? `, ${t("regle.prochaine").toLowerCase()} ${r.regle.prochaine}` : ""}`).join(" ; ")}
+            </p>
+          )}
+        </>
       )}
 
       <div className="revision">

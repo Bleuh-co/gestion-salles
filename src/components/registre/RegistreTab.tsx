@@ -15,7 +15,7 @@ import { JustifierDialog, NoteDialog } from "./NoteDialog";
 // la salle, les chiffres de la période et les filtres par sorte.
 // ============================================================
 
-const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "item", "capteur", "ecart", "note", "export"];
+const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "item", "capteur", "ecart", "entretien", "note", "export"];
 
 export interface FiltreCible {
   id: string;
@@ -34,6 +34,13 @@ interface Props {
   peutNoter?: boolean;
 }
 
+/** La ligne concerne cet actif : sa cible, ou l'un des équipements d'une intervention d'entretien. */
+function concerne(l: LigneRegistre, id: string): boolean {
+  if (l.cible?.id === id) return true;
+  const actifs = (l.details as { actifs?: { id: string }[] } | null | undefined)?.actifs;
+  return Array.isArray(actifs) && actifs.some((a) => a?.id === id);
+}
+
 export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExporter, peutNoter = false }: Props) {
   const t = useT();
   const locale = useLocale();
@@ -47,7 +54,7 @@ export function RegistreTab({ salleId, noms, filtreActif, onEffacerFiltre, onExp
   const f: Formats = { t, locale, noms };
 
   const lignes = useMemo(
-    () => (data?.lignes ?? []).filter((l) => !filtreActif || l.cible?.id === filtreActif.id),
+    () => (data?.lignes ?? []).filter((l) => !filtreActif || concerne(l, filtreActif.id)),
     [data, filtreActif]
   );
   const compte = (s: SorteLigne | "tout") => (s === "tout" ? lignes.length : lignes.filter((l) => l.sorte === s).length);

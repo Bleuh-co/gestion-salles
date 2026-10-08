@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NotebookPen } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Hammer, NotebookPen } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
 import { dateCourte, decrireLigne, heure, nombre, type Formats } from "@/lib/registre/libelles";
 import { CourbeSvg, COULEUR_TEMP } from "./CourbeSvg";
@@ -48,10 +49,19 @@ export function ResumeTerrain({
   const courbe = m?.courbes?.capteurs[0];
   const lignes = (registre.data?.lignes ?? []).slice(0, 3);
   const f: Formats = { t, locale, noms };
-  if (!c && !lignes.length && !peutNoter) return null;
-
   return (
     <div className="card p-4 space-y-3 sm:hidden">
+      {/* Entretien (lot 5) : signaler un problème avec une photo, ou faire l'entretien prévu. */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link href={`/salles/${encodeURIComponent(salleId)}/signaler`} className="btn-ghost justify-center border border-red-200 bg-red-50 text-red-700 text-xs py-3">
+          <AlertTriangle className="w-4 h-4" />
+          {t("signaler.titre")}
+        </Link>
+        <Link href={`/salles/${encodeURIComponent(salleId)}/entretien`} className="btn-ghost justify-center border border-chanv-fibre text-xs py-3">
+          <Hammer className="w-4 h-4" />
+          {t("terrain.faireEntretien")}
+        </Link>
+      </div>
       {c && m && (
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{t("terrain.dernieres24h")}</div>

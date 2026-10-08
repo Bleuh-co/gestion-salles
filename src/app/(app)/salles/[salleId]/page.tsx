@@ -16,6 +16,7 @@ import { matchAllSensors, getSensorsForRoom, loadOverrides } from "@/lib/sensor-
 import type { SensorReading } from "@/lib/types";
 import { ArrowLeft, QrCode, Building, Layers, DoorOpen, Thermometer, Shield, Tag, Factory } from "lucide-react";
 import { getServerT } from "@/lib/i18n-server";
+import { compteASuivre } from "@/lib/entretien/vues";
 
 // Force dynamic rendering — Firestore overrides + TempStick API
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ export default async function SalleDetailPage({ params }: Props) {
   const lignesActifs = depuis.map((x) => ({ ...x, dessert: x.actif.idSalle !== local.id }));
   const tousActifs = estAdmin ? await getAllActifs() : null;
   const aEuCapteur = periodes.some((p) => p.salleId === local.id);
+  const entretienASuivre = await compteASuivre(local.id).catch(() => 0);
   const salles = locaux.map((l) => ({ id: l.id, nomSalle: l.nomSalle, famille: l.famille }));
   const intervalles = sensors.map((s) => s.send_interval_s).filter((v): v is number => !!v);
   const intervalleS = intervalles.length ? Math.min(...intervalles) : null;
@@ -175,6 +177,7 @@ export default async function SalleDetailPage({ params }: Props) {
         peutNoter={noter}
         salles={salles}
         tousActifs={tousActifs}
+        entretienASuivre={entretienASuivre}
       >
         {/* This is the infos panel content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

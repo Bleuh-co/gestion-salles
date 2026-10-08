@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Wrench, Info, Thermometer, Sprout, History } from "lucide-react";
+import { Wrench, Info, Thermometer, Sprout, History, Hammer } from "lucide-react";
 import type { Actif, ItemAgricole, SensorReading } from "@/lib/types";
 import { ItemsAgricolesTable } from "./ItemsAgricolesTable";
 import { ActifsSalle, type ActifLigne } from "./registre/ActifsSalle";
@@ -9,6 +9,7 @@ import { CapteursTab } from "./registre/CapteursTab";
 import { RegistreTab, type FiltreCible } from "./registre/RegistreTab";
 import { ExportDialog, type SalleChoix } from "./registre/ExportDialog";
 import { ResumeTerrain } from "./registre/ResumeTerrain";
+import { EntretienSalle } from "./entretien/EntretienSalle";
 import { useT } from "@/lib/i18n";
 
 const TABS = [
@@ -17,6 +18,7 @@ const TABS = [
   { key: "items-agricoles", labelKey: "tabs.itemsAgricoles", icon: Sprout },
   { key: "capteurs", labelKey: "tabs.capteurs", icon: Thermometer },
   { key: "registre", labelKey: "tabs.registre", icon: History },
+  { key: "entretien", labelKey: "tabs.entretien", icon: Hammer },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -35,6 +37,8 @@ interface SalleTabsProps {
   tousActifs?: Actif[] | null;
   /** Gestionnaire ou administrateur : notes et justification des écarts (lot 5). */
   peutNoter?: boolean;
+  /** Entretiens en retard et problèmes ouverts (pastille de l'onglet Entretien). */
+  entretienASuivre?: number;
 }
 
 export function SalleTabs({
@@ -49,11 +53,13 @@ export function SalleTabs({
   salles = [],
   tousActifs = null,
   peutNoter = false,
+  entretienASuivre = 0,
 }: SalleTabsProps) {
   const t = useT();
   const [activeTab, setActiveTab] = useState<TabKey>("infos");
   const [filtreActif, setFiltreActif] = useState<FiltreCible | null>(null);
   const [exporter, setExporter] = useState(false);
+  const [aSuivre, setASuivre] = useState<number | null>(entretienASuivre);
   const haut = useRef<HTMLDivElement>(null);
   const noms = Object.fromEntries(salles.map((s) => [s.id, s.nomSalle]));
 
@@ -107,7 +113,10 @@ export function SalleTabs({
                   {count}
                 </span>
               )}
-              {tab.key === "registre" && (
+              {tab.key === "entretien" && aSuivre ? (
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-red-600 text-white font-bold">{aSuivre}</span>
+              ) : null}
+              {tab.key === "entretien" && (
                 <span className="ml-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wide rounded-full bg-chanv-beige text-chanv-terre font-bold">
                   {t("tabs.nouveau")}
                 </span>
@@ -144,6 +153,7 @@ export function SalleTabs({
           />
         )}
         {activeTab === "capteurs" && <CapteursTab salleId={salleId} />}
+        {activeTab === "entretien" && <EntretienSalle salleId={salleId} onCompte={setASuivre} />}
         {activeTab === "registre" && (
           <RegistreTab
             salleId={salleId}

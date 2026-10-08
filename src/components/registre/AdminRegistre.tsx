@@ -22,7 +22,7 @@ interface Reponse {
   noms: Record<string, string>;
 }
 
-const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "item", "capteur", "note", "export"];
+const SORTES: (SorteLigne | "tout")[] = ["tout", "fiche", "actif", "item", "capteur", "entretien", "note", "export"];
 
 export function AdminRegistre({ salles, journalTechnique }: { salles: SalleChoix[]; journalTechnique: React.ReactNode }) {
   const t = useT();

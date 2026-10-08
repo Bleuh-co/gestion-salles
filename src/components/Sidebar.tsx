@@ -22,6 +22,7 @@ export function Sidebar() {
   const getLinks = useCallback(() => {
     const links: Array<{ label: string; icon: string; href: string; mobileOnly?: boolean }> = [
       { label: t("nav.rooms"), icon: "🏢", href: "/salles" },
+      { label: t("nav.entretien"), icon: "🛠️", href: "/entretien" },
     ];
     if (isAdmin) {
       links.push({ label: t("nav.admin"), icon: "⚙️", href: "/admin", mobileOnly: true });

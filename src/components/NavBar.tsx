@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Settings2 } from "lucide-react";
+import { Building2, Settings2, Wrench } from "lucide-react";
 import { useGandalf } from "@bleuh-co/gandalf-sdk-next/client";
 
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ interface NavLink {
 // barre standalone ET la nav d'embed — aucun lien ne disparaît en mode embarqué.
 const LINKS: NavLink[] = [
   { href: "/salles", labelKey: "nav.rooms", icon: Building2 },
+  { href: "/entretien", labelKey: "nav.entretien", icon: Wrench },
   { href: "/admin", labelKey: "nav.admin", icon: Settings2, adminOnly: true },
 ];
 
