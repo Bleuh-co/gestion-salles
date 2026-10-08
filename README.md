@@ -73,9 +73,73 @@ gcloud scheduler jobs create http registre-salles-copie-nuit \
 Comptes de service permis : variable `REGISTRE_COPIE_COMPTES` (liste séparée
 par des virgules), sinon ceux du projet de production.
 
+## Entretien des équipements
+
+Plan plans-chanv du 7 octobre 2026 (« L'entretien des équipements dans
+Gestion des Salles »). Le plan d'entretien vit ici ; chaque intervention
+devient une tâche GANDALF qui porte une carte « Salle · Équipement ».
+
+- **Règles** : un entretien qui revient, sur un ou plusieurs équipements (ou une
+  salle), avec sa fréquence, sa prochaine échéance, qui fait, la preuve exigée
+  et la liste de contrôle. Une seule occurrence ouverte par règle ; la tâche
+  apparaît N jours avant l'échéance (30 pour une annuelle, 7 pour une mensuelle).
+- **Interventions** : à assigner → à faire (tâche GANDALF) → en cours ⇄ en
+  attente → à valider (avec la preuve) → validée, ou annulée. Fermer la tâche
+  dans GANDALF la fait passer « à valider ». La validation inscrit la ligne au
+  registre et planifie la suivante (depuis la date prévue, ou depuis la date
+  faite, règle par règle).
+- **Problèmes signalés** : depuis la fiche ou le téléphone après le code QR,
+  avec une photo et une priorité de 0 à 5. L'équipe d'entretien est prévenue ;
+  « C'est réglé » part à qui a signalé.
+- **Avis** (tâche du matin, 7 h) : rappel à J−7 et le jour J, relance par le bot
+  à J+1, escalade au responsable à J+7, résumé du lundi. Au plus un avis par
+  tâche et par jour ; rien la fin de semaine, sauf une priorité 0 ou 1.
+- **Écrans** : onglet « Entretien » de la salle, page d'un équipement
+  (`/actifs/<id>`) et sa fiche de vie imprimable, section `/entretien`
+  (calendrier, interventions, entretiens, équipe et listes, reprise de la GMAO),
+  `/entretien/interventions/<id>`, et au téléphone `/salles/<code>/signaler`
+  et `/salles/<code>/entretien`.
+
+| Collection | Contenu |
+|---|---|
+| `entretien_regles` | règles d'entretien |
+| `entretien_interventions` | miroir léger de chaque intervention et de sa tâche GANDALF (id d'une occurrence : `<règle>__<échéance>`) |
+| `entretien_fiches/{actif}` | photos et documents d'un équipement |
+| `entretien_reprise` | séance de reprise de la GMAO (lot 0) |
+| `entretien_meta` | envois faits une seule fois (résumé du lundi) |
+| `config/entretien` | responsable, équipe, personne par défaut de chaque métier, projet et listes GANDALF, listes de choix, interrupteurs |
+
+Photos et preuves : seau privé `antigravity-20260107-gestion-salles`
+(variable `ENTRETIEN_SEAU`), servi par `/api/fichiers/…` à toute personne connectée.
+
+GANDALF (hub-chanv) : route machine `POST /api/tasks/service` avec
+`integration: "salles"` (clé `GANDALF_NOTIF_KEY` = secret `NOTIF_API_KEY`), le
+levier `system/migration_flags.overrides.salles = "gandalf"`, la carte
+`app_card` sur la tâche, `POST /api/notifications` (avec `body_ai`) et
+`POST /api/notifications/dm` pour le message du bot. Les gestes d'une personne
+(terminer, rouvrir, commenter) passent par les routes du hub en son nom.
+
+### Tâche du matin
+
+```bash
+gcloud scheduler jobs create http entretien-salles-matin \
+  --project=antigravity-20260107 --location=us-east1 \
+  --schedule="0 7 * * *" --time-zone="America/Montreal" \
+  --uri="https://gestion-salles-271227085398.us-east1.run.app/api/entretien/quotidien" \
+  --http-method=POST --headers=Content-Type=application/json --message-body='{}' \
+  --oidc-service-account-email=271227085398-compute@developer.gserviceaccount.com \
+  --oidc-token-audience="https://gestion-salles-271227085398.us-east1.run.app/api/entretien/quotidien" \
+  --attempt-deadline=300s
+```
+
+Relancée le même jour, elle ne double rien. Un administrateur peut l'appeler à
+la main, avec `{ "jour": "AAAA-MM-JJ" }` pour un essai.
+
 ### Tests
 
-`npm test` (node --test, sans dépendance) : rapprochement capteur → salle,
+`npm test` (node --test, sans dépendance) : calendrier de l'entretien
+(échéances, fenêtres, avis du jour), saisies d'une règle et d'un signalement,
+reprise de la GMAO, retour après connexion ; rapprochement capteur → salle,
 heures de Montréal, écarts, silences, résumés par jour, date de pose proposée
 (relevés réels de la chambre froide), fichier Excel, notes et justifications,
 reprise des actifs agricoles.

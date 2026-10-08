@@ -56,8 +56,9 @@ steps:
       - --port=8080
       - --memory=1Gi
       - --cpu=1
-      - --update-env-vars=^;^NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com;HUB_URL=https://gandalf.chanv.com;NEXT_PUBLIC_FIREBASE_PROJECT_ID=antigravity-20260107;NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com;GESTISALLE_APP_ID=${_GESTISALLE_APP_ID}
-      - --set-secrets=FIREBASE_SERVICE_ACCOUNT_JSON=FIREBASE_SERVICE_ACCOUNT_JSON:latest,TEMPSTICK_API_KEY=TEMPSTICK_API_KEY:latest
+      - --update-env-vars=^;^NEXT_PUBLIC_HUB_URL=https://gandalf.chanv.com;HUB_URL=https://gandalf.chanv.com;NEXT_PUBLIC_FIREBASE_PROJECT_ID=antigravity-20260107;NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=chanv.com,bleuh.co,lafeuilleverte.ca,maisondherbes.com;GESTISALLE_APP_ID=${_GESTISALLE_APP_ID};ENTRETIEN_SEAU=antigravity-20260107-gestion-salles
+      # GANDALF_NOTIF_KEY : clé de service du hub (tâches d'entretien et avis), la même que Tickets Clients.
+      - --set-secrets=FIREBASE_SERVICE_ACCOUNT_JSON=FIREBASE_SERVICE_ACCOUNT_JSON:latest,TEMPSTICK_API_KEY=TEMPSTICK_API_KEY:latest,GANDALF_NOTIF_KEY=NOTIF_API_KEY:latest
 
 images:
   - "${_IMAGE}:${_TAG}"
