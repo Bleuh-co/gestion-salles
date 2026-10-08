@@ -165,6 +165,8 @@ export interface Intervention {
   horsService: boolean;
   /** Statut de l'équipement avant sa mise hors service (remis à la validation). */
   statutActifAvant?: string;
+  /** Dernier renvoi par le responsable : une fermeture GANDALF plus ancienne ne compte plus. */
+  refuseA?: string | null;
   /** Avis envoyés : étape → jour (une seule fois chacun). */
   avis: Record<string, string>;
   /** Jour du dernier avis (au plus un par tâche et par jour). */

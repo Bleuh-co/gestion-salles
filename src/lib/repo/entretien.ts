@@ -218,6 +218,7 @@ export function docVersIntervention(id: string, d: FirebaseFirestore.DocumentDat
     motif: d.motif ?? "",
     horsService: Boolean(d.horsService),
     statutActifAvant: typeof d.statutActifAvant === "string" ? d.statutActifAvant : undefined,
+    refuseA: typeof d.refuseA === "string" ? d.refuseA : null,
     avis: d.avis && typeof d.avis === "object" ? d.avis : {},
     dernierAvis: d.dernierAvis ?? null,
   };

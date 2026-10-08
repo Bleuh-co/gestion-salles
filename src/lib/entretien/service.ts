@@ -410,7 +410,9 @@ export async function relireTaches(ivs: Intervention[], ctx: Contexte): Promise<
         .filter((p) => !connues.has(p.url))
         .map((p) => ({ url: p.url, nom: p.nom, type: p.type, par: "", parNom: "GANDALF", a: maintenant() }));
       if (jointes.length) patch.preuves = [...iv.preuves, ...jointes];
-      if (e.fermee && ["a_faire", "en_cours", "en_attente"].includes(iv.statut)) {
+      // Une fermeture antérieure au dernier renvoi (GANDALF n'a pas pu rouvrir la tâche) ne compte pas.
+      const fermetureNeuve = !iv.refuseA || (e.fermeeA ?? "") > iv.refuseA;
+      if (e.fermee && fermetureNeuve && ["a_faire", "en_cours", "en_attente"].includes(iv.statut)) {
         const noms = await nomsPersonnes([e.fermeePar || ""]);
         patch.statut = "a_valider";
         patch.termineA = e.fermeeA || maintenant();
@@ -691,7 +693,7 @@ export async function refuser(id: string, motif: string, par: Acteur): Promise<I
   const ctx = await contexte();
   const m = motif.trim().slice(0, 500);
   if (!m) throw new ErreurEntretien("Dire ce qui manque.");
-  const iv = await transition(id, ["a_valider"], { statut: "en_cours", termineA: null, terminePar: null });
+  const iv = await transition(id, ["a_valider"], { statut: "en_cours", termineA: null, terminePar: null, refuseA: maintenant() });
   if (!iv) throw new ErreurEntretien("Cette intervention n'est pas à valider.", 409);
   if (iv.tacheId) {
     const tacheId = iv.tacheId;
