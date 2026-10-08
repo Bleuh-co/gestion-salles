@@ -5,7 +5,7 @@
 import type { Grandeur } from "./mesures.ts";
 
 /** Sorte d'une ligne du registre (filtres de l'onglet Registre). */
-export type SorteLigne = "fiche" | "actif" | "item" | "capteur" | "ecart" | "note" | "export";
+export type SorteLigne = "fiche" | "actif" | "item" | "capteur" | "ecart" | "note" | "export" | "entretien";
 
 export type ActionEvenement =
   | "ouverture"
@@ -36,7 +36,19 @@ export type ActionEvenement =
   | "item_entre"
   | "item_sorti"
   | "item_modifie"
-  | "item_supprime";
+  | "item_supprime"
+  // Entretien des équipements (plan du 7 octobre 2026) : règles, problèmes
+  // signalés, interventions faites, validées, refusées ou annulées.
+  | "entretien_ajoute"
+  | "entretien_modifie"
+  | "entretien_retire"
+  | "probleme_signale"
+  | "entretien_fait"
+  | "intervention_validee"
+  | "intervention_refusee"
+  | "intervention_annulee"
+  | "actif_hors_service"
+  | "actif_remis_en_service";
 
 export interface CibleEvenement {
   type: "local" | "actif" | "capteur" | "item";

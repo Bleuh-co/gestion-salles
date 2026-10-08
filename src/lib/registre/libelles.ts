@@ -70,6 +70,18 @@ function actifTexte(l: LigneRegistre): string {
   return c.matricule ? `${c.nom} (${c.matricule})` : c.nom;
 }
 
+/** Équipements d'une ligne d'entretien (plusieurs : « UC-1, UC-2… »), ou l'équipement nommé hors inventaire. */
+function equipementsTexte(d: Record<string, unknown>, l: LigneRegistre): string {
+  const actifs = (d.actifs as { nom: string; matricule?: string }[] | undefined) ?? [];
+  if (actifs.length > 1) {
+    const noms = actifs.map((a) => a.nom || a.matricule || "");
+    return noms.length > 4 ? `${noms.slice(0, 4).join(", ")} +${noms.length - 4}` : noms.join(", ");
+  }
+  if (actifs.length === 1) return actifs[0].matricule ? `${actifs[0].nom} (${actifs[0].matricule})` : actifs[0].nom;
+  if (typeof d.equipementLibre === "string" && d.equipementLibre) return d.equipementLibre;
+  return l.cible?.type === "actif" ? actifTexte(l) : "";
+}
+
 const CHAMPS_PLAGE = new Set(["plageTempMin", "plageTempMax", "plageHumMin", "plageHumMax", "plageSeuil"]);
 
 /** Valeur d'un champ, lisible (statut, oui/non, vide). */
@@ -265,6 +277,56 @@ export function decrireLigne(l: LigneRegistre, f: Formats): Description {
     case "item_supprime":
       titre = t("ligne.itemSupprime", { item: actifTexte(l) });
       break;
+    case "entretien_ajoute":
+    case "entretien_modifie":
+    case "entretien_retire": {
+      const cle = { entretien_ajoute: "ligne.entretienAjoute", entretien_modifie: "ligne.entretienModifie", entretien_retire: "ligne.entretienRetire" }[l.type];
+      titre = t(cle, { titre: String(d.titre ?? ""), frequence: String(d.frequence ?? "") });
+      if (l.type === "entretien_modifie" && l.changes) detail.push(changementsTexte(l.changes, f));
+      const eq = equipementsTexte(d, l);
+      if (eq) detail.push(eq);
+      if (typeof d.prochaine === "string" && l.type !== "entretien_retire") {
+        detail.push(t("ligne.prochaine", { date: dateCourte(Date.parse(`${d.prochaine}T12:00:00Z`), f.locale) }));
+      }
+      if (d.origine === "gmao" || d.origine === "gandalf") detail.push(t("ligne.reprisGmao"));
+      break;
+    }
+    case "probleme_signale":
+      titre = t("ligne.problemeSignale", { texte: l.note ?? "", priorite: String(d.priorite ?? "") });
+      if (equipementsTexte(d, l)) detail.push(equipementsTexte(d, l));
+      if (typeof d.photos === "number" && d.photos > 0) detail.push(t("ligne.photos", { n: d.photos }));
+      if (d.horsService) detail.push(t("ligne.horsServiceSuite"));
+      break;
+    case "entretien_fait": {
+      titre = t("ligne.entretienFait", { titre: String(d.titre ?? "") });
+      if (equipementsTexte(d, l)) detail.push(equipementsTexte(d, l));
+      const preuves = (d.preuves as { nom: string }[] | undefined) ?? [];
+      if (preuves.length) detail.push(t("ligne.preuves", { liste: preuves.map((p) => p.nom).join(", ") }));
+      if (d.mesure) detail.push(t("ligne.mesure", { valeur: String(d.mesure) }));
+      if (d.checklist) detail.push(t("ligne.checklist", { n: String(d.checklist) }));
+      if (d.via === "gandalf") detail.push(t("ligne.fermeDepuisGandalf"));
+      if (d.preuveManquante) detail.push(t("ligne.preuveManquante"));
+      break;
+    }
+    case "intervention_validee":
+      titre = t("ligne.interventionValidee", { titre: String(d.titre ?? "") });
+      if (equipementsTexte(d, l)) detail.push(equipementsTexte(d, l));
+      if (typeof d.prochaine === "string") detail.push(t("ligne.prochaine", { date: dateCourte(Date.parse(`${d.prochaine}T12:00:00Z`), f.locale) }));
+      break;
+    case "intervention_refusee":
+      titre = t("ligne.interventionRefusee", { titre: String(d.titre ?? "") });
+      break;
+    case "intervention_annulee":
+      titre = t("ligne.interventionAnnulee", { titre: String(d.titre ?? "") });
+      if (typeof d.prochaine === "string") detail.push(t("ligne.prochaine", { date: dateCourte(Date.parse(`${d.prochaine}T12:00:00Z`), f.locale) }));
+      break;
+    case "actif_hors_service":
+      titre = t("ligne.actifHorsService", { actif: actifTexte(l) });
+      detail.push(t("ligne.horsServiceCause", { titre: String(d.titre ?? "") }));
+      break;
+    case "actif_remis_en_service":
+      titre = t("ligne.actifRemisEnService", { actif: actifTexte(l) });
+      break;
     case "muet":
       titre = t("ligne.muet", { duree: duree(d.dureeMin as number, t), n: d.manquants as number });
       detail.push(l.cible?.nom ?? "");
@@ -278,8 +340,10 @@ export function decrireLigne(l: LigneRegistre, f: Formats): Description {
     const k = `motif.${l.motif}`;
     detail.push(t("ligne.motif", { motif: t(k) === k ? l.motif : t(k) }));
   }
-  // Note et justification : leur texte est déjà le titre.
-  if (l.note && l.type !== "note" && l.type !== "ecart_justifie") detail.push(t("ligne.note", { note: l.note }));
+  // Note, justification, problème signalé : leur texte est déjà le titre.
+  if (l.note && l.type !== "note" && l.type !== "ecart_justifie" && l.type !== "probleme_signale") {
+    detail.push(t("ligne.note", { note: l.note }));
+  }
   if (d.app === "demande-achats") detail.push(t("ligne.parDemandeAchats"));
   if (l.inscritA && l.parNom) {
     detail.push(t("ligne.inscritLe", { date: dateHeure(l.inscritA, f.locale), nom: l.parNom }));

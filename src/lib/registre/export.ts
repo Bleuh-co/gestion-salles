@@ -9,6 +9,8 @@ import { auteurLigne, decrireLigne, nombre, plageTexte, type Formats } from "./l
 import { moyenneParPas, type Releve } from "./mesures";
 import { actifsDeLaSalle, actifsPresentsA, chargerSalle, courbesDe, etatCapteurs, type DonneesSalle } from "./service";
 import { heureDe, jourDe } from "./temps";
+import { entretienDesSalles } from "@/lib/entretien/export";
+import { frequenceTexte } from "@/lib/entretien/textes";
 
 // ============================================================
 // Export du registre (V6, V7, V10) : une ou plusieurs salles, une
@@ -410,6 +412,69 @@ export async function construireClasseur(x: DonneesExport, exportePar: string): 
       ],
       lignes: rows,
     });
+  }
+
+  // Entretien (lot 4) : les interventions de la période et le plan d'entretien des salles.
+  if (b0) {
+    const e = await entretienDesSalles(salles.map((d) => d.salle.id), b0.du, Math.min(b0.au, maintenant + 1));
+    if (e.interventions.length) {
+      feuilles.push({
+        nom: t("export.ongletEntretien"),
+        colonnes: [
+          { titre: t("export.colSalle"), largeur: 22 },
+          { titre: t("export.colEquipements"), largeur: 32 },
+          { titre: t("export.colIntervention"), largeur: 44 },
+          { titre: t("export.colGenre"), largeur: 12 },
+          { titre: t("export.colEcheance"), largeur: 12 },
+          { titre: t("export.colStatut"), largeur: 16 },
+          { titre: t("export.colFaitLe"), largeur: 17 },
+          { titre: t("export.colFaitPar"), largeur: 22 },
+          { titre: t("export.colValideLe"), largeur: 17 },
+          { titre: t("export.colValidePar"), largeur: 22 },
+          { titre: t("export.colPreuves"), largeur: 36 },
+          { titre: t("export.colNote"), largeur: 40 },
+        ],
+        lignes: e.interventions.map(({ iv, salleId, equipements }) => [
+          salleId,
+          equipements,
+          iv.genre === "probleme" ? iv.description : iv.titre,
+          t(iv.genre === "probleme" ? "file.probleme" : "file.preventif", { p: iv.priorite ?? "" }),
+          iv.echeance ?? "",
+          t(`entretien.statut.${iv.statut}`),
+          iv.termineA ? fmtInstant(Date.parse(iv.termineA)) : "",
+          iv.terminePar?.nom || iv.terminePar?.email || "",
+          iv.valideA ? fmtInstant(Date.parse(iv.valideA)) : iv.annuleA ? fmtInstant(Date.parse(iv.annuleA)) : "",
+          iv.validePar?.nom || iv.annulePar?.nom || "",
+          [...iv.preuves.map((p) => p.nom), iv.mesure ? `${iv.mesure} ${iv.mesureUnite}` : ""].filter(Boolean).join(", "),
+          [iv.noteFin, iv.motif].filter(Boolean).join(" — "),
+        ]),
+      });
+    }
+    if (e.regles.length) {
+      feuilles.push({
+        nom: t("export.ongletPlan"),
+        colonnes: [
+          { titre: t("export.colSalle"), largeur: 22 },
+          { titre: t("export.colEquipements"), largeur: 32 },
+          { titre: t("ficheVie.entretien"), largeur: 40 },
+          { titre: t("regle.frequence"), largeur: 34 },
+          { titre: t("regle.prochaine"), largeur: 14 },
+          { titre: t("ficheVie.par"), largeur: 30 },
+          { titre: t("regle.preuve"), largeur: 18 },
+          { titre: t("regle.criticite"), largeur: 20 },
+        ],
+        lignes: e.regles.map(({ regle: r, salleId, equipements, qui }) => [
+          salleId,
+          equipements,
+          r.titre,
+          frequenceTexte(r, t),
+          r.prochaine ?? "",
+          qui,
+          t(`regle.preuve.${r.preuve}`),
+          r.criticite,
+        ]),
+      });
+    }
   }
 
   return classeur(feuilles);

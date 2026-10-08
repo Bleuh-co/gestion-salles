@@ -88,7 +88,21 @@ export interface InfoCapteur {
   fenetres: Fenetre[];
 }
 
+const ENTRETIEN: ActionEvenement[] = [
+  "entretien_ajoute",
+  "entretien_modifie",
+  "entretien_retire",
+  "probleme_signale",
+  "entretien_fait",
+  "intervention_validee",
+  "intervention_refusee",
+  "intervention_annulee",
+  "actif_hors_service",
+  "actif_remis_en_service",
+];
+
 function sorteDe(action: ActionEvenement): SorteLigne {
+  if (ENTRETIEN.includes(action)) return "entretien";
   if (action === "registre_exporte") return "export";
   if (action === "note") return "note";
   if (action === "ecart_justifie") return "ecart";
