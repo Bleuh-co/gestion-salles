@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { allowedDomains } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { cheminDeRetour } from "@/lib/retour";
+
+/** Page demandée avant la connexion (?suite=), sinon la liste des salles. */
+function apresConnexion(): string {
+  if (typeof window === "undefined") return "/salles";
+  return cheminDeRetour(new URLSearchParams(window.location.search).get("suite")) ?? "/salles";
+}
 
 export default function LoginPage() {
   const t = useT();
@@ -62,7 +69,7 @@ export default function LoginPage() {
               try { localStorage.setItem("chanv_sidebar_favorites", JSON.stringify(result.favorites)); } catch {}
             }
           }
-          window.location.href = "/salles";
+          window.location.href = apresConnexion();
           return;
         }
         console.warn("SSO refused");
@@ -77,7 +84,7 @@ export default function LoginPage() {
   // Redirection si déjà connecté
   useEffect(() => {
     if (session) {
-      router.replace("/salles");
+      router.replace(apresConnexion());
     }
   }, [session, router]);
 

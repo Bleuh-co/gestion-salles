@@ -36,8 +36,13 @@ function getClientIp(req: NextRequest): string {
 
 export function middleware(req: NextRequest) {
   // Autres routes (pages) : contrat d'embarquement Gandalf (embed + langue + thème).
+  // La page demandée suit la requête (x-gs-chemin) : sans session, la mise en
+  // page renvoie vers /login?suite=<page>, et la connexion y ramène — un code
+  // QR scanné sans être connecté aboutit à SA salle, pas à la liste.
   if (!req.nextUrl.pathname.startsWith("/api/")) {
-    return gandalfMiddleware(req);
+    const headers = new Headers(req.headers);
+    headers.set("x-gs-chemin", req.nextUrl.pathname + req.nextUrl.search);
+    return gandalfMiddleware(new NextRequest(req, { headers }));
   }
 
   const ip = getClientIp(req);

@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { cheminDeRetour } from "@/lib/retour";
 import { getSession } from "@/lib/auth-server";
 import { NavBar } from "@/components/NavBar";
 import { StandaloneWidgets } from "@/components/StandaloneWidgets";
@@ -7,7 +9,10 @@ const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL || "https://gandalf.chanv.com";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await getSession();
-  if (!s) redirect("/login");
+  if (!s) {
+    const suite = cheminDeRetour((await headers()).get("x-gs-chemin"));
+    redirect(suite ? `/login?suite=${encodeURIComponent(suite)}` : "/login");
+  }
 
   return (
     <>
