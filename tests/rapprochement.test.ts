@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { matchSensorToRoom, matchAllSensors } from "../src/lib/sensor-match-core.ts";
+import { matchSensorToRoom, matchAllSensors, getSensorsForRoom } from "../src/lib/sensor-match-core.ts";
 import { proposerSalle } from "../src/lib/registre/orphelins.ts";
 import fx from "./fixtures/salles-capteurs.json" with { type: "json" };
 
@@ -85,4 +85,23 @@ test("salle proposée pour les codes orphelins du relevé", () => {
   for (const [code, salle, certitude] of cas) {
     assert.deepEqual(proposerSalle(code, fx.salles), { salleId: salle, certitude }, code);
   }
+});
+
+test("les capteurs d'une salle sortent dans l'ordre alphabétique, chiffres compris", () => {
+  const ordreFournisseur = ["SECHOIR5", "SECHOIR2", "SECHOIR3", "SECHOIR1", "SECHOIR10", "sechoir4", "SECHOIR9"];
+  const capteurs = ordreFournisseur.map((nom, i) => ({
+    sensor_id: `id-${i}`,
+    sensor_name: nom,
+    last_temp_c: null,
+    last_humidity: null,
+    last_checkin_utc: null,
+    offline: false,
+    battery: null,
+  }));
+  const surcharges = new Map(capteurs.map((c) => [c.sensor_id, "GRAND SECHOIR"]));
+  const salle = getSensorsForRoom(matchAllSensors(capteurs, ["GRAND SECHOIR"], surcharges), "GRAND SECHOIR");
+  assert.deepEqual(
+    salle.map((c) => c.sensor_name),
+    ["SECHOIR1", "SECHOIR2", "SECHOIR3", "sechoir4", "SECHOIR5", "SECHOIR9", "SECHOIR10"]
+  );
 });
