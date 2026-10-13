@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, RefreshCw, Sparkles, Wifi, WifiOff } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
 import { dateCourte, dateHeure, nombre } from "@/lib/registre/libelles";
-import type { Periode } from "@/lib/registre/rattachement";
-import { heureDe, jourDe, lireHeureUtc } from "@/lib/registre/temps";
+import { sejourEfface, type Periode } from "@/lib/registre/rattachement";
+import { estJour, heureDe, instantMontreal, jourDe, lireHeureUtc } from "@/lib/registre/temps";
 import { EmptyState } from "@/components/EmptyState";
 import { CourbeSvg, COULEUR_TEMP } from "./CourbeSvg";
 import { useJson } from "./commun";
@@ -159,6 +159,8 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
   const [salle, setSalle] = useState(c.salleId ?? c.salleProposee ?? "");
   const [jour, setJour] = useState(jourDe(depart));
   const [heure, setHeure] = useState(heureDe(depart));
+  // Date saisie ou proposée d'après les mesures : changer de salle n'y touche plus.
+  const [dateChoisie, setDateChoisie] = useState(false);
   const [ouvert, setOuvert] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -171,6 +173,24 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
   };
   const inchange =
     !!c.enCours && c.enCours.salleId === salle && jourDe(c.enCours.du) === jour && heureDe(c.enCours.du) === heure;
+
+  // Un capteur qui change de salle part maintenant, pas le jour de son arrivée
+  // dans l'ancienne : garder cette date-là effacerait son séjour (sejourEfface).
+  const choisirSalle = (v: string) => {
+    setSalle(v);
+    if (dateChoisie) return;
+    const t0 = c.enCours && v && v !== c.enCours.salleId ? Date.now() : depart;
+    setJour(jourDe(t0));
+    setHeure(heureDe(t0));
+  };
+
+  // Même instant que la route (heure absente = 0 h).
+  const instant = estJour(jour) ? instantMontreal(jour, /^\d{2}:\d{2}$/.test(heure) ? heure : "00:00") : null;
+  const efface = salle && instant != null ? sejourEfface(c.periodes, c.sensorId, salle, instant) : null;
+  const avis = (p: Periode, apres: string | null) =>
+    apres
+      ? t("adminRatt.sejourEfface", { avant: nom(p.salleId), date: dateHeure(p.du, locale), apres: nom(apres) })
+      : t("adminRatt.sejourEffaceRetrait", { avant: nom(p.salleId), date: dateHeure(p.du, locale) });
 
   const envoyer = async (corps: Record<string, unknown>) => {
     setEnvoi(true);
@@ -203,6 +223,7 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
       if (t0) {
         setJour(jourDe(t0));
         setHeure(heureDe(t0));
+        setDateChoisie(true);
       }
     } catch (e) {
       setErreur(e instanceof Error ? e.message : String(e));
@@ -259,7 +280,7 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-[10px] text-slate-400">
             {t("adminRatt.salle")}
-            <select value={salle} onChange={(e) => setSalle(e.target.value)} className="block text-xs border border-chanv-fibre rounded-lg px-2 py-1.5 bg-white max-w-[15rem]">
+            <select value={salle} onChange={(e) => choisirSalle(e.target.value)} className="block text-xs border border-chanv-fibre rounded-lg px-2 py-1.5 bg-white max-w-[15rem]">
               <option value="">{t("adminRatt.choisir")}</option>
               {salles.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -271,8 +292,25 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
           <label className="text-[10px] text-slate-400">
             {t("adminRatt.depuis")}
             <span className="flex gap-1">
-              <input type="date" value={jour} max={jourDe(Date.now())} onChange={(e) => setJour(e.target.value)} className="text-xs border border-chanv-fibre rounded-lg px-2 py-1 bg-white" />
-              <input type="time" value={heure} onChange={(e) => setHeure(e.target.value)} className="text-xs border border-chanv-fibre rounded-lg px-2 py-1 bg-white" />
+              <input
+                type="date"
+                value={jour}
+                max={jourDe(Date.now())}
+                onChange={(e) => {
+                  setJour(e.target.value);
+                  setDateChoisie(true);
+                }}
+                className="text-xs border border-chanv-fibre rounded-lg px-2 py-1 bg-white"
+              />
+              <input
+                type="time"
+                value={heure}
+                onChange={(e) => {
+                  setHeure(e.target.value);
+                  setDateChoisie(true);
+                }}
+                className="text-xs border border-chanv-fibre rounded-lg px-2 py-1 bg-white"
+              />
             </span>
           </label>
           <button onClick={proposer} disabled={propEnCours} className="btn-ghost text-[11px] px-2 py-1.5" title={t("adminRatt.proposerAide")}>
@@ -285,7 +323,10 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
             </button>
           ) : (
             <button
-              onClick={() => envoyer({ op: "rattacher", sensorId: c.sensorId, salleId: salle, jour, heure })}
+              onClick={() => {
+                if (efface && !confirm(`${avis(efface, salle)}\n\n${t("adminRatt.continuer")}`)) return;
+                envoyer({ op: "rattacher", sensorId: c.sensorId, salleId: salle, jour, heure });
+              }}
               disabled={envoi || !salle || inchange}
               className="btn-primary text-[11px] px-3 py-1.5"
             >
@@ -295,7 +336,9 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
           {!c.retire && (
             <button
               onClick={() => {
-                if (confirm(t("adminRatt.confirmerRetrait", { nom: c.nom }))) envoyer({ op: "retirer", sensorId: c.sensorId, jour, heure });
+                const retrait = instant != null ? sejourEfface(c.periodes, c.sensorId, null, instant) : null;
+                const question = t("adminRatt.confirmerRetrait", { nom: c.nom });
+                if (confirm(retrait ? `${question}\n\n${avis(retrait, null)}` : question)) envoyer({ op: "retirer", sensorId: c.sensorId, jour, heure });
               }}
               disabled={envoi}
               className="btn-ghost text-[11px] px-2 py-1.5 text-slate-500"
@@ -306,6 +349,7 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
         </div>
       </div>
       {erreur && <p className="text-xs text-red-600 pl-7">{erreur}</p>}
+      {efface && <p className="text-xs text-amber-700 pl-7">{avis(efface, salle)}</p>}
       {prop && (
         <p className="text-[11px] text-slate-600 pl-7">
           {prop.propose

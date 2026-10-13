@@ -3,7 +3,7 @@ import "server-only";
 import { adminDb } from "@/lib/firebase-admin";
 import type { MatchedSensor } from "@/lib/sensor-match-core";
 import { deleteOverride, loadOverridesDetail, saveOverride, saveRetrait } from "@/lib/sensor-match";
-import { periodeEnCours, proposerDatePose, type Periode, type SourceRattachement } from "@/lib/registre/rattachement";
+import { periodeEnCours, proposerDatePose, sortDePeriode, type Periode, type SourceRattachement } from "@/lib/registre/rattachement";
 import type { Releve } from "@/lib/registre/mesures";
 import { jourDe, lireHeureUtc } from "@/lib/registre/temps";
 import { logAudit } from "./audit";
@@ -89,8 +89,9 @@ export interface Rattachement {
  * Rattache un capteur à une salle (ou le marque retiré) à partir d'un
  * instant. Le passé avant cet instant est gardé, fermé à cet instant ;
  * ce qui commençait après est remplacé. Dans la même salle, la période
- * en cours et les périodes « à confirmer » sont remplacées : la personne
- * vient de donner la vraie date de pose.
+ * en cours et les périodes « à confirmer » qui durent encore à cet
+ * instant sont remplacées : la personne vient de donner la vraie date de
+ * pose. Règle détaillée : sortDePeriode.
  */
 export async function rattacher(r: Rattachement): Promise<{ avant: Periode[]; apres: Periode[] }> {
   const db = adminDb();
@@ -101,14 +102,10 @@ export async function rattacher(r: Rattachement): Promise<{ avant: Periode[]; ap
     const apres: Periode[] = [];
     for (const d of snap.docs) {
       const p = docVersPeriode(d.id, d.data());
-      // Remplacée : commence après la nouvelle date, ou c'est la période en cours
-      // dans la même salle (correction de la date de pose), ou une période
-      // « à confirmer » dans la même salle.
-      const remplacee =
-        p.du >= r.du || (p.salleId === r.salleId && (p.au == null || !p.confirme));
-      if (remplacee) {
+      const sort = sortDePeriode(p, r.salleId, r.du);
+      if (sort === "remplacee") {
         tx.delete(d.ref);
-      } else if (p.au == null || p.au > r.du) {
+      } else if (sort === "coupee") {
         tx.update(d.ref, { au: iso(r.du) });
         apres.push({ ...p, au: r.du });
       } else {

@@ -70,6 +70,39 @@ export function sallesAvecCapteur(periodes: Periode[]): Set<string> {
   return new Set(periodes.map((p) => p.salleId).filter((s): s is string => !!s));
 }
 
+// ---- Effet d'un rattachement daté ---------------------------------------------
+
+export type SortPeriode = "remplacee" | "coupee" | "gardee";
+
+/**
+ * Ce que devient une période du capteur quand on le rattache à `salleId`
+ * (null = retrait) à partir de `du`. Remplacée : elle commence à `du` ou
+ * après, ou c'est un séjour dans la même salle qui dure encore à `du` —
+ * la période en cours (date de pose corrigée) ou une période « à
+ * confirmer ». Un séjour fini avant `du` est gardé, même à confirmer :
+ * le capteur qui revient dans sa salle ne lui retire pas son premier
+ * séjour. Coupée : elle dure encore à `du`, elle s'arrête là.
+ */
+export function sortDePeriode(p: Periode, salleId: string | null, du: number): SortPeriode {
+  if (p.du >= du) return "remplacee";
+  if (p.salleId === salleId && (p.au == null || (!p.confirme && p.au > du))) return "remplacee";
+  if (p.au == null || p.au > du) return "coupee";
+  return "gardee";
+}
+
+/**
+ * Séjour en cours qu'effacerait un changement de salle (ou un retrait)
+ * daté du jour de l'arrivée du capteur ou d'avant : tout ce qu'il y a
+ * mesuré passerait dans la nouvelle salle (ou dans aucune). null pour un
+ * déplacement daté après l'arrivée, ou une date de pose corrigée dans la
+ * même salle.
+ */
+export function sejourEfface(periodes: Periode[], sensorId: string, salleId: string | null, du: number): Periode | null {
+  const p = periodeEnCours(periodes, sensorId);
+  if (!p?.salleId || p.salleId === salleId) return null;
+  return sortDePeriode(p, salleId, du) === "remplacee" ? p : null;
+}
+
 // ---- Date de pose proposée d'après les mesures ------------------------------
 
 function mediane(vals: number[]): number {
