@@ -182,11 +182,25 @@ export function matchAllSensors(
 }
 
 /**
- * Get sensors for a specific room.
+ * Ordre d'affichage des capteurs d'une salle : alphabétique sur le nom
+ * affiché, chiffres compris comme des nombres (SECHOIR2 avant SECHOIR10).
+ */
+export function compareSensors(
+  a: { sensor_id: string; sensor_name?: string | null },
+  b: { sensor_id: string; sensor_name?: string | null }
+): number {
+  return (a.sensor_name || a.sensor_id).localeCompare(b.sensor_name || b.sensor_id, "fr", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+/**
+ * Get sensors for a specific room, in alphabetical order.
  */
 export function getSensorsForRoom(
   matchedSensors: MatchedSensor[],
   localId: string
 ): MatchedSensor[] {
-  return matchedSensors.filter((s) => s.matched_local_id === localId);
+  return matchedSensors.filter((s) => s.matched_local_id === localId).sort(compareSensors);
 }

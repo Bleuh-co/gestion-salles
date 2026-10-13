@@ -6,6 +6,7 @@ import type { Local } from "@/lib/types";
 import { FAMILLE_SHORT } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { LocalStatusBadge } from "./LocalStatusBadge";
+import { compareSensors } from "@/lib/sensor-match-core";
 import {
   ZoomIn, ZoomOut, RotateCcw, RefreshCw, Loader2, Maximize2, X,
   Thermometer, Building, Layers, Shield, QrCode, GripVertical, Save,
@@ -115,6 +116,7 @@ function clientMatchSensors(
     }
   }
 
+  for (const arr of result.values()) arr.sort(compareSensors);
   return result;
 }
 
