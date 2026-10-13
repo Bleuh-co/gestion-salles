@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       par,
       note: texteCourt(body.note, 300) ?? "",
     });
-    return NextResponse.json({ status: "success", periodes: res.apres });
+    return NextResponse.json({ status: "success", periodes: res.apres, plan: res.plan });
   } catch (e) {
     return reponseErreur(e);
   }

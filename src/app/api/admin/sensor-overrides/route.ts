@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
     // Rattachement daté à partir de maintenant (le passé du capteur reste où il était).
     const capteur = (await listAllSensors()).find((s) => s.sensor_id === sensor_id);
-    await rattacher({
+    const { plan } = await rattacher({
       sensorId: sensor_id,
       sensorName: capteur?.sensor_name || sensor_id,
       provider: capteur?.provider,
@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       status: "success",
       sensor_id,
       local_id,
+      plan,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";

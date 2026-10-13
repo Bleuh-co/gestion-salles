@@ -6,9 +6,11 @@ import { deleteOverride, loadOverridesDetail, saveOverride, saveRetrait } from "
 import { periodeEnCours, proposerDatePose, sortDePeriode, type Periode, type SourceRattachement } from "@/lib/registre/rattachement";
 import type { Releve } from "@/lib/registre/mesures";
 import { jourDe, lireHeureUtc } from "@/lib/registre/temps";
+import type { SuiviPlan } from "@/lib/plan-capteurs";
 import { logAudit } from "./audit";
 import { cached, invalidate } from "./cache";
 import { nomsPersonnes } from "./personnes";
+import { suivreSurLePlan } from "./plan-capteurs";
 import type { Auteur } from "./registre";
 
 // ============================================================
@@ -91,9 +93,10 @@ export interface Rattachement {
  * ce qui commençait après est remplacé. Dans la même salle, la période
  * en cours et les périodes « à confirmer » qui durent encore à cet
  * instant sont remplacées : la personne vient de donner la vraie date de
- * pose. Règle détaillée : sortDePeriode.
+ * pose. Règle détaillée : sortDePeriode. Quand la salle change, le point
+ * du capteur sur le plan de GANDALF la suit (repo/plan-capteurs.ts).
  */
-export async function rattacher(r: Rattachement): Promise<{ avant: Periode[]; apres: Periode[] }> {
+export async function rattacher(r: Rattachement): Promise<{ avant: Periode[]; apres: Periode[]; plan: SuiviPlan }> {
   const db = adminDb();
   const maintenant = Date.now();
   const res = await db.runTransaction(async (tx) => {
@@ -136,6 +139,17 @@ export async function rattacher(r: Rattachement): Promise<{ avant: Periode[]; ap
   else await saveRetrait(r.sensorId, r.par.email);
   invaliderPeriodes();
 
+  // Le registre d'abord : un plan qui n'a pas suivi n'annule pas le changement, l'écran le dit.
+  let plan: SuiviPlan = { action: "rien" };
+  if (r.salleId === null || periodeEnCours(res.avant, r.sensorId)?.salleId !== r.salleId) {
+    try {
+      plan = await suivreSurLePlan(r.sensorId, r.salleId, r.par.email);
+    } catch (e) {
+      console.error("[rattachements] plan de GANDALF", r.sensorId, e);
+      plan = { action: "erreur", erreur: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   const resume = (l: Periode[]) =>
     l
       .sort((a, b) => a.du - b.du)
@@ -149,7 +163,7 @@ export async function rattacher(r: Rattachement): Promise<{ avant: Periode[]; ap
     changes: { rattachement: { before: resume(res.avant), after: resume(res.apres) } },
     user: r.par.email,
   });
-  return res;
+  return { ...res, plan };
 }
 
 /** Valide la date de pose proposée d'une période, sans la changer. */
@@ -257,6 +271,15 @@ export async function synchroniserPeriodes(
       return true;
     });
     if (fait) changes++;
+    // Nouvelle salle venue d'ailleurs (nom du capteur, choix manuel) : le point suit.
+    // Une salle perdue (nom changé chez le fournisseur) ne retire rien du plan.
+    if (fait && salleId) {
+      try {
+        await suivreSurLePlan(s.sensor_id, salleId, par || "gestion-salles");
+      } catch (e) {
+        console.warn("[rattachements] plan de GANDALF", s.sensor_id, e);
+      }
+    }
   }
   invaliderPeriodes();
   return changes;

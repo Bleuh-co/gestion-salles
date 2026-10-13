@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, RefreshCw, Sparkles, Wifi, WifiOff } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
+import type { SuiviPlan } from "@/lib/plan-capteurs";
 import { dateCourte, dateHeure, nombre } from "@/lib/registre/libelles";
 import { sejourEfface, type Periode } from "@/lib/registre/rattachement";
 import { estJour, heureDe, instantMontreal, jourDe, lireHeureUtc } from "@/lib/registre/temps";
@@ -192,6 +194,13 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
       ? t("adminRatt.sejourEfface", { avant: nom(p.salleId), date: dateHeure(p.du, locale), apres: nom(apres) })
       : t("adminRatt.sejourEffaceRetrait", { avant: nom(p.salleId), date: dateHeure(p.du, locale) });
 
+  // Le point du capteur sur le plan de GANDALF suit la salle : dire ce qu'il a fait.
+  const annoncerPlan = (p?: SuiviPlan) => {
+    if (p?.action === "place") toast.success(t("adminRatt.planPlace", { salle: nom(p.salleId), plan: p.planNom }));
+    else if (p?.action === "retire") toast.info(t(p.salleId ? "adminRatt.planRetireSansRepere" : "adminRatt.planRetire"));
+    else if (p?.action === "erreur") toast.warning(t("adminRatt.planErreur", { erreur: p.erreur }));
+  };
+
   const envoyer = async (corps: Record<string, unknown>) => {
     setEnvoi(true);
     setErreur(null);
@@ -203,6 +212,7 @@ function LigneCapteur({ c, salles, onFait, locale }: { c: CapteurAdmin; salles: 
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      annoncerPlan(d.plan);
       onFait();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : String(e));
