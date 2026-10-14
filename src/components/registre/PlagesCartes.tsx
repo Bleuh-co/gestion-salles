@@ -77,7 +77,32 @@ function ModifierPlages({ salleId, plages, onClose }: { salleId: string; plages:
   const [erreur, setErreur] = useState<string | null>(null);
   const nombre = (s: string) => (s.trim() === "" ? null : Number(s.replace(",", ".")));
 
+  // Une saisie qui n'est pas un nombre, ou hors des bornes du serveur, se dit ici
+  // (avant, « 4 °C » partait vide et effaçait la borne sans message).
+  const BORNES: Record<keyof typeof v, { min: number; max: number; libelle: string }> = {
+    plageTempMin: { min: -80, max: 80, libelle: t("plages.tempMin") },
+    plageTempMax: { min: -80, max: 80, libelle: t("plages.tempMax") },
+    plageHumMin: { min: 0, max: 100, libelle: t("plages.humMin") },
+    plageHumMax: { min: 0, max: 100, libelle: t("plages.humMax") },
+    plageSeuil: { min: 1, max: 48, libelle: t("plages.seuilLibelle") },
+  };
+  const invalide = (): string | null => {
+    for (const k of Object.keys(BORNES) as (keyof typeof v)[]) {
+      const n = nombre(v[k]);
+      const b = BORNES[k];
+      if (n != null && (!Number.isFinite(n) || n < b.min || n > b.max)) {
+        return t("plages.nombreInvalide", { champ: b.libelle, min: String(b.min), max: String(b.max) });
+      }
+    }
+    return null;
+  };
+
   const envoyer = async () => {
+    const probleme = invalide();
+    if (probleme) {
+      setErreur(probleme);
+      return;
+    }
     setEnvoi(true);
     setErreur(null);
     try {
