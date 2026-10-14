@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth-server";
 import { getServerLang } from "@/lib/i18n-server";
 import { LANG_LOCALES, translator } from "@/lib/i18n-dict";
 import { inscrire } from "@/lib/repo/registre";
-import { chargerExport, lireDemande, plagesTexte } from "@/lib/registre/export";
+import { chargerExport, lireDemande, plagesTexte, type DemandeExport } from "@/lib/registre/export";
 import { actifsPresentsA, courbesDe, type DonneesSalle } from "@/lib/registre/service";
 import { auteurLigne, dateCourte, dateHeure, dateLongue, decrireLigne, duree, heure, nombre, type Formats } from "@/lib/registre/libelles";
 import { parJour, type Releve } from "@/lib/registre/mesures";
@@ -84,7 +84,7 @@ export default async function ImprimerRegistre({
       <style>{CSS}</style>
       <BoutonImprimer libelle={t("imprimer.imprimer")} aide={t("imprimer.aide")} />
       {sections.map(({ d, actifs, entretien }) => (
-        <Section key={d.salle.id} d={d} actifs={actifs} entretien={entretien} f={f} parNom={par.nom || par.email} maintenant={x.maintenant} />
+        <Section key={d.salle.id} d={d} actifs={actifs} entretien={entretien} f={f} parNom={par.nom || par.email} maintenant={x.maintenant} contenu={demande.contenu} />
       ))}
     </div>
   );
@@ -97,6 +97,7 @@ function Section({
   f,
   parNom,
   maintenant,
+  contenu,
 }: {
   d: DonneesSalle;
   actifs: { id: string; matricule: string; nom: string; statut: string }[];
@@ -104,6 +105,8 @@ function Section({
   f: Formats;
   parNom: string;
   maintenant: number;
+  /** Les cases « Contenu » de la fenêtre d'export (journal, résumé par jour, actifs). */
+  contenu: DemandeExport["contenu"];
 }) {
   const { t, locale } = f;
   const s = d.stats;
@@ -203,6 +206,8 @@ function Section({
         </>
       )}
 
+      {contenu.journal && (
+        <>
       <h2>{t("imprimer.journal")}</h2>
       {journal.length ? (
         <table className="liste">
@@ -228,7 +233,11 @@ function Section({
           {capteursEnPlace.map((c) => ` ${t("imprimer.capteurEnPlace", { nom: c.nom, date: dateLongue(c.depuis!, locale) })}`).join("")}
         </p>
       )}
+        </>
+      )}
 
+      {contenu.actifs && (
+        <>
       <h2>{t("imprimer.actifsPresents", { date: dateLongue(fin, locale) })}</h2>
       {actifs.length ? (
         <table className="liste">
@@ -251,6 +260,8 @@ function Section({
         </table>
       ) : (
         <p className="note">{t("ligne.ouvertureAucunActif")}</p>
+      )}
+        </>
       )}
 
       {entretien && (entretien.regles.length > 0 || entretien.interventions.length > 0) && (
@@ -304,7 +315,7 @@ function Section({
         </div>
       </div>
 
-      {resume.length > 0 && (
+      {contenu.parJour && resume.length > 0 && (
         <div className="suite">
           <h2>{t("capteurs.resumeParJour")}</h2>
           <table className="liste nombres">
