@@ -3,6 +3,7 @@ import "server-only";
 import { adminDb } from "@/lib/firebase-admin";
 import type { Actif } from "@/lib/types";
 import { cached, invalidate } from "./cache";
+import { sallesDesservies } from "@/lib/registre/actifs";
 
 // ============================================================
 // Repo Actifs (équipements) — Firestore est la source de vérité
@@ -80,7 +81,7 @@ export async function getActif(id: string): Promise<Actif | undefined> {
 
 export async function getActifsBySalle(salleId: string): Promise<Actif[]> {
   const all = await getAllActifs();
-  return all.filter((a) => a.idSalle === salleId || a.locauxDesservis.includes(salleId));
+  return all.filter((a) => a.idSalle === salleId || sallesDesservies(a.locauxDesservis).includes(salleId));
 }
 
 // ============================================================

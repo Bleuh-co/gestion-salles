@@ -233,10 +233,15 @@ export function ActifFormModal({
                   {t("actifForm.room")}
                 </label>
                 <select
-                  value={salleInconnue ? "" : idSalle}
+                  value={idSalle}
                   onChange={(e) => setIdSalle(e.target.value)}
                   className="w-full text-sm border border-chanv-fibre rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-chanv-beige/50"
                 >
+                  {salleInconnue && (
+                    <option value={idSalle} disabled>
+                      {t("actifsSalle.codeInconnu", { code: idSalle })}
+                    </option>
+                  )}
                   <option value="">{t("actifForm.roomNone")}</option>
                   {sortedSalles.map((s) => (
                     <option key={s.id} value={s.id}>

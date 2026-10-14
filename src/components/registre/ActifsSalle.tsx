@@ -129,7 +129,7 @@ export function ActifsSalle({ salleId, lignes, estAdmin, salles, tousActifs, onH
                     <td className="px-4 py-3">
                       <span
                         className={`badge text-xs ${
-                          a.statut === "En Construction" ? "bg-amber-100 text-amber-700" : a.statut === "En Attente" ? "bg-slate-100 text-slate-600" : "bg-green-100 text-green-700"
+                          a.statut === "En Construction" ? "bg-amber-100 text-amber-700" : a.statut === "En Attente" ? "bg-slate-100 text-slate-600" : a.statut === "Hors Service" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
                         }`}
                       >
                         {a.statut || "—"}

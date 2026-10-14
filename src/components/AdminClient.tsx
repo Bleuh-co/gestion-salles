@@ -291,6 +291,7 @@ function AdminLocauxTable({
       setLocalOverrides((prev) => ({ ...prev, [localId]: value }));
     } catch (e) {
       console.error("Save nomSalle failed", e);
+      alert(`❌ ${t("admin.nomNonEnregistre", { erreur: e instanceof Error ? e.message : t("admin.error") })}`);
     } finally {
       setSavingId(null);
       setEditingId(null);
