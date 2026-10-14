@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Local } from "@/lib/types";
 import { FAMILLE_SHORT } from "@/lib/types";
 import { useT } from "@/lib/i18n";
+import { toast } from "sonner";
 import { LocalStatusBadge } from "./LocalStatusBadge";
 import { compareSensors } from "@/lib/sensor-match-core";
 import {
@@ -351,8 +352,8 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
   const roomPositionsRef = useRef(roomPositions);
   roomPositionsRef.current = roomPositions;
 
-  const savePositions = useCallback(async (positionsOverride?: Record<string, { x: number; y: number }>) => {
-    if (!currentPlanId) return;
+  const savePositions = useCallback(async (positionsOverride?: Record<string, { x: number; y: number }>): Promise<boolean> => {
+    if (!currentPlanId) return false;
     const positionsToSave = positionsOverride ?? roomPositionsRef.current;
     setSaving(true);
     try {
@@ -363,17 +364,20 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
       });
       if (!res.ok) throw new Error("Échec sauvegarde");
       setDirty(false);
+      return true;
     } catch (err) {
       console.error("Save failed", err);
+      toast.error(t("plan.saveFailed"));
+      return false;
     } finally {
       setSaving(false);
     }
-  }, [currentPlanId]);
+  }, [currentPlanId, t]);
 
-  // Wrapper that also exits edit mode (for the toolbar button)
+  // Wrapper that also exits edit mode (for the toolbar button) — only once saved:
+  // a failed save keeps the edits on screen instead of silently dropping them.
   const saveAndExitEdit = useCallback(async () => {
-    await savePositions();
-    setEditMode(false);
+    if (await savePositions()) setEditMode(false);
   }, [savePositions]);
 
   // ---- Room helpers ----
@@ -405,16 +409,14 @@ export function FloorPlanView({ locaux, isAdmin = false, familleColors }: FloorP
   }, []);
 
   const removeRoomFromPlan = useCallback((roomId: string) => {
-    // Compute new positions from ref (always current)
+    // Comme un déplacement ou un ajout : la salle quitte le plan à l'écran, et
+    // « Sauvegarder » l'enregistre ; « Annuler » la remet (avant, le retrait
+    // s'enregistrait aussitôt et « Annuler » ne pouvait plus rien).
     const newPositions = { ...roomPositionsRef.current };
     delete newPositions[roomId];
-
-    // Update local state
     setRoomPositions(newPositions);
-
-    // Auto-save immediately (outside setState)
-    savePositions(newPositions);
-  }, [savePositions]);
+    setDirty(true);
+  }, []);
 
   // ---- Tray state ----
   const [traySearch, setTraySearch] = useState("");
