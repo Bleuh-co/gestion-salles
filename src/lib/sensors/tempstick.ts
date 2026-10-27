@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ProviderReading, ProviderSensor, SensorProvider } from "./provider";
 import { ajouterJours, lireHeureUtc } from "@/lib/registre/temps";
+import { derniereMesure, mesuresDesReleves } from "./sonde";
 
 // ============================================================
 // Fournisseur TempStick — capteurs température/humidité
@@ -43,18 +44,22 @@ async function listSensors(): Promise<ProviderSensor[]> {
     const items = data?.data?.items || data?.data || [];
     const arr = Array.isArray(items) ? items : [];
 
-    const sensors: ProviderSensor[] = arr.map((s: Record<string, unknown>) => ({
-      sensor_id: String(s.sensor_id || ""),
-      sensor_name: (s.sensor_name as string) || null,
-      last_temp_c: s.last_temp != null ? Number(s.last_temp) : null,
-      last_humidity: s.last_humidity != null ? Number(s.last_humidity) : null,
-      last_checkin_utc: (s.last_checkin as string) || null,
-      offline: s.offline === 1 || s.offline === true,
-      battery: (s.battery_pct as number) || (s.battery as number) || null,
-      provider: PROVIDER_ID,
-      created_utc: (s.created as string) || null,
-      send_interval_s: Number(s.send_interval) > 0 ? Number(s.send_interval) : null,
-    }));
+    const sensors: ProviderSensor[] = arr.map((s: Record<string, unknown>) => {
+      // Capteur à sonde (conteneurs) : la sonde, pas le boîtier — voir sonde.ts.
+      const m = derniereMesure(s);
+      return {
+        sensor_id: String(s.sensor_id || ""),
+        sensor_name: (s.sensor_name as string) || null,
+        last_temp_c: m.c,
+        last_humidity: m.h,
+        last_checkin_utc: (s.last_checkin as string) || null,
+        offline: s.offline === 1 || s.offline === true,
+        battery: (s.battery_pct as number) || (s.battery as number) || null,
+        provider: PROVIDER_ID,
+        created_utc: (s.created as string) || null,
+        send_interval_s: Number(s.send_interval) > 0 ? Number(s.send_interval) : null,
+      };
+    });
 
     _cache = { sensors, at: Date.now() };
     return sensors;
@@ -62,12 +67,6 @@ async function listSensors(): Promise<ProviderSensor[]> {
     console.warn("[tempstick] listSensors failed", e);
     return _cache?.sensors || [];
   }
-}
-
-function nombre(v: unknown): number | null {
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
 }
 
 /**
@@ -96,12 +95,14 @@ async function readings(sensorId: string, jourDebut: string, jourFin: string): P
   const data = await res.json();
   if (data?.type === "error") throw new Error(`TempStick : ${data.message || "erreur"}`);
   const raw = data?.data?.readings ?? data?.data ?? [];
+  const liste: Record<string, unknown>[] = Array.isArray(raw) ? raw : [];
+  const mesures = mesuresDesReleves(liste);
   const out: ProviderReading[] = [];
-  for (const r of Array.isArray(raw) ? raw : []) {
+  liste.forEach((r, i) => {
     const t = lireHeureUtc(r?.sensor_time ?? r?.created);
-    if (t == null) continue;
-    out.push({ t, c: nombre(r?.temperature), h: nombre(r?.humidity) });
-  }
+    if (t == null) return;
+    out.push({ t, ...mesures[i] });
+  });
   return out.sort((a, b) => a.t - b.t);
 }
 
