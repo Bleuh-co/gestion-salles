@@ -23,10 +23,15 @@ function nombre(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Dernière mesure à afficher pour un capteur de /sensors/all. */
+/**
+ * Dernière mesure à afficher pour un capteur de /sensors/all. TC_M = 1 :
+ * capteur réglé en mode sonde. Une sonde muette (« n » : câble débranché
+ * ou sonde en panne, vu sur CONTENEUR#1 le 28/10/2026) donne une mesure
+ * vide, jamais le boîtier.
+ */
 export function derniereMesure(s: Record<string, unknown>): { c: number | null; h: number | null; sonde: boolean } {
   const sonde = temperatureSonde(s.last_tcTemp);
-  if (sonde != null) return { c: sonde, h: null, sonde: true };
+  if (sonde != null || Number(s.TC_M) === 1) return { c: sonde, h: null, sonde: true };
   return { c: nombre(s.last_temp), h: nombre(s.last_humidity), sonde: false };
 }
 
