@@ -14,10 +14,22 @@ test("un capteur sans sonde garde sa température et son humidité", () => {
   assert.deepEqual(derniereMesure(sechoir1), { c: 17.61, h: 45.2, sonde: false });
 });
 
-test("une sonde absente ou débranchée ne remplace pas le boîtier", () => {
-  for (const v of [null, undefined, "", "-9999", "abc"]) {
+test("une sonde muette (mode sonde, TC_M = 1) laisse la mesure vide, jamais le boîtier", () => {
+  // CONTENEUR#1 le 28/10/2026 : last_tcTemp « n » depuis la veille, boîtier à -3 °C 80,8 %.
+  for (const v of ["n", null, undefined, "", "-9999", "abc"]) {
     assert.equal(temperatureSonde(v), null, String(v));
-    assert.equal(derniereMesure({ ...conteneur1, last_tcTemp: v }).c, 7.36);
+    assert.deepEqual(
+      derniereMesure({ ...conteneur1, last_temp: -3, last_humidity: 80.8, last_tcTemp: v }),
+      { c: null, h: null, sonde: true },
+      String(v),
+    );
+  }
+});
+
+test("sans mode sonde, une sonde absente laisse le boîtier", () => {
+  const { TC_M: _mode, ...sansMode } = conteneur1;
+  for (const v of [null, undefined, "", "-9999", "abc", "n"]) {
+    assert.deepEqual(derniereMesure({ ...sansMode, last_tcTemp: v }), { c: 7.36, h: 37.8, sonde: false }, String(v));
   }
 });
 
