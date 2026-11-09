@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, Flag, Loader2, Plus, Wrench } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, Flag, Loader2, Pencil, Plus, Wrench } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
 import { useJson } from "@/components/registre/commun";
 import { EmptyState } from "@/components/EmptyState";
@@ -64,6 +64,10 @@ export function EntretienSalle({ salleId, onCompte }: { salleId: string; onCompt
   const retards = vue.enRetard.map((r) => r.retard).sort((a, b) => b - a);
   const montrer = (f: Filtre) => filtre === "tout" || filtre === f;
   const ouvrir = (id: string) => router.push(`/entretien/interventions/${encodeURIComponent(id)}`);
+  // Un gestionnaire modifie tout entretien de la salle, pas seulement ceux
+  // « sans date » : sinon un entretien planifié ne se corrige que depuis
+  // le plan d'entretien, que l'équipe ne trouve pas.
+  const modifierSi = (r: RegleVue) => (data.gestionnaire ? () => setModifier(r) : undefined);
 
   return (
     <div className={`space-y-5 transition-opacity ${chargement ? "opacity-60" : ""}`}>
@@ -108,7 +112,7 @@ export function EntretienSalle({ salleId, onCompte }: { salleId: string; onCompt
       {montrer("retard") && vue.enRetard.length > 0 && (
         <Section titre={t("entretienSalle.enRetard")}>
           {vue.enRetard.map((r) => (
-            <LigneRegle key={r.id} r={r} freq={freq} locale={locale} onOuvrir={r.interventionOuverte ? () => ouvrir(r.interventionOuverte!) : undefined} />
+            <LigneRegle key={r.id} r={r} freq={freq} locale={locale} onOuvrir={r.interventionOuverte ? () => ouvrir(r.interventionOuverte!) : undefined} onModifier={modifierSi(r)} />
           ))}
         </Section>
       )}
@@ -127,14 +131,14 @@ export function EntretienSalle({ salleId, onCompte }: { salleId: string; onCompt
 
       {filtre === "tout" && vue.aVenir.length > 0 && (
         <Section titre={t("entretienSalle.aVenir")}>
-          {vue.aVenir.map((r) => <LigneRegle key={r.id} r={r} freq={freq} locale={locale} />)}
+          {vue.aVenir.map((r) => <LigneRegle key={r.id} r={r} freq={freq} locale={locale} onModifier={modifierSi(r)} />)}
         </Section>
       )}
 
       {montrer("sansSuite") && vue.sansSuite.length > 0 && (
         <Section titre={t("entretienSalle.sansDate")}>
           {vue.sansSuite.map((r) => (
-            <LigneRegle key={r.id} r={r} freq={freq} locale={locale} onModifier={data.gestionnaire ? () => setModifier(r) : undefined} />
+            <LigneRegle key={r.id} r={r} freq={freq} locale={locale} onModifier={modifierSi(r)} />
           ))}
         </Section>
       )}
@@ -298,7 +302,9 @@ function LigneRegle({
           </button>
         )}
         {onModifier && (
-          <button onClick={onModifier} className="text-xs underline text-chanv-terre">{t("entretienSalle.completer")}</button>
+          <button onClick={onModifier} className="text-xs underline text-chanv-terre inline-flex items-center gap-1">
+            <Pencil className="w-3 h-3" /> {r.etatVue === "a_planifier" ? t("entretienSalle.completer") : t("regles.modifier")}
+          </button>
         )}
       </div>
     </div>
