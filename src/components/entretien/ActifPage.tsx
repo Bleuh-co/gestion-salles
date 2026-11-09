@@ -3,11 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Camera, FileText, History, Loader2, Plus, Printer, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Camera, FileText, History, Loader2, Pencil, Plus, Printer, Wrench } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
 import { useJson } from "@/components/registre/commun";
 import { RegistreTab } from "@/components/registre/RegistreTab";
-import { BadgeRetard, BadgeStatut, envoyer, jourCourt, reduirePhoto, useFrequence, type VueActif } from "./commun";
+import { BadgeRetard, BadgeStatut, envoyer, jourCourt, reduirePhoto, useFrequence, type RegleVue, type VueActif } from "./commun";
 import { RegleDialog } from "./RegleDialog";
 import { SignalerForm } from "./SignalerForm";
 
@@ -26,6 +26,7 @@ export function ActifPage({ actifId }: { actifId: string }) {
   const { data, erreur, recharger } = useJson<VueActif & { gestionnaire: boolean }>(`/api/entretien/actifs/${encodeURIComponent(actifId)}`);
   const [onglet, setOnglet] = useState<Onglet>("entretien");
   const [ajouter, setAjouter] = useState(false);
+  const [modifier, setModifier] = useState<RegleVue | null>(null);
   const [signaler, setSignaler] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -185,6 +186,19 @@ export function ActifPage({ actifId }: { actifId: string }) {
                       {iv && <BadgeStatut statut={iv.statut} />}
                       {r.etatVue === "en_retard" && <BadgeRetard retard={r.retard} />}
                       {r.etatVue === "a_planifier" && <span className="badge text-[11px] bg-sky-100 text-sky-700">{t("entretienSalle.aPlanifier")}</span>}
+                      {data.gestionnaire && (
+                        <button
+                          onClick={(e) => {
+                            // La ligne peut être un lien vers l'intervention ouverte.
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setModifier(r);
+                          }}
+                          className="text-xs underline text-chanv-terre inline-flex items-center gap-1"
+                        >
+                          <Pencil className="w-3 h-3" /> {t("regles.modifier")}
+                        </button>
+                      )}
                     </div>
                   </>
                 );
@@ -243,6 +257,18 @@ export function ActifPage({ actifId }: { actifId: string }) {
           onClose={() => setAjouter(false)}
           onSaved={() => {
             setAjouter(false);
+            recharger();
+          }}
+        />
+      )}
+      {modifier && (
+        <RegleDialog
+          mode="modifier"
+          regleId={modifier.id}
+          initiale={modifier}
+          onClose={() => setModifier(null)}
+          onSaved={() => {
+            setModifier(null);
             recharger();
           }}
         />
