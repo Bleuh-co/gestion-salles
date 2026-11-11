@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Camera, CheckSquare, ExternalLink, FileText, Loader2, Square } from "lucide-react";
+import { ArrowLeft, Camera, CheckSquare, ExternalLink, FileText, Loader2, Pencil, Square } from "lucide-react";
 import { useLocale, useT } from "@/lib/i18n";
 import { useJson } from "@/components/registre/commun";
 import { CLASSE_CHAMP } from "@/components/registre/Fenetre";
 import type { Regle } from "@/lib/entretien/types";
 import { BadgeRetard, BadgeStatut, ChoixPersonne, envoyer, instantCourt, jourCourt, reduirePhoto, useFrequence, type InterventionVue } from "./commun";
+import { RegleDialog } from "./RegleDialog";
 
 // ============================================================
 // Une intervention (maquette V6) : la consigne, la liste de contrôle,
@@ -34,6 +35,7 @@ export function InterventionPage({ id, hubUrl }: { id: string; hubUrl: string })
   const [geste, setGeste] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null);
   const [remettre, setRemettre] = useState(true);
+  const [modifier, setModifier] = useState(false);
   const champ = useRef<HTMLInputElement>(null);
 
   if (erreur) return <p className="text-sm text-red-600 pt-6">{erreur}</p>;
@@ -110,6 +112,11 @@ export function InterventionPage({ id, hubUrl }: { id: string; hubUrl: string })
             <a href={`${hubUrl}/?view=tasks&task=${encodeURIComponent(iv.tacheId)}`} target="_top" className="text-xs underline text-chanv-terre inline-flex items-center gap-1">
               <ExternalLink className="w-3 h-3" /> {t("intervention.tacheGandalf")}
             </a>
+          )}
+          {data.droits.gerer && data.regle && data.regle.etat !== "archivee" && (
+            <button onClick={() => setModifier(true)} className="text-xs underline text-chanv-terre inline-flex items-center gap-1">
+              <Pencil className="w-3 h-3" /> {t("regle.modifierTitre")}
+            </button>
           )}
         </div>
       </div>
@@ -280,6 +287,19 @@ export function InterventionPage({ id, hubUrl }: { id: string; hubUrl: string })
         {iv.valideA && <div>{t("intervention.valideLe", { nom: iv.validePar?.nom || "—", date: instantCourt(iv.valideA, locale) })}</div>}
         {iv.annuleA && <div>{t("intervention.annuleeLe", { nom: iv.annulePar?.nom || "—", date: instantCourt(iv.annuleA, locale), motif: iv.motif })}</div>}
       </div>
+
+      {modifier && data.regle && (
+        <RegleDialog
+          mode="modifier"
+          regleId={data.regle.id}
+          initiale={data.regle}
+          onClose={() => setModifier(false)}
+          onSaved={() => {
+            setModifier(false);
+            recharger();
+          }}
+        />
+      )}
     </div>
   );
 }

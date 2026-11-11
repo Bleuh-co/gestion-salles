@@ -68,6 +68,12 @@ export function EntretienSalle({ salleId, onCompte }: { salleId: string; onCompt
   // « sans date » : sinon un entretien planifié ne se corrige que depuis
   // le plan d'entretien, que l'équipe ne trouve pas.
   const modifierSi = (r: RegleVue) => (data.gestionnaire ? () => setModifier(r) : undefined);
+  // Dès que sa tâche s'ouvre, un entretien n'apparaît plus que par elle,
+  // sous « En cours » : la ligne de la tâche porte donc aussi le lien.
+  const modifierRegleDe = (iv: InterventionVue) => {
+    const r = iv.regleId ? data.regles.find((x) => x.id === iv.regleId) : undefined;
+    return r ? modifierSi(r) : undefined;
+  };
 
   return (
     <div className={`space-y-5 transition-opacity ${chargement ? "opacity-60" : ""}`}>
@@ -125,7 +131,7 @@ export function EntretienSalle({ salleId, onCompte }: { salleId: string; onCompt
 
       {(filtre === "tout" || filtre === "interventions") && vue.enCours.length > 0 && (
         <Section titre={t("entretienSalle.enCours")}>
-          {vue.enCours.map((iv) => <LigneIntervention key={iv.id} iv={iv} locale={locale} onOuvrir={() => ouvrir(iv.id)} />)}
+          {vue.enCours.map((iv) => <LigneIntervention key={iv.id} iv={iv} locale={locale} onOuvrir={() => ouvrir(iv.id)} onModifier={modifierRegleDe(iv)} />)}
         </Section>
       )}
 
@@ -311,35 +317,52 @@ function LigneRegle({
   );
 }
 
-function LigneIntervention({ iv, locale, onOuvrir }: { iv: InterventionVue; locale: string; onOuvrir: () => void }) {
+function LigneIntervention({
+  iv,
+  locale,
+  onOuvrir,
+  onModifier,
+}: {
+  iv: InterventionVue;
+  locale: string;
+  onOuvrir: () => void;
+  onModifier?: () => void;
+}) {
   const t = useT();
   const Icone = iv.genre === "probleme" ? Flag : iv.statut === "validee" ? CheckCircle2 : Wrench;
   return (
-    <button onClick={onOuvrir} className="section-card p-4 flex items-start gap-3 w-full text-left hover:bg-chanv-fibre/20">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iv.genre === "probleme" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>
-        <Icone className="w-4 h-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-chanv-terre">
-          <strong>{iv.genre === "probleme" ? `« ${iv.description.slice(0, 120)} »` : iv.titre}</strong>
-          {iv.equipements ? <> — {iv.equipements}</> : null}
+    <div className="section-card p-0 flex items-start hover:bg-chanv-fibre/20">
+      <button onClick={onOuvrir} className="p-4 flex items-start gap-3 flex-1 min-w-0 text-left">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iv.genre === "probleme" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>
+          <Icone className="w-4 h-4" />
         </div>
-        <div className="text-[12px] text-slate-500 mt-0.5">
-          {[
-            iv.genre === "probleme" && iv.priorite != null ? t("entretienSalle.priorite", { p: iv.priorite }) : null,
-            iv.signalePar ? t("entretienSalle.signalePar", { nom: iv.signalePar.nom || iv.signalePar.email }) : null,
-            iv.assignesNoms.length ? iv.assignesNoms.join(", ") : t("entretienSalle.personne"),
-            iv.echeance ? t("entretienSalle.echeance", { date: jourCourt(iv.echeance, locale) }) : null,
-            iv.photos.length ? t("ligne.photos", { n: iv.photos.length }) : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm text-chanv-terre">
+            <strong>{iv.genre === "probleme" ? `« ${iv.description.slice(0, 120)} »` : iv.titre}</strong>
+            {iv.equipements ? <> — {iv.equipements}</> : null}
+          </div>
+          <div className="text-[12px] text-slate-500 mt-0.5">
+            {[
+              iv.genre === "probleme" && iv.priorite != null ? t("entretienSalle.priorite", { p: iv.priorite }) : null,
+              iv.signalePar ? t("entretienSalle.signalePar", { nom: iv.signalePar.nom || iv.signalePar.email }) : null,
+              iv.assignesNoms.length ? iv.assignesNoms.join(", ") : t("entretienSalle.personne"),
+              iv.echeance ? t("entretienSalle.echeance", { date: jourCourt(iv.echeance, locale) }) : null,
+              iv.photos.length ? t("ligne.photos", { n: iv.photos.length }) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
         </div>
-      </div>
-      <div className="flex flex-col items-end gap-1.5 shrink-0">
-        <BadgeStatut statut={iv.statut} />
-        {iv.retard != null && iv.retard > 0 && <BadgeRetard retard={iv.retard} />}
-      </div>
-    </button>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <BadgeStatut statut={iv.statut} />
+          {iv.retard != null && iv.retard > 0 && <BadgeRetard retard={iv.retard} />}
+        </div>
+      </button>
+      {onModifier && (
+        <button onClick={onModifier} className="shrink-0 py-4 pr-4 text-xs underline text-chanv-terre inline-flex items-center gap-1">
+          <Pencil className="w-3 h-3" /> {t("regle.modifierTitre")}
+        </button>
+      )}
+    </div>
   );
 }
